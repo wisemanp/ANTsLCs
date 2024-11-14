@@ -284,7 +284,9 @@ for file in os.listdir(folder_path): # file is a string of the file name such as
 #ANT = 'ZTF18aczpgwm'
 #ANT = 'ZTF20abrbeie'
 #ANT = 'ZTF20abodaps'
-ANT = 'ZTF19aailpwl'
+#ANT = 'ZTF19aailpwl'
+#ANT = 'ZTF22aadesap'
+ANT = 'ZTF20acvfraq'
 idx = transient_names.index(ANT) # also named AT2019kn
 ANT_df = lc_df_list[idx].copy()
 ANT_bands = list_of_bands[idx]
@@ -388,8 +390,12 @@ plt.show()
 
 ##################################################################################################################################################################
 # FROM THIS, I CHOSE TO USE THE BIN 58595 - 58600 FOR THE BB FIT
-bin_min_MJD = 58595.0
-bin_max_MJD = 58600.0
+byeye_MJD_bin = {'ZTF19aailpwl': (58595.0, 58600.0), 
+                 'ZTF22aadesap' : (59780.0, 59785.0), 
+                 'ZTF20acvfraq': (59415.0, 59420.0)}
+
+byeye_bin = byeye_MJD_bin[ANT]
+bin_min_MJD, bin_max_MJD = byeye_bin
 ANT_BB_data = ANT_optical[ANT_optical['MJD'] >= bin_min_MJD].copy()
 ANT_BB_data = ANT_BB_data[ANT_BB_data['MJD'] < bin_max_MJD].copy()
 
@@ -417,188 +423,192 @@ print()
 # FITTING THE BLACKBODY CURVE....
 
 # BRUTE FORCE METHOD OF FITTING THE BB CURVE
-datapoints = 100
-T_lb_index = 3
-T_ub_index = 7
-R_lb_index = 13
-R_ub_index = 19
-temp_range = np.logspace(T_lb_index, T_ub_index, datapoints) # Kelvin. blackbody temperatures to iterate though 
-rad_range = np.logspace(R_lb_index, R_ub_index, datapoints) # cm. blackbody radii to iterate through
+fit_BB = True
+if fit_BB == True:
+    datapoints = 100
+    T_lb_index = 3
+    T_ub_index = 7
+    R_lb_index = 13
+    R_ub_index = 19
+    temp_range = np.logspace(T_lb_index, T_ub_index, datapoints) # Kelvin. blackbody temperatures to iterate though 
+    rad_range = np.logspace(R_lb_index, R_ub_index, datapoints) # cm. blackbody radii to iterate through
 
-# scale down the T and R values to avoid errors with small and large numbers
-T_scale_down = 1e0 # I don't really get how scaling down the temperature would work here, so I'll just scale down the radius since this is easier to reverse
-R_scale_down = 1e-16
-L_scale_down = (R_scale_down)**2 # this is because L ~ R^2, so scaling down R by 1e-16, scales down L by 1e-32
+    # scale down the T and R values to avoid errors with small and large numbers
+    T_scale_down = 1e0 # I don't really get how scaling down the temperature would work here, so I'll just scale down the radius since this is easier to reverse
+    R_scale_down = 1e-16
+    L_scale_down = (R_scale_down)**2 # this is because L ~ R^2, so scaling down R by 1e-16, scales down L by 1e-32
 
-scaled_T_range = temp_range * T_scale_down # scaled temp and radius
-scaled_R_range = rad_range * R_scale_down
+    scaled_T_range = temp_range * T_scale_down # scaled temp and radius
+    scaled_R_range = rad_range * R_scale_down
 
-BB_data_binned['scaled_wm_L_rf'] = BB_data_binned['wm_L_rf'] * L_scale_down
-BB_data_binned['scaled_wm_L_rf_err'] = BB_data_binned['wm_L_rf_err'] * L_scale_down
-BB_data_binned['em_cent_wl_cm'] = BB_data_binned['em_cent_wl'] * 1e-8 # get the bands emitted central wavelength from Angstrom --> cm
+    BB_data_binned['scaled_wm_L_rf'] = BB_data_binned['wm_L_rf'] * L_scale_down
+    BB_data_binned['scaled_wm_L_rf_err'] = BB_data_binned['wm_L_rf_err'] * L_scale_down
+    BB_data_binned['em_cent_wl_cm'] = BB_data_binned['em_cent_wl'] * 1e-8 # get the bands emitted central wavelength from Angstrom --> cm
 
-# a 2D grid for the chi^2 values
-chi = np.zeros((len(scaled_T_range), len(scaled_R_range))) 
-real_ydata = BB_data_binned['scaled_wm_L_rf']
-real_yerr = BB_data_binned['scaled_wm_L_rf_err']
-
-
-for i, T_scaled_K in enumerate(scaled_T_range):
-    for j, R_scaled_cm in enumerate(scaled_R_range):
-        
-        y_modeldata = []
-        for wl_cm in BB_data_binned['em_cent_wl_cm']:
-            model_L_rf = blackbody(wl_cm, R_scaled_cm, T_scaled_K) # this should be restframe L*1e-32 since we scaled-down R
-            y_modeldata.append(model_L_rf)
-
-        chi_sq = chisq(y_modeldata, real_ydata, real_yerr, M=2)
-        chi[i, j] = chi_sq
+    # a 2D grid for the chi^2 values
+    chi = np.zeros((len(scaled_T_range), len(scaled_R_range))) 
+    real_ydata = BB_data_binned['scaled_wm_L_rf']
+    real_yerr = BB_data_binned['scaled_wm_L_rf_err']
 
 
-best_chi = np.min(chi)
-row, col = np.where(chi == best_chi)
+    for i, T_scaled_K in enumerate(scaled_T_range):
+        for j, R_scaled_cm in enumerate(scaled_R_range):
+            
+            y_modeldata = []
+            for wl_cm in BB_data_binned['em_cent_wl_cm']:
+                model_L_rf = blackbody(wl_cm, R_scaled_cm, T_scaled_K) # this should be restframe L*1e-32 since we scaled-down R
+                y_modeldata.append(model_L_rf)
+
+            chi_sq = chisq(y_modeldata, real_ydata, real_yerr, M=2)
+            chi[i, j] = chi_sq
 
 
-if len(row) == 1 and len(col) == 1:
-    r = row[0]
-    c = col[0]
-    brtueforce_best_T = scaled_T_range[r]
-    bruteforce_best_R = scaled_R_range[c]
-
-else:
-    print('WARNING - MULTIPLE PARAMETER PAIRS GIVE THIS MIN CHI VALUE')
-
-descaled_bruteforce_best_T = brtueforce_best_T/T_scale_down
-descaled_bruteforce_best_R = bruteforce_best_R/R_scale_down
-print()
-print()
-print()
-print()
-print('BRUTE FORCE METHOD RESULT')
-print('---------------------------------------------')
-print(f'Best chi = {best_chi:.6e}')
-print(f'Best scaled T = {brtueforce_best_T:.6e} K      T scaling = {T_scale_down}     Best T = {descaled_bruteforce_best_T:.6f}     log (best T) = {np.log10(descaled_bruteforce_best_T):.6f}')
-print(f'Best scaled R = {bruteforce_best_R:.6e} cm     R scaling = {R_scale_down}     Best_R = {descaled_bruteforce_best_R:.6f}     log (best R) = {np.log10(descaled_bruteforce_best_R):.6f}')
+    best_chi = np.min(chi)
+    row, col = np.where(chi == best_chi)
 
 
-# create model data according to the optimal parameters from the bruteforce method
-model_wl_cm = np.linspace(1000, 15000, 300)*1e-8 # lambda range to model in cm
-bruteforce_modeldata = np.array([blackbody(x, bruteforce_best_R, brtueforce_best_T) for x in model_wl_cm]) # GIVES SCALED DOWN RESTFRAME LUMINOSITY
-bruteforce_modeldata = bruteforce_modeldata/L_scale_down # the modelled rest frame luminosity with the scaling removed
+    if len(row) == 1 and len(col) == 1:
+        r = row[0]
+        c = col[0]
+        brtueforce_best_T = scaled_T_range[r]
+        bruteforce_best_R = scaled_R_range[c]
+
+    else:
+        print('WARNING - MULTIPLE PARAMETER PAIRS GIVE THIS MIN CHI VALUE')
+
+    descaled_bruteforce_best_T = brtueforce_best_T/T_scale_down
+    descaled_bruteforce_best_R = bruteforce_best_R/R_scale_down
+    print()
+    print()
+    print()
+    print()
+    print('BRUTE FORCE METHOD RESULT')
+    print('---------------------------------------------')
+    print(f'Best chi = {best_chi:.6e}')
+    print(f'Best scaled T = {brtueforce_best_T:.6e} K      T scaling = {T_scale_down}     Best T = {descaled_bruteforce_best_T:.6e}     log (best T) = {np.log10(descaled_bruteforce_best_T):.3f}')
+    print(f'Best scaled R = {bruteforce_best_R:.6e} cm     R scaling = {R_scale_down}     Best_R = {descaled_bruteforce_best_R:.6e}     log (best R) = {np.log10(descaled_bruteforce_best_R):.3f}')
+
+
+    # create model data according to the optimal parameters from the bruteforce method
+    model_wl_cm = np.linspace(1000, 15000, 300)*1e-8 # lambda range to model in cm
+    bruteforce_modeldata = np.array([blackbody(x, bruteforce_best_R, brtueforce_best_T) for x in model_wl_cm]) # GIVES SCALED DOWN RESTFRAME LUMINOSITY
+    bruteforce_modeldata = bruteforce_modeldata/L_scale_down # the modelled rest frame luminosity with the scaling removed
 
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# CURVE FIT METHOD OF FITTING THE BB CURVE
+    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # CURVE FIT METHOD OF FITTING THE BB CURVE
 
 
-cf_lbound = np.array([(10**R_lb_index)*R_scale_down, (10**T_lb_index)*T_scale_down])
-cf_ubound = np.array([(10**R_ub_index)*R_scale_down, (10**T_ub_index)*T_scale_down])
+    cf_lbound = np.array([(10**R_lb_index)*R_scale_down, (10**T_lb_index)*T_scale_down])
+    cf_ubound = np.array([(10**R_ub_index)*R_scale_down, (10**T_ub_index)*T_scale_down])
 
-popt, pcov = opt.curve_fit(blackbody, xdata = BB_data_binned['em_cent_wl_cm'], ydata = BB_data_binned['scaled_wm_L_rf'], sigma = BB_data_binned['scaled_wm_L_rf_err'], 
-                           absolute_sigma = False, p0 = (1e15*R_scale_down, 5e3*T_scale_down), bounds = (cf_lbound, cf_ubound))
-cf_R = popt[0] # SCALED VALUES
-cf_T = popt[1]
+    popt, pcov = opt.curve_fit(blackbody, xdata = BB_data_binned['em_cent_wl_cm'], ydata = BB_data_binned['scaled_wm_L_rf'], sigma = BB_data_binned['scaled_wm_L_rf_err'], 
+                            absolute_sigma = False, p0 = (1e15*R_scale_down, 5e3*T_scale_down), bounds = (cf_lbound, cf_ubound))
+    cf_R = popt[0] # SCALED VALUES
+    cf_T = popt[1]
 
-cf_R_err = np.sqrt(pcov[0, 0]) # SCALED ERRORS
-cf_T_err = np.sqrt(pcov[1, 1])
+    cf_R_err = np.sqrt(pcov[0, 0]) # SCALED ERRORS
+    cf_T_err = np.sqrt(pcov[1, 1])
 
-cf_modely_forchi = np.array([blackbody(BB_data_binned['em_cent_wl_cm'], cf_R, cf_T)]) # SCALED L VALUES
-cf_chi = chisq(cf_modely_forchi, BB_data_binned['scaled_wm_L_rf'], BB_data_binned['scaled_wm_L_rf_err'], M=2) # USING SCALED L VALUES
-cf_modeldata = np.array([blackbody(x, cf_R, cf_T) for x in model_wl_cm]) # SCALED VALUES
-cf_modeldata = cf_modeldata/L_scale_down # UN-SCALED VALUES FOR PLOTTING
+    cf_modely_forchi = np.array([blackbody(BB_data_binned['em_cent_wl_cm'], cf_R, cf_T)]) # SCALED L VALUES
+    cf_chi = chisq(cf_modely_forchi, BB_data_binned['scaled_wm_L_rf'], BB_data_binned['scaled_wm_L_rf_err'], M=2) # USING SCALED L VALUES
+    cf_modeldata = np.array([blackbody(x, cf_R, cf_T) for x in model_wl_cm]) # SCALED VALUES
+    cf_modeldata = cf_modeldata/L_scale_down # UN-SCALED VALUES FOR PLOTTING
 
-fig = plt.figure(figsize = (16, 7))
-ax1 = plt.subplot(1, 2, 2)
-ax1.errorbar(BB_data_binned['em_cent_wl'], BB_data_binned['wm_L_rf'], yerr = BB_data_binned['wm_L_rf_err'], fmt = 'o', c = 'k', label = 'real data', linestyle = 'None', 
-             markeredgecolor = 'k', markeredgewidth = '0.5')
-ax1.plot(model_wl_cm*1e8, bruteforce_modeldata, c = 'red', label = f'brute force BB model, \n best chi = {best_chi:.3e}, \nbest T = {descaled_bruteforce_best_T:.3e}, \nbest_R = {descaled_bruteforce_best_R:.3e}')
-ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model\n, best chi = {cf_chi:.3e}, \nbest T = {cf_T/T_scale_down:.3e} +/- {cf_T_err/T_scale_down:.3e}, \nbest_R = {cf_R/R_scale_down:.3e} +/- {cf_R_err/R_scale_down:.3e}')
+    fig = plt.figure(figsize = (16, 7))
+    ax1 = plt.subplot(1, 2, 2)
+    ax1.errorbar(BB_data_binned['em_cent_wl'], BB_data_binned['wm_L_rf'], yerr = BB_data_binned['wm_L_rf_err'], fmt = 'o', c = 'k', label = 'real data', linestyle = 'None', 
+                markeredgecolor = 'k', markeredgewidth = '0.5')
+    ax1.plot(model_wl_cm*1e8, bruteforce_modeldata, c = 'red', label = f'brute force BB model, \n best chi = {best_chi:.3e}, \nlog(best T) = {np.log10(descaled_bruteforce_best_T):.2f}, \nlog(best_R) = {np.log10(descaled_bruteforce_best_R):.2f}')
+    ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model\n, best chi = {cf_chi:.3e}, \nlog(best T) = {np.log10(cf_T/T_scale_down):.2f} +/- {np.log10(cf_T_err/T_scale_down):.2f}, \nlog(best_R) = {np.log10(cf_R/R_scale_down):.2f} +/- {np.log10(cf_R_err/R_scale_down):.2f}')
 
-ax1.grid()
-ax1.legend()
-ax1.set_xlabel('wavelength / Angstrom')
-ax1.set_ylabel('Rest frame luminosity')
-ax1.set_title(f'Blackbody fits of {ANT}')
+    ax1.grid()
+    ax1.legend()
+    ax1.set_xlabel('wavelength / Angstrom')
+    ax1.set_ylabel('Rest frame luminosity')
+    ax1.set_title(f'Blackbody fits of {ANT}')
 
-reduced_chi_matrix = chi/2
-ax2 = plt.subplot(1, 2, 1)
-max_plot_chi = 1e5
-cs = ax2.pcolormesh(temp_range, rad_range, reduced_chi_matrix.T, cmap = 'jet', vmin = 0, vmax = max_plot_chi)
-fig.colorbar(cs, ax = ax2)
-ax2.set_xscale('log')
-ax2.set_yscale('log')
-ax2.set_xlabel('Temperature / K')
-ax2.set_ylabel('Radius / cm')
-ax2.set_title('Contour plot of reduced chi squared values')
-fig.subplots_adjust(top=0.915,
-                    bottom=0.09,
-                    left=0.05,
-                    right=0.975,
-                    hspace=0.2,
-                    wspace=0.165)
-plt.show()
+    reduced_chi_matrix = chi/2
+    ax2 = plt.subplot(1, 2, 1)
+    max_plot_chi = 1e5
+    cs = ax2.pcolormesh(temp_range, rad_range, reduced_chi_matrix.T, cmap = 'jet', vmin = 0, vmax = max_plot_chi)
+    fig.colorbar(cs, ax = ax2)
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_xlabel('Temperature / K')
+    ax2.set_ylabel('Radius / cm')
+    ax2.set_title('Contour plot of reduced chi squared values')
+    fig.subplots_adjust(top=0.915,
+                        bottom=0.09,
+                        left=0.05,
+                        right=0.975,
+                        hspace=0.2,
+                        wspace=0.165)
+    plt.show()
 
 
 
 
 # create a plot of a BB curve at T and R, then look at the difference of increasing/decreasing T or R by 1 order to magnitude
-test_scaled_R = 1e16 * R_scale_down
-test_scaled_T = 1e4 * T_scale_down
-central_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
-inc_R_BB = np.array([blackbody(x, test_scaled_R*10, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
-dec_R_BB = np.array([blackbody(x, test_scaled_R/10, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
-inc_T_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T*10) for x in model_wl_cm])/L_scale_down # un-scaled 
-dec_T_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T/10) for x in model_wl_cm])/L_scale_down # un-scaled 
-model_wl_Angstrom = model_wl_cm * 1e8
+test_change_BB_quantities = False
+if test_change_BB_quantities == True:
+    test_scaled_R = 1e16 * R_scale_down
+    test_scaled_T = 1e4 * T_scale_down
+    central_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
+    inc_R_BB = np.array([blackbody(x, test_scaled_R*10, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
+    dec_R_BB = np.array([blackbody(x, test_scaled_R/10, test_scaled_T) for x in model_wl_cm])/L_scale_down # un-scaled 
+    inc_T_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T*10) for x in model_wl_cm])/L_scale_down # un-scaled 
+    dec_T_BB = np.array([blackbody(x, test_scaled_R, test_scaled_T/10) for x in model_wl_cm])/L_scale_down # un-scaled 
+    model_wl_Angstrom = model_wl_cm * 1e8
 
-fig, axs = plt.subplots(3, 3, figsize = (16, 7))
+    fig, axs = plt.subplots(3, 3, figsize = (16, 7))
 
-ax0 = axs[1, 1] # the central plot
-ax1 = axs[0, 1] # top
-ax2 = axs[1, 0] # left
-ax3 = axs[1, 2] # right
-ax4 = axs[2, 1] # bottom
-axs_list = [ax0, ax1, ax2, ax3, ax4]
-
-
-ax0.plot(model_wl_Angstrom, central_BB)
-ax0.set_title(f'Reference plot, T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R/R_scale_down:.2e}', fontsize = 7, fontweight = 'bold')
-
-ax1.plot(model_wl_Angstrom, inc_R_BB)
-ax1.set_title('T, 10R', fontsize = 7, fontweight = 'bold')
-#ax1.set_title(f'T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R*10/R_scale_down:.2e}')
-
-ax4.plot(model_wl_Angstrom, dec_R_BB)
-ax4.set_title('T, R/10', fontsize = 7, fontweight = 'bold')
-#ax4.set_title(f'T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R/(R_scale_down*10):.2e}')
-
-ax2.plot(model_wl_Angstrom, dec_T_BB)
-ax2.set_title('T/10, R', fontsize = 7, fontweight = 'bold')
-#ax2.set_title(f'T = {test_scaled_T/(T_scale_down*10):.2e} K , R = {test_scaled_R/R_scale_down:.2e}')
-
-ax3.plot(model_wl_Angstrom, inc_T_BB)
-ax3.set_title('10T, R', fontsize = 7, fontweight = 'bold')
-#ax3.set_title(f'T = {test_scaled_T*10/T_scale_down:.2e} K , R = {test_scaled_R/R_scale_down:.2e}')
-
-# turning off some of the axes
-unwanted_ax = [axs[0, 0], axs[2, 2], axs[2, 0], axs[0, 2]]
-for ax in unwanted_ax:
-    ax.axis('Off')
-
-for ax in axs_list:
-    ax.grid(True)
+    ax0 = axs[1, 1] # the central plot
+    ax1 = axs[0, 1] # top
+    ax2 = axs[1, 0] # left
+    ax3 = axs[1, 2] # right
+    ax4 = axs[2, 1] # bottom
+    axs_list = [ax0, ax1, ax2, ax3, ax4]
 
 
-fig.supxlabel('Wavelength / Angstrom', fontweight = 'bold')
-fig.suptitle('Testing the effect of changing one of the variables for the BB equation', fontweight = 'bold')
-fig.supylabel('BB modelled luminosity / ergs/s/A', fontweight = 'bold')
-fig.subplots_adjust(top=0.91,
-                    bottom=0.11,
-                    left=0.075,
-                    right=0.97,
-                    hspace=0.325,
-                    wspace=0.15)
-plt.show()
+    ax0.plot(model_wl_Angstrom, central_BB)
+    ax0.set_title(f'Reference plot, T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R/R_scale_down:.2e}', fontsize = 7, fontweight = 'bold')
+
+    ax1.plot(model_wl_Angstrom, inc_R_BB)
+    ax1.set_title('T, 10R', fontsize = 7, fontweight = 'bold')
+    #ax1.set_title(f'T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R*10/R_scale_down:.2e}')
+
+    ax4.plot(model_wl_Angstrom, dec_R_BB)
+    ax4.set_title('T, R/10', fontsize = 7, fontweight = 'bold')
+    #ax4.set_title(f'T = {test_scaled_T/T_scale_down:.2e} K , R = {test_scaled_R/(R_scale_down*10):.2e}')
+
+    ax2.plot(model_wl_Angstrom, dec_T_BB)
+    ax2.set_title('T/10, R', fontsize = 7, fontweight = 'bold')
+    #ax2.set_title(f'T = {test_scaled_T/(T_scale_down*10):.2e} K , R = {test_scaled_R/R_scale_down:.2e}')
+
+    ax3.plot(model_wl_Angstrom, inc_T_BB)
+    ax3.set_title('10T, R', fontsize = 7, fontweight = 'bold')
+    #ax3.set_title(f'T = {test_scaled_T*10/T_scale_down:.2e} K , R = {test_scaled_R/R_scale_down:.2e}')
+
+    # turning off some of the axes
+    unwanted_ax = [axs[0, 0], axs[2, 2], axs[2, 0], axs[0, 2]]
+    for ax in unwanted_ax:
+        ax.axis('Off')
+
+    for ax in axs_list:
+        ax.grid(True)
+
+
+    fig.supxlabel('Wavelength / Angstrom', fontweight = 'bold')
+    fig.suptitle('Testing the effect of changing one of the variables for the BB equation', fontweight = 'bold')
+    fig.supylabel('BB modelled luminosity / ergs/s/A', fontweight = 'bold')
+    fig.subplots_adjust(top=0.91,
+                        bottom=0.11,
+                        left=0.075,
+                        right=0.97,
+                        hspace=0.325,
+                        wspace=0.15)
+    plt.show()
 
 
