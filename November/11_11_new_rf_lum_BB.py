@@ -197,6 +197,9 @@ def blackbody(lam_cm, R_cm, T_K):
 ##################################################################################################################################################################
 
 
+
+
+
 def chisq(y_m, y, yerr, M, reduced_chi = False):
     """
     Calculates the chi squared, as well as the reduced chi squared and its 1 sigma uncertainty allowance if wanted
@@ -242,9 +245,6 @@ def chisq(y_m, y, yerr, M, reduced_chi = False):
     
     else:
         return chi
-
-
-
 
 
 
@@ -314,7 +314,7 @@ restframe_L = []
 restframe_L_err = []
 em_cent_wl = []
 for i in range(len(ANT_df['MJD'])):
-    dp_band = ANT_df['band'].iloc[i] # the datapoints band
+    dp_band = ANT_df['band'].iloc[i] # the datapoint's band
     dp_band_zp = band_ZP_dict[dp_band] # the band's AB zeropoint
     em_cent = band_em_central_wl_dict[dp_band] # the band's emitted central wavelength
     em_cent_wl.append(em_cent)
@@ -342,7 +342,7 @@ ANT_optical = ANT_optical[ANT_optical['band'] != 'WISE_W2'].copy()
 ANT_emitted_optical_bands = ANT_optical['band'].unique()
 
 MJD_binsize = 5
-ANT_opt_binned = MJD_bin_for_BB_fit(ANT_optical, MJD_binsize = MJD_binsize) # binned up the lightcurve into MJD bins
+ANT_opt_binned = MJD_bin_for_BB_fit(ANT_optical, MJD_binsize = MJD_binsize) # binned up the 'optical' lightcurve into MJD bins
 
 
 plt.figure(figsize = (16, 7.5))
@@ -375,9 +375,8 @@ for band in ANT_emitted_optical_bands:
     
 fig.gca().invert_yaxis()
 for i in range(len(ANT_opt_binned['mean_MJD'])):
-    plt.axvline(x = ANT_opt_binned['bin_lhs'].iloc[i], c = 'k')
+    plt.axvline(x = ANT_opt_binned['bin_lhs'].iloc[i], c = 'k', label = 'LHS of bin' if i==0 else None)
 
-#plt.errorbar(ANT_opt_binned['bin_central_MJD'], ANT_opt_binned['wm_mag'], xerr = [(MJD_binsize/2)]*len(ANT_opt_binned['mean_MJD']), c = 'k', label = 'MJD bands', linestyle = 'None')
 plt.xlabel('MJD')
 plt.ylabel('mag')
 plt.title(f'{MJD_binsize} day bins')
@@ -413,10 +412,6 @@ print('BB DATA BY BAND')
 print(BB_data_binned)
 print()
 
-###########  TESTING BY EDITIING BB_DATA_BINNED TO GET RID OF DATA >/< 3000A
-#BB_data_binned = BB_data_binned[BB_data_binned['em_cent_wl'] < 3000].copy()
-
-###########
 
 
 ##################################################################################################################################################################
@@ -460,7 +455,7 @@ if fit_BB == True:
                 y_modeldata.append(model_L_rf)
 
             chi_sq = chisq(y_modeldata, real_ydata, real_yerr, M=2)
-            chi[i, j] = chi_sq
+            chi[i, j] = chi_sq/2 # reduced chi squared
 
 
     best_chi = np.min(chi)
@@ -513,6 +508,7 @@ if fit_BB == True:
 
     cf_modely_forchi = np.array([blackbody(BB_data_binned['em_cent_wl_cm'], cf_R, cf_T)]) # SCALED L VALUES
     cf_chi = chisq(cf_modely_forchi, BB_data_binned['scaled_wm_L_rf'], BB_data_binned['scaled_wm_L_rf_err'], M=2) # USING SCALED L VALUES
+    cf_chi = cf_chi/2 # reduced chi squared
     cf_modeldata = np.array([blackbody(x, cf_R, cf_T) for x in model_wl_cm]) # SCALED VALUES
     cf_modeldata = cf_modeldata/L_scale_down # UN-SCALED VALUES FOR PLOTTING
 
@@ -520,8 +516,8 @@ if fit_BB == True:
     ax1 = plt.subplot(1, 2, 2)
     ax1.errorbar(BB_data_binned['em_cent_wl'], BB_data_binned['wm_L_rf'], yerr = BB_data_binned['wm_L_rf_err'], fmt = 'o', c = 'k', label = 'real data', linestyle = 'None', 
                 markeredgecolor = 'k', markeredgewidth = '0.5')
-    ax1.plot(model_wl_cm*1e8, bruteforce_modeldata, c = 'red', label = f'brute force BB model, \n best chi = {best_chi:.3e}, \nlog(best T) = {np.log10(descaled_bruteforce_best_T):.2f}, \nlog(best_R) = {np.log10(descaled_bruteforce_best_R):.2f}')
-    ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model\n, best chi = {cf_chi:.3e}, \nlog(best T) = {np.log10(cf_T/T_scale_down):.2f} +/- {np.log10(cf_T_err/T_scale_down):.2f}, \nlog(best_R) = {np.log10(cf_R/R_scale_down):.2f} +/- {np.log10(cf_R_err/R_scale_down):.2f}')
+    ax1.plot(model_wl_cm*1e8, bruteforce_modeldata, c = 'red', label = f'brute force BB model, \nbest chi = {best_chi:.3e}, \nlog(best T) = {np.log10(descaled_bruteforce_best_T):.2f}, \nlog(best_R) = {np.log10(descaled_bruteforce_best_R):.2f}')
+    ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model, \nbest chi = {cf_chi:.3e}, \nlog(best T) = {np.log10(cf_T/T_scale_down):.2f} +/- {np.log10(cf_T_err/T_scale_down):.2f}, \nlog(best_R) = {np.log10(cf_R/R_scale_down):.2f} +/- {np.log10(cf_R_err/R_scale_down):.2f}')
 
     ax1.grid()
     ax1.legend()
@@ -529,10 +525,9 @@ if fit_BB == True:
     ax1.set_ylabel('Rest frame luminosity')
     ax1.set_title(f'Blackbody fits of {ANT}')
 
-    reduced_chi_matrix = chi/2
     ax2 = plt.subplot(1, 2, 1)
     max_plot_chi = 1e5
-    cs = ax2.pcolormesh(temp_range, rad_range, reduced_chi_matrix.T, cmap = 'jet', vmin = 0, vmax = max_plot_chi)
+    cs = ax2.pcolormesh(temp_range, rad_range, chi.T, cmap = 'jet', vmin = 0, vmax = max_plot_chi)
     fig.colorbar(cs, ax = ax2)
     ax2.set_xscale('log')
     ax2.set_yscale('log')
