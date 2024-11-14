@@ -566,7 +566,7 @@ fig.subplots_adjust(top=0.88,
                     hspace=0.38,
                     wspace=0.19)
 fig.suptitle(f'BB fits of {ANT}, testing how using different parts of the BB data affects the fit produced', fontweight = 'bold')
-savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/.gitignore/13_11_test_BB_fit_ZTF19aailpwl.png"
+savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/13_11_test_BB_fit_ZTF19aailpwl.png"
 plt.savefig(savepath, dpi=150)
 plt.show()
 
