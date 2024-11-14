@@ -1,0 +1,10 @@
+# .gitignore file
+
+# ignore all .dat files
+*.dat
+
+# ignore all csv files
+*.csv
+
+# ignore the plots folder
+plots
