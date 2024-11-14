@@ -48,7 +48,7 @@ t_since_peak_xlims = {'ZTF18aczpgwm': (-400, 1800),
 
 
 
-want_separate_plots = True
+want_separate_plots = False
 
 # PLOTTING 
 if want_separate_plots == True:
