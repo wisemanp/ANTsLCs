@@ -10,7 +10,7 @@ from astropy.cosmology import FlatLambdaCDM
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
 from November.plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, band_offset_label_dict
-
+from November.load_data_function import load_ANT_data 
 
 print()
 st = time.time()
@@ -257,36 +257,18 @@ def chisq(y_m, y, yerr, M, reduced_chi = False):
 ##################################################################################################################################################################
 ##################################################################################################################################################################
 ##################################################################################################################################################################
+
 # loading in the files
-folder_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/modified Phil's lightcurves" # folder path containing Phil's light curve data files
-lc_df_list = []
-transient_names = []
-list_of_bands = []
-for file in os.listdir(folder_path): # file is a string of the file name such as 'file_name.dat'
-    file_path = os.path.join(folder_path, file) 
-    file_df = pd.read_csv(file_path, delimiter = ',') # the lightcurve data in a dataframe
-    lc_df_list.append(file_df)
+lc_df_list, transient_names, list_of_bands = load_ANT_data()
 
-    trans_name = file[:-7] # the name of the transient
-    transient_names.append(trans_name)
-
-    trans_bands = file_df['band'].unique() # the bands in which this transient has data for
-    list_of_bands.append(trans_bands)
-
-
-
-
-
-
-##################################################################################################################################################################
 # ANT and band data
 
 #ANT = 'ZTF18aczpgwm'
 #ANT = 'ZTF20abrbeie'
 #ANT = 'ZTF20abodaps'
 #ANT = 'ZTF19aailpwl'
-#ANT = 'ZTF22aadesap'
-ANT = 'ZTF20acvfraq'
+ANT = 'ZTF22aadesap'
+#ANT = 'ZTF20acvfraq'
 idx = transient_names.index(ANT) # also named AT2019kn
 ANT_df = lc_df_list[idx].copy()
 ANT_bands = list_of_bands[idx]
@@ -362,29 +344,6 @@ plt.title(f'Rest frame luminosity vs time - {ANT}')
 plt.show()
 
 
-fig = plt.figure(figsize = (16, 7))
-for band in ANT_emitted_optical_bands:
-    band_df = ANT_df[ANT_df['band'] == band].copy()
-    band_colour = band_colour_dict[band]
-    band_marker = band_marker_dict[band]
-    band_offset = band_offset_dict[band]
-    band_label = band_offset_label_dict[band]
-
-    plt.errorbar(band_df['MJD'], (band_df['mag'] + band_offset) , yerr = band_df['magerr'], fmt=band_marker, label = band_label, linestyle = 'None', markeredgecolor = 'k',
-                  markeredgewidth = '0.5', color = band_colour)
-    
-fig.gca().invert_yaxis()
-for i in range(len(ANT_opt_binned['mean_MJD'])):
-    plt.axvline(x = ANT_opt_binned['bin_lhs'].iloc[i], c = 'k', label = 'LHS of bin' if i==0 else None)
-
-plt.xlabel('MJD')
-plt.ylabel('mag')
-plt.title(f'{MJD_binsize} day bins')
-plt.grid()
-plt.legend()
-plt.show()
-
-
 
 
 ##################################################################################################################################################################
@@ -411,6 +370,35 @@ print()
 print('BB DATA BY BAND')
 print(BB_data_binned)
 print()
+
+
+
+
+fig = plt.figure(figsize = (16, 7))
+for band in ANT_emitted_optical_bands:
+    band_df = ANT_df[ANT_df['band'] == band].copy()
+    band_colour = band_colour_dict[band]
+    band_marker = band_marker_dict[band]
+    band_offset = band_offset_dict[band]
+    band_label = band_offset_label_dict[band]
+
+    plt.errorbar(band_df['MJD'], (band_df['mag'] + band_offset) , yerr = band_df['magerr'], fmt=band_marker, label = band_label, linestyle = 'None', markeredgecolor = 'k',
+                  markeredgewidth = '0.5', color = band_colour)
+    
+fig.gca().invert_yaxis()
+for i in range(len(ANT_opt_binned['mean_MJD'])):
+    plt.axvline(x = ANT_opt_binned['bin_lhs'].iloc[i], c = 'k', label = 'LHS of bin' if i==0 else None)
+
+plt.axvline(x = bin_min_MJD, c = 'r', label = 'bin chosen')
+plt.axvline(x = bin_max_MJD, c = 'r')
+plt.xlabel('MJD')
+plt.ylabel('mag')
+plt.title(f'{MJD_binsize} day bins')
+plt.grid()
+plt.legend()
+plt.show()
+
+
 
 
 
