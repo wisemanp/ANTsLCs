@@ -63,6 +63,17 @@ def wm_same_band_MJD(df, df_bands):
  """
 
 
+
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+
+
+
+def cubic(a, b, c, d, x):
+    return a*(x**3) + b*(x**2) + c*x + d
+
+
 ##################################################################################################################################################################
 ##################################################################################################################################################################
 ##################################################################################################################################################################
@@ -100,9 +111,16 @@ for i, lc_df in enumerate(lc_df_list):
             # the reference band data, from which we can interpolate. We can't take the whole light curve because sometimes we have a few straggler datapoints like 500 days away
             # and we don't want to interpolate across that 500 day gap
             ref_band_df = band_df[(band_df['MJD'] > interp_MJD_min) & (band_df['MJD'] < interp_MJD_max)].copy() 
+            poly_order = 3
+            A, B, C, D = np.polyfit(ref_band_df['MJD'], ref_band_df['mag'], deg = poly_order)
+            MJD_for_poly = np.arange(ref_band_df['MJD'].min(), ref_band_df['MJD'].max(), 1) # interpolate at these MJD values
+            poly_mag = cubic(A, B, C, D, MJD_for_poly)
+
             MJD_for_interp = np.arange(ref_band_df['MJD'].min(), ref_band_df['MJD'].max(), 5) # interpolate at these MJD values
+            duplicate_MJDs = ref_band_df.duplicated(subset = ['MJD'], keep = 'first')
+            ref_band_df_no_dups = ref_band_df[~duplicate_MJDs] # the ref_band_df with the duplicate MJD values removed THIS IS TEMPORARY!!!! SHOULD TAKE THE WEIGHTED MEAN OF THE FLUX OF THESE VALUES
             
-            interp_function = interp.interp1d(band_df['MJD'], band_df['mag'], kind = 'linear') # this function is like mag as a function of MJD, so we will input the MJD values to interpolate at and it will give us the mag
+            interp_function = interp.interp1d(ref_band_df_no_dups['MJD'], ref_band_df_no_dups['mag'], kind = 'linear') # this function is like mag as a function of MJD, so we will input the MJD values to interpolate at and it will give us the mag
             interp_mag = interp_function(MJD_for_interp) # interpolated mag values at MJD_for_interp
 
             band_color = band_colour_dict[band]
@@ -112,11 +130,12 @@ for i, lc_df in enumerate(lc_df_list):
             plt.scatter(MJD_for_interp, (interp_mag + band_offset), marker = 'P', color = band_color, label = f'{band_label} interp', edgecolors = 'k', linewidths = 0.5, s = 5)
             plt.errorbar(band_df['MJD'], (band_df['mag'] + band_offset), yerr = band_df['magerr'], color = band_color, fmt = 'o', label = band_label, 
                          markeredgecolor = 'k', markeredgewidth = '1.0', markersize = 6)
+            plt.plot(MJD_for_poly, (poly_mag + band_offset), c = band_color, label = f'{band_label} polyfit')
             
         plt.xlabel('MJD')
         plt.ylabel('apparent mag')
         fig.gca().invert_yaxis()
-        plt.legend(loc = 'lower right', bbox_to_anchor = (1.2, 0.0))
+        plt.legend(loc = 'lower right', bbox_to_anchor = (1.2, 0.0), fontsize = 9)
         plt.title(f'{ANT_name}  interpolating the light curve')
         plt.xlim((59500, 60500))
         fig.subplots_adjust(top=0.885,
