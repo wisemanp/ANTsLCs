@@ -48,7 +48,7 @@ t_since_peak_xlims = {'ZTF18aczpgwm': (-400, 1800),
 
 
 
-want_separate_plots = False
+want_separate_plots = True
 
 # PLOTTING 
 if want_separate_plots == True:
@@ -80,7 +80,8 @@ if want_separate_plots == True:
         plt.legend()
         plt.grid()
         plt.gca().invert_yaxis()
-        #plt.savefig(plot_name)
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/{plot_name}.png"
+        plt.savefig(savepath, dpi=150)
         plt.show()
 
 
@@ -128,5 +129,6 @@ plt.suptitle('All transients (bands shifted for visibility) (removed data points
 fig.supxlabel('time since peak/days', fontweight = 'bold')
 fig.supylabel('Apparent magnitude', fontweight = 'bold')
 plt.subplots_adjust(top = 0.912, bottom = 0.092, left = 0.061, right = 0.976, hspace = 0.361, wspace = 0.211)
-#plt.savefig('subplot_of_all_LCs_no_band_shift.png')
+savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/ALL_PHIL's_lc.png"
+plt.savefig(savepath, dpi=150)
 plt.show()
