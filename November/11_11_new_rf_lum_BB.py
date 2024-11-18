@@ -265,9 +265,10 @@ lc_df_list, transient_names, list_of_bands = load_ANT_data()
 
 #ANT = 'ZTF18aczpgwm'
 #ANT = 'ZTF20abrbeie'
-#ANT = 'ZTF20abodaps'
+ANT = 'ZTF20abodaps'
 #ANT = 'ZTF19aailpwl'
-ANT = 'ZTF22aadesap'
+#ANT = 'ZTF22aadesap'
+#ANT = 'ZTF20abgxlut'
 #ANT = 'ZTF20acvfraq'
 idx = transient_names.index(ANT) # also named AT2019kn
 ANT_df = lc_df_list[idx].copy()
@@ -333,10 +334,10 @@ for band in ANT_emitted_optical_bands:
     band_colour = band_colour_dict[band]
     band_marker = band_marker_dict[band]
 
-    plt.errorbar(band_df['t_since_peak'], band_df['L_rest'], yerr = band_df['L_rest_err'], fmt=band_marker, label = 'observed band = '+band, linestyle = 'None', markeredgecolor = 'k',
+    plt.errorbar(band_df['MJD'], band_df['L_rest'], yerr = band_df['L_rest_err'], fmt=band_marker, label = 'observed band = '+band, linestyle = 'None', markeredgecolor = 'k',
                   markeredgewidth = '0.5', color = band_colour)
 
-plt.xlabel('time since peak/days')
+plt.xlabel('MJD')
 plt.ylabel('Rest-frame luminosity / ergs/s/Angstrom')
 plt.grid()
 plt.legend()
@@ -352,7 +353,8 @@ plt.savefig(savepath, dpi=200)
 # FROM THIS, I CHOSE TO USE THE BIN 58595 - 58600 FOR THE BB FIT
 byeye_MJD_bin = {'ZTF19aailpwl': (58595.0, 58600.0), 
                  'ZTF22aadesap' : (59780.0, 59785.0), 
-                 'ZTF20acvfraq': (59415.0, 59420.0)}
+                 'ZTF20acvfraq': (59415.0, 59420.0), 
+                 'ZTF20abodaps': (59075.0, 59080.0)}
 
 byeye_bin = byeye_MJD_bin[ANT]
 bin_min_MJD, bin_max_MJD = byeye_bin
@@ -412,7 +414,7 @@ plt.savefig(savepath, dpi=200)
 # BRUTE FORCE METHOD OF FITTING THE BB CURVE
 fit_BB = True
 if fit_BB == True:
-    datapoints = 100
+    datapoints = 200
     T_lb_index = 3
     T_ub_index = 7
     R_lb_index = 13
