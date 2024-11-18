@@ -210,7 +210,7 @@ fig.supxlabel('MJD', fontweight = 'bold', va = 'center', y = 0.01)
 fig.supylabel('Apparent magnitude', fontweight = 'bold', va = 'center', x = 0.01)
 plt.subplots_adjust(top=0.937, bottom=0.060, left=0.036, right=0.991, hspace=0.231, wspace=0.161)
 savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/ALL_ANT_lc.png"
-#plt.savefig(savepath, dpi=150)
+plt.savefig(savepath, dpi=150)
 plt.show() 
 
 
