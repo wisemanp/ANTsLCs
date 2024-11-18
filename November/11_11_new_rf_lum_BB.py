@@ -341,7 +341,9 @@ plt.ylabel('Rest-frame luminosity / ergs/s/Angstrom')
 plt.grid()
 plt.legend()
 plt.title(f'Rest frame luminosity vs time - {ANT}')
-plt.show()
+savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/rest frame L/{ANT}_restframe_L.png"
+plt.savefig(savepath, dpi=200)
+#plt.show()
 
 
 
@@ -393,10 +395,12 @@ plt.axvline(x = bin_min_MJD, c = 'r', label = 'bin chosen')
 plt.axvline(x = bin_max_MJD, c = 'r')
 plt.xlabel('MJD')
 plt.ylabel('mag')
-plt.title(f'{MJD_binsize} day bins')
+plt.title(f'{MJD_binsize} day bins: bin chosen = ({bin_min_MJD}, {bin_max_MJD})')
 plt.grid()
 plt.legend()
-plt.show()
+savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/{ANT}_byeyebin_lc.png"
+plt.savefig(savepath, dpi=200)
+#plt.show()
 
 
 
@@ -500,12 +504,16 @@ if fit_BB == True:
     cf_modeldata = np.array([blackbody(x, cf_R, cf_T) for x in model_wl_cm]) # SCALED VALUES
     cf_modeldata = cf_modeldata/L_scale_down # UN-SCALED VALUES FOR PLOTTING
 
+    cf_T_unscaled = cf_T/T_scale_down
+    cf_R_unscaled = cf_R/R_scale_down
+    cf_Terr_unscaled = cf_T_err/T_scale_down
+    cf_Rerr_unscaled = cf_R_err/R_scale_down
     fig = plt.figure(figsize = (16, 7))
-    ax1 = plt.subplot(1, 2, 2)
+    ax1 = plt.subplot(1, 3, 3)
     ax1.errorbar(BB_data_binned['em_cent_wl'], BB_data_binned['wm_L_rf'], yerr = BB_data_binned['wm_L_rf_err'], fmt = 'o', c = 'k', label = 'real data', linestyle = 'None', 
                 markeredgecolor = 'k', markeredgewidth = '0.5')
     ax1.plot(model_wl_cm*1e8, bruteforce_modeldata, c = 'red', label = f'brute force BB model, \nbest chi = {best_chi:.3e}, \nlog(best T) = {np.log10(descaled_bruteforce_best_T):.2f}, \nlog(best_R) = {np.log10(descaled_bruteforce_best_R):.2f}')
-    ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model, \nbest chi = {cf_chi:.3e}, \nlog(best T) = {np.log10(cf_T/T_scale_down):.2f} +/- {np.log10(cf_T_err/T_scale_down):.2f}, \nlog(best_R) = {np.log10(cf_R/R_scale_down):.2f} +/- {np.log10(cf_R_err/R_scale_down):.2f}')
+    ax1.plot(model_wl_cm*1e8, cf_modeldata, c = 'blue', label = f'curve_fit BB model, \nbest chi = {cf_chi:.3e}, \nlog(best T) = {np.log10(cf_T_unscaled):.2f} +/- {np.log10(cf_Terr_unscaled):.2f}, \nlog(best_R) = {np.log10(cf_R_unscaled):.2f} +/- {np.log10(cf_Rerr_unscaled):.2f}')
 
     ax1.grid()
     ax1.legend()
@@ -513,24 +521,61 @@ if fit_BB == True:
     ax1.set_ylabel('Rest frame luminosity')
     ax1.set_title(f'Blackbody fits of {ANT}')
 
-    ax2 = plt.subplot(1, 2, 1)
-    max_plot_chi = 1e5
-    cs = ax2.pcolormesh(temp_range, rad_range, chi.T, cmap = 'jet', vmin = 0, vmax = max_plot_chi)
-    fig.colorbar(cs, ax = ax2)
+    ax2 = plt.subplot(1, 3, 1)
+    log_chi_grid = np.log10(chi)
+    cs = ax2.pcolormesh(temp_range, rad_range, log_chi_grid.T, cmap = 'jet')
+    ax2.errorbar(cf_T_unscaled, cf_R_unscaled, yerr = cf_Rerr_unscaled, xerr = cf_Terr_unscaled, fmt = '*', markeredgecolor = 'k', markeredgewidth = '1.0', 
+                 c = 'white', markersize = 13, label = 'curve_fit result')
+    ax2.scatter(descaled_bruteforce_best_T, descaled_bruteforce_best_R, c = 'white', marker = 'o', s = 40, label = 'brute force result', linewidth = 1.0, edgecolors = 'k')
+    fig.colorbar(cs, ax = ax2, label = 'log(reduced_chi)')
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.set_xlabel('Temperature / K')
     ax2.set_ylabel('Radius / cm')
     ax2.set_title('Contour plot of reduced chi squared values')
+    ax2.legend()
+    
+
+    ax3 = plt.subplot(1, 3, 2)
+    # plotting the chi grid but zoomed in closer to the best T and R provided by curve_fit ( which shold be close to the brute force result too )
+    lzoom_scale = 2
+    uzoom_scale = 20
+    zoom_Tmin = cf_T_unscaled - lzoom_scale*cf_Terr_unscaled
+    zoom_Tmax = cf_T_unscaled + uzoom_scale*cf_Terr_unscaled
+    zoom_Rmin = cf_R_unscaled - lzoom_scale*cf_Rerr_unscaled
+    zoom_Rmax = cf_R_unscaled + uzoom_scale*cf_Rerr_unscaled
+
+    zoomed_Ts = [T for T in temp_range if T > zoom_Tmin and T < zoom_Tmax]
+    zoomed_T_idx = [i for i, T in enumerate(temp_range) if T > zoom_Tmin and T < zoom_Tmax]
+    zoomed_Rs = [R for R in rad_range if R > zoom_Rmin and R < zoom_Rmax]
+    zoomed_R_idx = [j for j, R in enumerate(rad_range) if R > zoom_Rmin and R < zoom_Rmax]
+
+    zoomed_chi = chi[min(zoomed_T_idx): max(zoomed_T_idx), min(zoomed_R_idx): max(zoomed_R_idx)]
+
+
+    zoomed_log_chi_grid = np.log10(zoomed_chi)
+    cs = ax3.pcolormesh(zoomed_Ts, zoomed_Rs, zoomed_log_chi_grid.T, cmap = 'jet')
+    ax3.errorbar(cf_T_unscaled, cf_R_unscaled, yerr = cf_Rerr_unscaled, xerr = cf_Terr_unscaled, fmt = '*', markeredgecolor = 'k', markeredgewidth = '1.0', 
+                 c = 'white', markersize = 13, label = 'curve_fit result')
+    ax3.scatter(descaled_bruteforce_best_T, descaled_bruteforce_best_R, c = 'white', marker = 'o', s = 40, label = 'brute force result', linewidth = 1.0, edgecolors = 'k')
+    fig.colorbar(cs, ax = ax3, label = 'log(reduced_chi)')
+    ax3.set_xscale('log')
+    ax3.set_yscale('log')
+    ax3.set_xlabel('Temperature / K')
+    ax3.set_ylabel('Radius / cm')
+    ax3.set_title('Zoomed contour plot of reduced chi squared values')
+    ax3.legend()
     fig.subplots_adjust(top=0.915,
                         bottom=0.09,
                         left=0.05,
                         right=0.975,
                         hspace=0.2,
-                        wspace=0.165)
-    plt.show()
+                        wspace=0.26)
+    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/{ANT}_byeyebin_{datapoints}_dps.png"
+    plt.savefig(savepath, dpi=200)
+    #plt.show()
 
-
+plt.show() # plot all plots at the end
 
 
 # create a plot of a BB curve at T and R, then look at the difference of increasing/decreasing T or R by 1 order to magnitude
