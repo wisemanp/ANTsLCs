@@ -398,4 +398,11 @@ MJD_xlims = {'ZTF18aczpgwm': (58350, 60250),
             'ZTF20abrbeie': (59000, 59950), 
             'ZTF20acvfraq': (58700, 60200), 
             'ZTF21abxowzx': (59450, 60250), 
-            'ZTF22aadesap': (59650, 60400)} 
+            'ZTF22aadesap': (59650, 60400), 
+            'ASASSN-17jz': None, 
+            'ASASSN-18jd': None, 
+            'CSS100217': (54500, 56500), 
+            'Gaia16aaw': None, 
+            'Gaia18cdj': None, 
+            'PS1-10adi': None, 
+            'PS1-13jw': None} 
