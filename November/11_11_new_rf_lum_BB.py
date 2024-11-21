@@ -580,6 +580,19 @@ if fit_BB == True:
 plt.show() # plot all plots at the end
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 # create a plot of a BB curve at T and R, then look at the difference of increasing/decreasing T or R by 1 order to magnitude
 test_change_BB_quantities = False
 if test_change_BB_quantities == True:
