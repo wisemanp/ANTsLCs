@@ -410,7 +410,15 @@ ANT_redshift_dict = {'ZTF18aczpgwm': 0.4279,
                      'ZTF20abrbeie': 0.9945, 
                      'ZTF20acvfraq': 0.26, 
                      'ZTF21abxowzx': 0.419, 
-                     'ZTF22aadesap': 0.073} # this one was harder to find, its still in Phil 2024 paper of 10 ANTs
+                     'ZTF22aadesap': 0.073, # this one was harder to find, its still in Phil 2024 paper of 10 ANTs
+                     'ASASSN-17jz': 0.1641, # Holoien, T. W. S(2022) measured by them
+                     'ASASSN-18jd': 0.1192, # Neustadt, J. M. M(2020) using H alpha lines in the spectra
+                     'CSS100217': 0.147, # Drake, A. J(2011) from spectroscopic observations of which galaxy it is within
+                     'Gaia16aaw': 1.03, # Hinkle, T. J(2024) a broad feature interpreted as Mg II  
+                     'Gaia18cdj': 0.93747, # Hinkle, T. J(2024) clear Mg II absorption doublet
+                     'PS1-10adi': 0.203, # +/- 0.001 from Kankare, E(2017) from the Balmer lines of PS1-10adi, which is in agreement with the redshift of its host galaxy, z = 0.219 +/- 0.025
+                     'PS1-13jw': 0.345 # from Kankare, E(2017) who got it from spectroscopic redshifts from SDSS
+                     } 
 
 
 
