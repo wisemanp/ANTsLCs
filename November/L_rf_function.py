@@ -132,8 +132,8 @@ def ANT_data_L_rf(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_
             rf_L_err.append(L_rest_err)
 
         # add these columns to the ANT's dataframe
-        ANT_df['L_rest'] = rf_L
-        ANT_df['L_rest_err'] = rf_L_err
+        ANT_df['L_rf'] = rf_L
+        ANT_df['L_rf_err'] = rf_L_err
 
         new_ANT_df_list.append(ANT_df)
 
