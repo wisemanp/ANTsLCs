@@ -9,8 +9,8 @@ import astropy.units as u
 from astropy.cosmology import FlatLambdaCDM 
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
-from November.plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, band_offset_label_dict
-from November.load_data_function import load_ANT_data 
+from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, band_offset_label_dict
+from functions import load_ANT_data 
 
 print()
 st = time.time()

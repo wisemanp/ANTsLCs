@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
-from November.plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_offset_label_dict, MJD_xlims
-from November.load_data_function import load_ANT_data
+from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_offset_label_dict, MJD_xlims
+from functions import load_ANT_data
 
 def bin_data(bands_df, MJD_binsize):
     """
