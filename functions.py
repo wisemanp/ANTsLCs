@@ -264,93 +264,97 @@ def weighted_mean(data, errors):
 
 
 
-def bin_lc(lc_df, MJD_binsize, drop_na_bins = True):
+def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
     """
     Takes each band within the light curve data provided and puts it into MJD bins, taking the weighted mean of the rest frame luminosity, its error and the weighted mean 
     MJD to match this, with the upper and lower errors on the MJD indicating the range of MJD values within the bin.
 
     INPUTS
     -----------
-    lc_df: a dataframe for the ANT's light curve data across all bands. Must contain the columns L_rf and L_rf_err 
+    list_lc_df: a list of dataframes for the ANT's light curve data across all bands. Must contain the columns L_rf and L_rf_err 
 
     MJD_binsize: the size of the MJD bins that you want
 
     
     OUTPUTS
     -----------
-    whole_lc_binned_df: a dataframe of the whole ANT light curve binned into bin size = MJD_binsize. Each band within the light curve is binned separately.
+    list_binned_lc_dfs: a list of dataframes of the whole ANT light curve binned into bin size = MJD_binsize. Each band within the light curve is binned separately.
 
     """
-    lc_df = lc_df.copy() # this creates a copy rather than a view of the dataframe so that we don't modify the original dataframe
-    
-    bands_present = lc_df['band'].unique()
-    for i, b in enumerate(bands_present):
-        b_df = lc_df[lc_df['band'] == b].copy()
-
-        # cretaing the bins -------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # this rounds the min_MJD present in V_band data for the transient to the nearest 10, then goes to the bin below this to ensure that 
-        # we capture the first data point, in case this rounded the first bin up. Since we need data for both V_band and B_band within each
-        # MJD bin, it's fine to base the min MJD bin to start at on just the V_band data, since even if we had B_band data before this date, 
-        # we wouldn't be able to pair it with data from V_band to calculcte the color anyways
-        MJD_bin_min = int( round(b_df['MJD'].min(), -1) - 10 )
-        MJD_bin_max = int( round(b_df['MJD'].max(), -1) + 10 )
-        MJD_bins = range(MJD_bin_min, MJD_bin_max + MJD_binsize, MJD_binsize) # create the bins
-
-        # binning the data --------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # data frame for the binned band data  - just adds a column of MJD_bin to the data, then we can group by all datapoints in the same MJD bin
-        b_df['MJD_bin'] = pd.cut(b_df['MJD'], MJD_bins)
+    list_binned_lc_dfs = []
+    for idx, lc_df in enumerate(list_lc_df):
+        #print(f'index = {idx}')
+        lc_df = lc_df.copy() # this creates a copy rather than a view of the dataframe so that we don't modify the original dataframe
         
-        # binning the data by MJD_bin
-        b_binned_df = b_df.groupby('MJD_bin', observed = drop_na_bins).apply(lambda g: pd.Series({
-                                                            'wm_L_rf': weighted_mean(g['L_rf'], g['L_rf_err'])[0], 
-                                                            'wm_L_rf_err': weighted_mean(g['L_rf'], g['L_rf_err'])[1], 
-                                                            'wm_MJD': weighted_mean(g['MJD'], g['L_rf_err'])[0], 
-                                                            'min_MJD': g['MJD'].min(), 
-                                                            'max_MJD': g['MJD'].max(), 
-                                                            'count': g['MJD'].count()
-                                                            })).reset_index()
+        bands_present = lc_df['band'].unique()
+        for i, b in enumerate(bands_present):
+            b_df = lc_df[lc_df['band'] == b].copy()
 
-        # creating the upper and lower MJD errorbars-------------------------------------------------------------------------------------------------------------------------------------
-        MJD_lower_err = []
-        MJD_upper_err = []
-        for j in b_binned_df.index: 
-            if b_binned_df['count'].loc[j] == 1.0: # accounting for the casae if we have one datapoint in the bin, hence the MJD range within the bin = 0.0, but if we don't set it to 0.0 explicitly, it'll be calculated as like -1e-12
-                mjd_lerr = 0.0
-                mjd_uerr = 0.0
+            # cretaing the bins -------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # this rounds the min_MJD present in V_band data for the transient to the nearest 10, then goes to the bin below this to ensure that 
+            # we capture the first data point, in case this rounded the first bin up. Since we need data for both V_band and B_band within each
+            # MJD bin, it's fine to base the min MJD bin to start at on just the V_band data, since even if we had B_band data before this date, 
+            # we wouldn't be able to pair it with data from V_band to calculcte the color anyways
+            MJD_bin_min = int( round(b_df['MJD'].min(), -1) - 10 )
+            MJD_bin_max = int( round(b_df['MJD'].max(), -1) + 10 )
+            MJD_bins = range(MJD_bin_min, MJD_bin_max + MJD_binsize, MJD_binsize) # create the bins
 
-            else: # if there are > 1 datapoints within the bin
-                mjd_lerr = b_binned_df['wm_MJD'].iloc[j] - b_binned_df['min_MJD'].iloc[j] # lower errorbar value in MJD
-                mjd_uerr = b_binned_df['max_MJD'].iloc[j] - b_binned_df['wm_MJD'].iloc[j] # upper errorbar value in MJD
+            # binning the data --------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # data frame for the binned band data  - just adds a column of MJD_bin to the data, then we can group by all datapoints in the same MJD bin
+            b_df['MJD_bin'] = pd.cut(b_df['MJD'], MJD_bins)
+            
+            # binning the data by MJD_bin
+            b_binned_df = b_df.groupby('MJD_bin', observed = drop_na_bins).apply(lambda g: pd.Series({
+                                                                'wm_L_rf': weighted_mean(g['L_rf'], g['L_rf_err'])[0], 
+                                                                'wm_L_rf_err': weighted_mean(g['L_rf'], g['L_rf_err'])[1], 
+                                                                'wm_MJD': weighted_mean(g['MJD'], g['L_rf_err'])[0], 
+                                                                'min_MJD': g['MJD'].min(), 
+                                                                'max_MJD': g['MJD'].max(), 
+                                                                'count': g['MJD'].count()
+                                                                })).reset_index()
 
-                # getting rid of any negative mjd upper or lower errors, since the only way that it's possible for these numbers to be negative is that the MJD of the datapoints 
-                # in the bin are so close together, you're essentially doing mjd upper/lower = a - (~a), which, due to floating point errors, could give a value like -1e-12
-                if mjd_lerr < 0.0:
+            # creating the upper and lower MJD errorbars-------------------------------------------------------------------------------------------------------------------------------------
+            MJD_lower_err = []
+            MJD_upper_err = []
+            for j in b_binned_df.index: 
+                if b_binned_df['count'].loc[j] == 1.0: # accounting for the casae if we have one datapoint in the bin, hence the MJD range within the bin = 0.0, but if we don't set it to 0.0 explicitly, it'll be calculated as like -1e-12
                     mjd_lerr = 0.0
-                elif mjd_uerr < 0.0:
                     mjd_uerr = 0.0
 
-            MJD_lower_err.append(mjd_lerr)
-            MJD_upper_err.append(mjd_uerr)
+                else: # if there are > 1 datapoints within the bin
+                    mjd_lerr = b_binned_df['wm_MJD'].iloc[j] - b_binned_df['min_MJD'].iloc[j] # lower errorbar value in MJD
+                    mjd_uerr = b_binned_df['max_MJD'].iloc[j] - b_binned_df['wm_MJD'].iloc[j] # upper errorbar value in MJD
 
-        b_binned_df['MJD_lower_err'] = MJD_lower_err
-        b_binned_df['MJD_upper_err'] = MJD_upper_err
-        b_binned_df['band'] = [b]*len(b_binned_df['wm_L_rf']) # band column
-        b_binned_df = b_binned_df.drop(columns = ['min_MJD', 'max_MJD', 'count']) # drop these intermediate step columns
+                    # getting rid of any negative mjd upper or lower errors, since the only way that it's possible for these numbers to be negative is that the MJD of the datapoints 
+                    # in the bin are so close together, you're essentially doing mjd upper/lower = a - (~a), which, due to floating point errors, could give a value like -1e-12
+                    if mjd_lerr < 0.0:
+                        mjd_lerr = 0.0
+                    elif mjd_uerr < 0.0:
+                        mjd_uerr = 0.0
 
-        # we should now have a light curve which is binned up with weighted mean flux + its error, the weighed mean MJD, with its error bar showing the range of MJD values 
-        # within the bin, and the band
-        # concatenate together the band dataframes to produce a dataframe for the whole light curve across all bands again -------------------------------------------------------------
-        if i == 0:
-            whole_lc_binned_df = b_binned_df
-        else:
-            whole_lc_binned_df = pd.concat([whole_lc_binned_df, b_binned_df], ignore_index = True)
+                MJD_lower_err.append(mjd_lerr)
+                MJD_upper_err.append(mjd_uerr)
+
+            b_binned_df['MJD_lower_err'] = MJD_lower_err
+            b_binned_df['MJD_upper_err'] = MJD_upper_err
+            b_binned_df['band'] = [b]*len(b_binned_df['wm_L_rf']) # band column
+            b_binned_df = b_binned_df.drop(columns = ['min_MJD', 'max_MJD', 'count']) # drop these intermediate step columns
+
+            # we should now have a light curve which is binned up with weighted mean flux + its error, the weighed mean MJD, with its error bar showing the range of MJD values 
+            # within the bin, and the band
+            # concatenate together the band dataframes to produce a dataframe for the whole light curve across all bands again -------------------------------------------------------------
+            if i == 0:
+                whole_lc_binned_df = b_binned_df
+            else:
+                whole_lc_binned_df = pd.concat([whole_lc_binned_df, b_binned_df], ignore_index = True)
+
+        list_binned_lc_dfs.append(whole_lc_binned_df) # a list of the binned ANT dataframes
+
+
+    return list_binned_lc_dfs
 
 
 
-    return whole_lc_binned_df
-
-
-
 
 
 
@@ -366,3 +370,58 @@ def bin_lc(lc_df, MJD_binsize, drop_na_bins = True):
 ##################################################################################################################################################################
 ##################################################################################################################################################################
 ##################################################################################################################################################################
+# CHI SQUARED FUNCTION
+
+
+
+def chisq(y_m, y, yerr, M, reduced_chi = True):
+    """
+    Calculates the chi squared, as well as the reduced chi squared and its 1 sigma uncertainty allowance if wanted
+
+    INPUTS:
+    --------------
+    y_m: model y data
+
+    y: observed y data
+
+    yerr: observed y errors
+
+    M: number of model paramaters
+
+    reduced_chi: if True, this function will return chi, reduced_chi and red_chi_1sig, if False (default) it will just return chi
+
+    OUTPUTS 
+    ----------------
+    chi: the chi squared of the model (returned if reduced_chi == False)
+
+    red_chi: the reduced chi squared (returned if reduced_chi == True)
+
+    red_chi_1sig: the 1 sigma error tolerance on the reduced chi squared. If the reduced chi squared falls within 1 +/- red_chi_1sig, it's considered a good model 
+                (returned if reduced_chi == True)
+    """
+    if not isinstance(y_m, np.ndarray):
+        y_m = np.array(y_m)
+
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+
+    if not isinstance(yerr, np.ndarray):
+        yerr = np.array(yerr)
+
+    chi = np.sum( ((y - y_m )**2) / (yerr**2))
+    
+    if reduced_chi == True:
+        N = len(y) # the number of datapoints
+        N_M = N-M # (N - M) the degrees of freedom
+        red_chi = chi / (N_M)
+        red_chi_1sig = np.sqrt(2/N_M) # red_chi is a good chisq if it falls within (1 +/- red_chi_1sig)
+        
+        return red_chi, red_chi_1sig
+    
+    else:
+        return chi
+    
+
+
+
+
