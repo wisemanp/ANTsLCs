@@ -28,7 +28,14 @@ BESSEL_V_ZP = 3.62786e-9
 BESSEL_R_ZP = 2.57796e-9
 BESSEL_I_ZP = 1.69232e-9
 
+BESSEL_U_ZP_VEGA = 3.96526e-9	
+BESSEL_B_ZP_VEGA = 6.13268e-9
+BESSEL_V_ZP_VEGA = 3.62708e-9	
+BESSEL_R_ZP_VEGA = 2.17037e-9
+BESSEL_I_ZP_VEGA = 1.12588e-9
 
+BESSEL_J_ZP_VEGA = 3.12398e-10
+BESSEL_H_ZP_VEGA = 1.13166e-10
 
 
 band_ZP_dict =  {'ATLAS_c': 3.89323e-9, 
@@ -51,9 +58,9 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'B': BESSEL_B_ZP, 
                 'CSS_V': BESSEL_V_ZP, 
                 'Gaia_G': 2.78534e-9, # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
-                'H': 0.0, 
-                'I': 0.0, 
-                'J': 0.0, 
+                'H': 0.0, # I don't think i actually have H or J that isn't Vega maybe? I think only PS1-10adi has J and H bands anyways
+                'I': BESSEL_I_ZP, 
+                'J': 0.0, # I don't think i actually have H or J that isn't Vega maybe? I think only PS1-10adi has J and H bands anyways
                 'LCOGT_B': BESSEL_B_ZP, # ASSUME THESE ARE THE SAME VALUES AS THE STANDARD - USE BESSEL UBVRI FRMOM WHAT THE FLUX
                 'LCOGT_V': BESSEL_V_ZP, 
                 'LCOGT_g': SLOAN_g_ZP, 
@@ -62,8 +69,6 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'R': BESSEL_R_ZP, 
                 'SMARTS_B': BESSEL_B_ZP,
                 'SMARTS_V': BESSEL_V_ZP, 
-                'Swift_1': 0.0, 
-                'Swift_2': 0.0, 
                 'Swope_B': BESSEL_B_ZP, 
                 'Swope_V': BESSEL_V_ZP, 
                 'Swope_g': SLOAN_g_ZP, #  A PAPER SHOULD EXIST TO SAY THE EXACT VALUES, BUT FOR NOW FOR ugrizy ASSUME SDSS - FOR CAPITAL LETTERS ASSUME BESSEL
@@ -75,7 +80,14 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'i': SLOAN_i_ZP, 
                 'r': SLOAN_r_ZP, 
                 'U': BESSEL_U_ZP, 
-                'UVOT_UVW1': 1.6344e-8}
+                'UVOT_UVW1': 1.6344e-8, 
+                'U Vega?': BESSEL_U_ZP_VEGA,
+                'B Vega?': BESSEL_B_ZP_VEGA,  
+                'V Vega?': BESSEL_V_ZP_VEGA, 
+                'R Vega?': BESSEL_R_ZP_VEGA, 
+                'I Vega?': BESSEL_I_ZP_VEGA, 
+                'J Vega?': BESSEL_J_ZP_VEGA,
+                'H Vega?': BESSEL_H_ZP_VEGA}
 
 
 
@@ -98,6 +110,17 @@ BESSEL_V_cw = 5512.10
 BESSEL_R_cw = 6585.92
 BESSEL_I_cw = 8059.88
 
+BESSEL_J_cw = 12369.87	
+BESSEL_H_cw = 16464.36	
+
+# for the Vega bands, I think we need to use the effective wavelength from SVO2, whereas for AB bands, we use the mean wavelength from SVO2
+BESSEL_U_VEGA_cw = 3659.88
+BESSEL_B_VEGA_cw = 4380.74	
+BESSEL_V_VEGA_cw = 5445.43
+BESSEL_R_VEGA_cw = 6411.47
+BESSEL_I_VEGA_cw = 7982.09
+BESSEL_J_VEGA_cw = 12207.54
+BESSEL_H_VEGA_cw = 16303.58
 
 band_obs_centwl_dict = {'ATLAS_c': 5408.66, 
                         'ATLAS_o': 6866.26, 
@@ -120,7 +143,7 @@ band_obs_centwl_dict = {'ATLAS_c': 5408.66,
                         'CSS_V': BESSEL_V_cw, #---
                         'Gaia_G': 6735.41, # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
                         'H': 0.0, #---
-                        'I': 0.0, #---
+                        'I': BESSEL_I_cw, #---
                         'J': 0.0, #---
                         'LCOGT_B': BESSEL_B_cw, #---
                         'LCOGT_V': BESSEL_V_cw, #---
@@ -130,8 +153,6 @@ band_obs_centwl_dict = {'ATLAS_c': 5408.66,
                         'R': BESSEL_R_cw, #---
                         'SMARTS_B': BESSEL_B_cw,#---
                         'SMARTS_V': BESSEL_V_cw, #---
-                        'Swift_1': 0.0, #---
-                        'Swift_2': 0.0, #---
                         'Swope_B': BESSEL_B_cw, #---
                         'Swope_V': BESSEL_V_cw, #---
                         'Swope_g': SLOAN_g_cw, #---
@@ -143,7 +164,14 @@ band_obs_centwl_dict = {'ATLAS_c': 5408.66,
                         'i': SLOAN_i_cw, #---
                         'r': SLOAN_r_cw, #---
                         'U': BESSEL_U_cw, #---
-                        'UVOT_UVW1': 2688.46}
+                        'UVOT_UVW1': 2688.46, 
+                        'U Vega?': BESSEL_U_VEGA_cw,
+                        'B Vega?': BESSEL_B_VEGA_cw,  
+                        'V Vega?': BESSEL_V_VEGA_cw, 
+                        'R Vega?': BESSEL_R_VEGA_cw, 
+                        'I Vega?': BESSEL_I_VEGA_cw, 
+                        'J Vega?': BESSEL_J_VEGA_cw,
+                        'H Vega?': BESSEL_H_VEGA_cw}
 
 
 
@@ -201,8 +229,6 @@ band_colour_dict =  {'ATLAS_c': red,
                     'R': brown, 
                     'SMARTS_B': red,
                     'SMARTS_V': orange, 
-                    'Swift_1': yellow, 
-                    'Swift_2': bright_green, 
                     'Swope_B': deep_blue, 
                     'Swope_V': purple, 
                     'Swope_g': pink, 
@@ -214,7 +240,14 @@ band_colour_dict =  {'ATLAS_c': red,
                     'i': yellow, 
                     'r': bright_green, 
                     'U': dark_green, 
-                    'UVOT_UVW1': mid_blue}
+                    'UVOT_UVW1': mid_blue, 
+                    'U Vega?': deep_blue,
+                    'B Vega?': purple,  
+                    'V Vega?': pink, 
+                    'R Vega?': light_pink, 
+                    'I Vega?': light_green, 
+                    'J Vega?': light_purple,
+                    'H Vega?': grey}
 
 
 
@@ -258,8 +291,6 @@ band_marker_dict =  {'ATLAS_c': 'o',
                     'R': 's',
                     'SMARTS_B': '^',
                     'SMARTS_V': '^',
-                    'Swift_1': '^', 
-                    'Swift_2': '^', 
                     'Swope_B': '^',
                     'Swope_V': '^',
                     'Swope_g': '^', 
@@ -271,7 +302,14 @@ band_marker_dict =  {'ATLAS_c': 'o',
                     'i': '*', 
                     'r': '*', 
                     'U': '*',  
-                    'UVOT_UVW1': '*'}
+                    'UVOT_UVW1': '*',
+                    'U Vega?': '*',
+                    'B Vega?': '*',  
+                    'V Vega?': '*', 
+                    'R Vega?': '*', 
+                    'I Vega?': '*', 
+                    'J Vega?': '*',
+                    'H Vega?': '*'}
 
 
 
@@ -315,8 +353,6 @@ band_offset_dict = {'ATLAS_c': 1.5,
                     'R': 1.5, 
                     'SMARTS_B': 0.0,
                     'SMARTS_V': 0.0, 
-                    'Swift_1': 0.0, 
-                    'Swift_2': 0.0, 
                     'Swope_B': 0.0, 
                     'Swope_V': 0.0, 
                     'Swope_g': 0.0, 
@@ -328,7 +364,14 @@ band_offset_dict = {'ATLAS_c': 1.5,
                     'i': -0.5, 
                     'r': 0.0, 
                     'U': 0.0, 
-                    'UVOT_UVW1': -1.5}
+                    'UVOT_UVW1': -1.5, 
+                    'U Vega?': 0.0,
+                    'B Vega?': 0.0,  
+                    'V Vega?': 0.0, 
+                    'R Vega?': 0.0, 
+                    'I Vega?': 0.0, 
+                    'J Vega?': 0.0,
+                    'H Vega?': 0.0}
 
 
 
