@@ -163,6 +163,7 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
     MJD_xlim = MJD_xlims[ANT_name] # the MJD that the transient occur over
     print(i, ANT_name)
     print(lc_df.head())
+    print(lc_df['band'].unique())
     print()
 
 
