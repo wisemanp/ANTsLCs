@@ -3,10 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
-from astropy.stats import bayesian_blocks
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
-from November.plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict
-
+from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict
 
 
 print()
@@ -18,7 +16,8 @@ print()
 # COMBINE THE GAIA AND ATLAS DATA INTO ONE FILE HERE, AND ALSO DO ALL DATA CLEANING IN THIS CODE. 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+file_load_dir = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/" #+ ANT_name/datafile_name.dat
+file_save_dir = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ALL_FULL_LCs/" # +ANT_name_lc.csv
 
 
 MAGERR_LIM = 2.0 # if magerr is greater than this value, get rid of the datapoint MAYBE THIS ISN'T ACTUALLY NECESSARY........ ESPECIALLY SINCE WE HAVE A FLUXERR RATIO LIM
@@ -44,115 +43,19 @@ ATLAS_CHI_N_LOWLIM = 0.2
 #############################################################################################################################################################################################################
 
 
-def weighted_mean(data, errors):
-    if not isinstance(data, np.ndarray):
-        data = np.array(data)
-
-    if not isinstance(errors, np.ndarray):
-        errors = np.array(errors)
-    
-    if len(errors) == 0: # if the bin has no data within it, then the weighted mean and its error = NaN
-        wm = pd.NA
-        wm_err = pd.NA
-
-    else: # if the bin has data within it, then take the weighted mean
-        weights = 1/(errors**2)
-        wm = np.sum(data * weights) / (np.sum(weights))
-        wm_err = np.sqrt( 1/(np.sum(weights)) )
-
-    return wm, wm_err
-
-
-
-#############################################################################################################################################################################################################
-
-
-def bin_data(all_bands_df, MJD_binsize, drop_na_bins = True):
-    """
-    Bins data for a given band - calculates the weighted mean of the flux, its error, the weighted mean of the MJD and the upper and lower errors for each bin
-    """
-    bands_present = all_bands_df['band'].unique() # bands present for the ANT
-    binned_bands_dfs = [] # a list of the dataframes containing each individual datapoint for the band with their MJD, mag etc as well as the weighted mean mag within its group and more
-    for band in bands_present:
-        bands_df = all_bands_df[all_bands_df['band'] == band].copy() 
-
-        # this rounds the min_MJD present in V_band data for the transient to the nearest 10, then goes to the bin below this to ensure that 
-        # we capture the first data point, in case this rounded the first bin up. Since we need data for both V_band and B_band within each
-        # MJD bin, it's fine to base the min MJD bin to start at on just the V_band data, since even if we had B_band data before this date, 
-        # we wouldn't be able to pair it with data from V_band to calculcte the color anyways
-        MJD_bin_min = int( round(bands_df['MJD'].min(), -1) - 10 )
-        MJD_bin_max = int( round(bands_df['MJD'].max(), -1) + 10 )
-        MJD_bins = range(MJD_bin_min, MJD_bin_max + MJD_binsize, MJD_binsize) # create the bins
-
-        # data frames for the binned band data 
-        bands_df['MJD_bin'] = pd.cut(bands_df['MJD'], MJD_bins)
-
-        bands_binned_df = bands_df.groupby('MJD_bin', observed = drop_na_bins).apply(lambda g: pd.Series({
-                                                            'wm_mag': weighted_mean(g['mag'], g['magerr'])[0],
-                                                            'wm_mag_err': weighted_mean(g['mag'], g['magerr'])[1],
-                                                            'count': g['mag'].count(), 
-                                                            'wm_MJD': weighted_mean(g['MJD'], g['magerr'])[0],
-                                                            'max_MJD': g['MJD'].max(), 
-                                                            'min_MJD': g['MJD'].min()
-                                                            })).reset_index()
-        
-        # make the lower and upper MJD errors for plotting the weighted mean mag and therefore the weighted mean MJD, as well as the error on the weighted mean MJD being the range of MJD values within the bin
-        MJD_lower_err_list = []
-        MJD_upper_err_list = []
-        MJD_bin_min_list = [] # these are errorbars which, when plotting wm_mag vs am_MJD, if we use these as the xerrs, then it should show how we cover all of the relevant MJD space with bins
-        MJD_bin_max_list = []
-        for i in range(len(bands_binned_df)):
-            if bands_binned_df['count'].iloc[i] == 1:
-                MJD_lower_err = 0.0
-                MJD_upper_err = 0.0
-
-            else:
-                MJD_lower_err = np.abs(bands_binned_df['wm_MJD'].iloc[i] - bands_binned_df['min_MJD'].iloc[i]) # take the absolute value because there are instances where =-7e-14
-                MJD_upper_err = np.abs(bands_binned_df['max_MJD'].iloc[i] - bands_binned_df['wm_MJD'].iloc[i]) 
-            
-            MJD_lower_err_list.append(MJD_lower_err)
-            MJD_upper_err_list.append(MJD_upper_err)
-
-            bin = bands_binned_df['MJD_bin'].iloc[i]
-            min_MJD_bin = bin.left
-            max_MJD_bin = bin.right
-            wm_MJD = bands_binned_df['wm_MJD'].iloc[i]
-            min_MJD_bin_errbar = abs(wm_MJD - min_MJD_bin) # take the mag in case we get something like -6e-14
-            max_MJD_bin_errbar = abs(max_MJD_bin - wm_MJD)
-
-            MJD_bin_min_list.append(min_MJD_bin_errbar)
-            MJD_bin_max_list.append(max_MJD_bin_errbar)
-
-        bands_binned_df['MJD_lower_err'] = MJD_lower_err_list 
-        bands_binned_df['MJD_upper_err'] = MJD_upper_err_list
-        bands_binned_df['MJD_bin_min'] = MJD_bin_min_list
-        bands_binned_df['MJD_bin_max'] = MJD_bin_max_list
-
-        
-        bands_binned_df = bands_binned_df.drop(columns = ['max_MJD', 'min_MJD'])
-        merge_band_df = bands_df.merge(bands_binned_df, on = 'MJD_bin', how = 'left') # merge to the whole band dataframe so that each datapoint has a bin associated with it
-                                                                                    #   along with the wm mag, wm mag err and count within this bin
-        merge_band_df['sigma_dist'] = np.abs( (merge_band_df['wm_mag'] - merge_band_df['mag']) / merge_band_df['magerr'] )# calculate how many sigma the data point is away from the wm mag
-        binned_bands_dfs.append(merge_band_df)
-        
-    allband_merge_df = pd.concat(binned_bands_dfs, ignore_index = True)
-
-    return allband_merge_df
-
-
-#############################################################################################################################################################################################################
-
-
 
 def fix_ANT_bandnames(dataframe):
     """
-    assumes that dataframe has columns 'MJD' and 'band'
+    assumes that dataframe has columns 'MJD' and 'band'. Corrects the band names to ensure that all ANTs' bands are named in a consistent way
     """
     band_fix_dict = {'UVM2': 'UVOT_UVM2', 
                  'UVOT_UVM1': 'UVOT_UVW1', 
                  'Swift_B': 'UVOT_B', 
                  'Swift_V': 'UVOT_V', 
-                 'Swift_U': 'UVOT_U'}
+                 'Swift_U': 'UVOT_U', 
+                 'Swift_M2': 'UVOT_UVM2', 
+                 'Swift_W1': 'UVOT_UVW1', 
+                 'Swift_W2': 'UVOT_UVW2'}
 
     bands_to_fix = list(band_fix_dict.keys()) # a list of the band names which need changing
 
@@ -176,11 +79,13 @@ def fix_ANT_bandnames(dataframe):
 
 # ASASSN-18jd
 """ #path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/ASASSN-18jd_lc_files/ASASSN-18jd_table-phot_paper.txt"
-path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ASASSN-18jd_lc_files/ASASSN-18jd_table-phot_paper.txt"
-colspecs = [(0, 9), (12, 13), (15, 16), (18, 23), (25, 29), (31, 38)]
+path1 = file_load_dir + "ASASSN-18jd_lc_files/ASASSN-18jd_table-phot_paper.txt"
+colspecs = [(0, 9), (11, 13), (15, 16), (18, 23), (25, 29), (31, 38)]
 colnames = ['MJD', 'band_nosurvey', '3sig_mag_uplim', 'mag', 'magerr', 'survey']
 paper_lc = pd.read_fwf(path1, colspecs = colspecs, na_values = ['', ' '], skiprows = 31, header = None, names = colnames)
+
 paper_lc['band'] = paper_lc['survey']+'_'+paper_lc['band_nosurvey']
+paper_lc = fix_ANT_bandnames(paper_lc).copy() # this changes the band names so that they are consistent with the other ANTs. e.g. Swift_M2 --> UVOT_UVM2
 paper_lc = paper_lc.drop(columns = ['band_nosurvey', 'survey'])
 paper_lc['flux'] = [None]*len(paper_lc['MJD'])
 paper_lc['flux_err'] = [None]*len(paper_lc['MJD'])
@@ -188,10 +93,10 @@ paper_lc['5sig_mag_uplim'] = [None]*len(paper_lc['MJD'])
 #paper_lc_baddatasum = paper_lc[paper_lc['mag'] > paper_lc['3sig_mag_uplim']].sum()
 #print('NO BAD DATA > 3 SIG UL', paper_lc_baddatasum)
 
-print(paper_lc)
+#print(paper_lc)
+#print(paper_lc['band'].unique())
 
-
-path2 = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ASASSN-18jd_lc_files/ASASSN-18jd_ATLAS.txt"
+path2 = file_load_dir + "ASASSN-18jd_lc_files/ASASSN-18jd_ATLAS.txt"
 ATLAS_lc = pd.read_csv(path2, delim_whitespace = True)
 
 ATLAS_lc = ATLAS_lc.rename(columns = {'###MJD' : 'MJD', 'm': 'mag', 'dm':'magerr', 'err':'tphot_err', 'uJy':'flux', 'duJy':'flux_err', 'mag5sig':'5sig_mag_uplim'})
@@ -228,12 +133,12 @@ print(combined_18jz)
 
 combined_18jz = fix_ANT_bandnames(combined_18jz).copy() # this changes the band names to match the others that i have, e.g. 'Swift_U' --> 'UVOT_U'
 
-save_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ALL_FULL_LCs/ASASSN-18jd_FULL_LC.csv"
+save_path = file_save_dir + "ASASSN-18jd_FULL_LC.csv"
 combined_18jz.to_csv(save_path, index = False)
 print()
-print() 
+print()  """
 
-# PLOT ATLAS DATA TO CHECK THAT IT'S ALRIGHT
+""" # PLOT ATLAS DATA TO CHECK THAT IT'S ALRIGHT
 ATLAS_oband = ATLAS_lc[ATLAS_lc['band']=='ATLAS_o']
 ATLAS_cband = ATLAS_lc[ATLAS_lc['band']=='ATLAS_c']
 
@@ -521,11 +426,12 @@ plt.show() """
 
 
 # PS1-10adi
-""" path1 ="C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/PS1-10adi_lc_files/PS1-10adi_lc_rest_UBVRIJH"
+""" path1 = file_load_dir + "PS1-10adi_lc_files/PS1-10adi_lc_rest_UBVRIJH"
 colnames = ['Days_since_peak', 'U_mag', 'U_magerr', 'B_mag', 'B_magerr', 'V_mag', 'V_magerr', 'R_mag', 'R_magerr', 'I_mag', 'I_magerr', 'J_mag', 'J_magerr', 'H_mag', 'H_magerr']
 paper_lc = pd.read_csv(path1, delim_whitespace = True, header = None, names = colnames)
 
 band_names = ['U', 'B', 'V', 'R', 'I', 'J', 'H']
+band_names = [name+' Vega?'for name in band_names]
 length = len(paper_lc['U_mag'])
 for i, b in enumerate(band_names):
     placement = (i+1)*3
@@ -555,7 +461,8 @@ combined_paper_lc = combined_paper_lc[combined_paper_lc['magerr'] < MAGERR_LIM].
 combined_paper_lc['MJD'] = combined_paper_lc['days_since_peak'] + 2455443 - 2400000.5
 print(combined_paper_lc)
 
-combined_paper_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/ALL_FULL_LCs/PS1-10adi_FULL_LC.csv", index = False)
+savepath = file_save_dir + "PS1-10adi_FULL_LC.csv"
+combined_paper_lc.to_csv(savepath, index = False)
  """
 
 
@@ -569,14 +476,15 @@ combined_paper_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS/September/other 
 
 
 # PS1-13jw
-""" path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/PS1-13jw_lc_files/PS1-13jw_abs_V_2"
+""" path1 = file_load_dir + "PS1-13jw_lc_files/PS1-13jw_abs_V_2"
 paper_lc = pd.read_csv(path1, delim_whitespace = True, header = None, names = ['days_since_peak', 'mag', 'magerr'])
 paper_lc['MJD'] = paper_lc['days_since_peak'] + 2456435 - 2400000.5
-paper_lc['band'] = ['V']*len(paper_lc['days_since_peak'])
+paper_lc['band'] = ['V Vega?']*len(paper_lc['days_since_peak'])
 paper_lc = paper_lc[paper_lc['magerr'] < MAGERR_LIM].copy()
-paper_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/ALL_FULL_LCs/PS1-13jw_FULL_LC.csv", index = False)
-print(paper_lc) """
-
+savepath = file_save_dir + "PS1-13jw_FULL_LC.csv"
+paper_lc.to_csv(savepath, index = False)
+print(paper_lc)
+ """
 
 
 ##############################################################################################################################################################
