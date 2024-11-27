@@ -414,7 +414,7 @@ def chisq(y_m, y, yerr, M, reduced_chi = True):
         N = len(y) # the number of datapoints
         N_M = N-M # (N - M) the degrees of freedom
 
-        if N_M <= 0.0: # if the number of parameters > number of datapoints to fit
+        if N_M <= 0.0: # if the number of parameters >= number of datapoints to fit
             red_chi = pd.NA
             red_chi_1sig = pd.NA
         else:
