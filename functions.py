@@ -44,9 +44,8 @@ def load_ANT_data():
 
     """
     phils_ANTs = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/modified Phil's lightcurves"
-    updated_Phils_ANTs = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/Phil's lcs updated modified" # this contains forced photometry files for abodaps and mrjar, so we'll use these instead of the data files for these ants in Phils_ANTs
     other_ANT_data = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ALL_FULL_LCs" 
-    directories = [phils_ANTs, updated_Phils_ANTs, other_ANT_data]
+    directories = [phils_ANTs, other_ANT_data]
 
     dataframes = []
     names = []
