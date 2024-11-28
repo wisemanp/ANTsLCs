@@ -30,8 +30,8 @@ for k in TEST_PROBLEM_IDX:
  """
 # choose an ANT to test the binning funciton on
 #ANT = 'ZTF20acvfraq'
-#ANT = 'ZTF20abodaps'
-ANT = 'ZTF22aadesap'
+ANT = 'ZTF20abodaps'
+#ANT = 'ZTF22aadesap'
 idx = transient_names.index(ANT)
 ANT_lc = mod_lc_df_list[idx].copy()
 ANT_name = transient_names[idx]
@@ -49,7 +49,7 @@ for band in ANT_bands:
     plt.errorbar(unbinned_band_df['MJD'], unbinned_band_df['L_rf'], yerr = unbinned_band_df['L_rf_err'], fmt = band_marker, c = band_color, alpha = 0.5, linestyle = 'None', 
                  markeredgecolor = 'k', markeredgewidth = '0.5')
     plt.errorbar(band_df['wm_MJD'], band_df['wm_L_rf'], yerr = band_df['wm_L_rf_err'], xerr = (band_df['MJD_lower_err'], band_df['MJD_upper_err']), fmt = band_marker, c = band_color,
-                 label = band, linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '1.5')
+                 label = band, linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '1.5', ecolor = 'k')
     
 
 
