@@ -18,11 +18,12 @@ print()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 file_load_dir = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/" #+ ANT_name/datafile_name.dat
 file_save_dir = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other ANT data/ALL_FULL_LCs/" # +ANT_name_lc.csv
+Phil_file_save_dir = "C:/Users/laure/OneDrive/Desktop/YoRiS Desktop/YoRiS Data/modified Phil's lightcurves/" # +ANT_name_lc.csv
 
 
 MAGERR_LIM = 2.0 # if magerr is greater than this value, get rid of the datapoint MAYBE THIS ISN'T ACTUALLY NECESSARY........ ESPECIALLY SINCE WE HAVE A FLUXERR RATIO LIM
 
-MIN_MAGERR = 0.00001 # if the magerr is less than this value, then remove the datapoint as there must be something wrong with it to have such a small/NO error bar
+MIN_MAGERR = 0.0000001 # if the magerr is less than this value, then remove the datapoint as there must be something wrong with it to have such a small/NO error bar
 
 SIGMA_OUTLIER_LIM = 5.0 # this is being used just for Phil's data right now. The lightcurve is separated by band and binned up. If (weighted_mean_mag - mag)/magerr > 5SIGMA_OUTLIER_LIM, 
                         # then this datapoint is considered an outlier and is removed
@@ -493,10 +494,10 @@ print(paper_lc)
 ##############################################################################################################################################################
 
 # Phil's lightcurves
-""" 
+
 # ADDING TIME SINCE PEAK INTO PHIL'S ANT LIGHTCURVE DATA AND REMOVING OUTLIERS
 # loading in the files
-folder_path = "C:/Users/laure/OneDrive/Desktop/YoRiS Desktop/YoRiS Data/Phil's lightcurves 17_9" # folder path containing the light curve data files
+folder_path = "C:/Users/laure/OneDrive/Desktop/YoRiS Desktop/YoRiS Data/Phil's lightcurves" # folder path containing the light curve data files
 for file in os.listdir(folder_path): # file is a string of the file name such as 'file_name.dat'
     file_path = os.path.join(folder_path, file) 
     file_df = pd.read_csv(file_path, delimiter = ' ') # the lightcurve data in a dataframe
@@ -508,16 +509,6 @@ for file in os.listdir(folder_path): # file is a string of the file name such as
     file_df = file_df[file_df['magerr'] < MAGERR_LIM].copy()
 
 
-    # calculating time since peak column using max of the ZTF_g band NEED TO REMOVE OUTLIERS FOR THIS TO WORK
-    ZTF_g = file_df[file_df['band'] == 'ZTF_g'].copy()
-    min_ZTF_g = ZTF_g['mag'].min()
-    peak_data = ZTF_g[ZTF_g['mag'] == min_ZTF_g].copy()
-    peak_MJD = peak_data['MJD'].iloc[0]
-
-    file_df['peak_MJD'] = peak_MJD
-    file_df['t_since_peak'] = file_df['MJD'] - peak_MJD
-
-
     #print(file_df)
     print(file_df['band'].unique())
     file_df = fix_ANT_bandnames(file_df).copy()
@@ -525,9 +516,10 @@ for file in os.listdir(folder_path): # file is a string of the file name such as
     print()
     print()
     #print(file_df.columns)
-    file_df.to_csv(f"C:/Users/laure/OneDrive/Desktop/YoRiS Desktop/YoRiS Data/modified Phil's lightcurves/{ANT_name}_lc.csv", index = False)
+    savepath = Phil_file_save_dir + f"{ANT_name}_lc.csv"
+    file_df.to_csv(savepath, index = False)
 
- """
+
 
 
 ##############################################################################################################################################################
