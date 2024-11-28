@@ -57,20 +57,29 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, fit_MJD_range, b_color_dict, 
 
 
         # when doing the polyfit, it keeps giving 'RankWarning: Polyfit may be poorly conditioned', so chatGPT suggested to try scaling down the x values input -------------------------
-        #MJD_scalefactor = b_lim_df['MJD'].mean()
-        #MJD_scaled = b_lim_df['MJD'] - MJD_scalefactor
+        # to correct for x scaling after the polyfit has been taken, we just need to generate the MJDs at which we want the polyfit evaluated, then input (MJD - MJD_scaleconst)
+        # into the polynomial fit instead of just MJD. To correct for the y scaling, just need to multiply the L_rf calculated by polyfit by 1/L_rf_scalefactor 
+        MJD_scaleconst = b_lim_df['wm_MJD'].mean()
+        MJD_scaled = b_lim_df['wm_MJD'] - MJD_scaleconst
         
+        # also scaling down the y values
+        L_rf_scalefactor = 1e-41
+        L_rf_scaled = b_lim_df['wm_L_rf']*L_rf_scalefactor
 
         # do the polynomial fit ---------------------------------------------------------------------------------------------------------------------------------------------------------
-        poly_coeffs = np.polyfit(b_lim_df['wm_MJD'], b_lim_df['wm_L_rf'], deg = fit_order)
+        poly_coeffs = np.polyfit(MJD_scaled, L_rf_scaled, deg = fit_order)
         poly_coeffs = list(poly_coeffs)
-        polynomial_fit = np.poly1d(poly_coeffs, r = False) # r = False just measn that I am providing the poly coefficients, not the roots
+        polynomial_fit_scaled = np.poly1d(poly_coeffs, r = False) # r = False just measn that I am providing the poly coefficients, not the roots
         poly_plot_MJD = np.arange(b_lim_df['wm_MJD'].min(), b_lim_df['wm_MJD'].max(), 1) # the MJD values at which the polyfit will be evaluated
-        poly_plot_L_rf = polynomial_fit(poly_plot_MJD)
+        poly_plot_MJD_scaled = poly_plot_MJD - MJD_scaleconst # the scaled MJDs to input into the polynomial fit
+        poly_plot_L_rf_scaled = polynomial_fit_scaled(poly_plot_MJD_scaled)
+        poly_plot_L_rf = poly_plot_L_rf_scaled / L_rf_scalefactor
 
 
         # calculate chi squared of the polyfit
-        poly_L_rf_for_chi = polynomial_fit(b_lim_df['wm_MJD']) 
+        poly_MJD_for_chi_scaled = b_lim_df['wm_MJD'] - MJD_scaleconst
+        poly_L_rf_for_chi_scaled = polynomial_fit_scaled(poly_MJD_for_chi_scaled) 
+        poly_L_rf_for_chi = poly_L_rf_for_chi_scaled / L_rf_scalefactor
         red_chi, red_chi_1sig = chisq(y_m = poly_L_rf_for_chi, y = b_lim_df['wm_L_rf'], yerr = b_lim_df['wm_L_rf_err'], M = (fit_order + 1))
 
 
@@ -115,13 +124,19 @@ mod_lc_df_list = ANT_data_L_rf(lc_df_list, transient_names, ANT_redshift_dict, A
 MJD_binsize = 1
 bin_lc_df_list = bin_lc(mod_lc_df_list, MJD_binsize)
 
+#ANT = 'ZTF22aadesap'
+#ANT = 'ZTF19aailpwl'
 # now, we want to fit polynomials to each band of the binned up light curves
-ANT = 'ZTF22aadesap'
-ANT = 'ZTF19aailpwl'
-idx = transient_names.index(ANT)
-ANT_bands = list_of_bands[idx]
-binned_ANT_df = bin_lc_df_list[idx].copy()
-polyfit_lcs(ANT, binned_ANT_df, fit_order = 12, df_bands = ANT_bands, fit_MJD_range = MJDs_for_fit[ANT], b_color_dict = band_colour_dict, plot_polyfit = True)
+for i, ANT in enumerate(transient_names):
+    if i in [14, 15, 16]: # these ANT light curves have some magerr = 0.0, which causes issues with taking the weighted mean of L_rf so idk if the binning funciton would actually work
+        continue
+
+    if i == 0:
+        print(f'{i}, {ANT}')
+        print()
+        ANT_bands = list_of_bands[i]
+        binned_ANT_df = bin_lc_df_list[i].copy()
+        polyfit_lcs(ANT, binned_ANT_df, fit_order = 6, df_bands = ANT_bands, fit_MJD_range = MJDs_for_fit[ANT], b_color_dict = band_colour_dict, plot_polyfit = True)
 
 
 
