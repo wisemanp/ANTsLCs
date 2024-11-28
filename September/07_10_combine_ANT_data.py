@@ -456,7 +456,7 @@ for i in range(1, 21, 3):
 
 combined_paper_lc = {'days_since_peak':D_since_peak,'mag':mag, 'magerr':magerr, 'band':band}
 combined_paper_lc = pd.DataFrame(combined_paper_lc)
-combined_paper_lc = combined_paper_lc[combined_paper_lc['mag']< 0.0].copy()
+combined_paper_lc = combined_paper_lc[combined_paper_lc['mag']<= 0.0].copy()
 combined_paper_lc = combined_paper_lc[combined_paper_lc['magerr'] < MAGERR_LIM].copy()
 combined_paper_lc['MJD'] = combined_paper_lc['days_since_peak'] + 2455443 - 2400000.5
 print(combined_paper_lc)
