@@ -58,10 +58,6 @@ def load_ANT_data():
             else:
                 ANT_name = file[:-7] # the name of the transient
 
-            # skip over the old verisons of these files from Phil, since we have better ones in updated_phils_ANTs
-            if (ANT_name == 'ZTF19aamrjar' or ANT_name == 'ZTF20abodaps') and dir == phils_ANTs: 
-                continue
-
             # load in the files
             file_path = os.path.join(dir, file)
             file_df = pd.read_csv(file_path, delimiter = ',') # the lightcurve data in a dataframe
