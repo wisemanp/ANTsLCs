@@ -6,11 +6,15 @@
 # ignore all csv files
 *.csv
 
-# ignore the plots folder
-plots
+# ignore the plots and outputs folder
+plots/
+outputs/
+
+# ignore some specific pycache files
 November/__pycache__/plotting_preferences.cpython-311.pyc
 November/__pycache__/load_data_function.cpython-311.pyc
 
 # ignore ALL pycache files
 __pycache__/
 *.pyc
+
