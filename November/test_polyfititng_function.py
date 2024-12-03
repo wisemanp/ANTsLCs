@@ -35,7 +35,7 @@ MJDs_for_fit = {'ZTF18aczpgwm': (58350, 60300),
                 'PS1-13jw': (None, None)} 
 
 
-def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, b_colour_dict, plot_polyfit = False):
+def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
     """
     Peforms a polynomial fit for each band within df_bands for the light curve. 
 
@@ -56,6 +56,12 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
 
     fit_MJD_range: a tuple like (min_polyfit_MJD, max_polyfit_MJD), giving the MJD limits between which you want the bands in df_bands to be polyfitted. (tuple)
 
+    extrapolate: True if you want to extrapolate with the polyfits, False if not. (bool)
+
+    b_colour_dict: a dictionary indicating the marker colours for each photometric band such that b_colour_dict['ZTF_g'] = ZTF_g_colour (dict)
+
+    plot_polyfit: True if you want a plot of the polfit over the top of the actual light curve's data, as well as the interpolated data taken from the polyfit. Plot also displays the
+                    reduced chi squareds for each band's polyfit. Default is False (bool)
 
     
     OUTPUTS
@@ -105,6 +111,15 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
         poly_L_rf_err_list: a list of our fudged L_rf_err values for our polyfit interpolated data. 
 
         """
+        def fudge_error_formula(mean_err, mjd_dif, L_scaled):
+            x = abs( L_scaled * (mjd_dif / 10) )
+            er = mean_err + 0.05 * x #+ 0.0001*x**2
+
+            if er > abs(L_scaled):
+                er = abs(L_scaled)
+
+            return er
+        
         rb_df = real_b_df.sort_values(by = 'wm_MJD', ascending = True) # making sure that the dataframe is sorted in ascending order of MJD, just in case. The real band's dataframe
         rb_MJDs = np.array(rb_df['wm_MJD'].copy())
         scaled_rb_MJDs = rb_MJDs - MJD_scaledown # scaled down band's real MJD values
@@ -120,12 +135,13 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
             sc_closest_20_err = [scaled_rb_L_rf_err[j] for j in closest_20_idx] #  a list of the wm_L_rf_err values for the 20 closest datapoints to our interpolated datapoint
             sc_mean_L_rf_err = np.mean(np.array(sc_closest_20_err)) # part of the error formula = mean L_rf_err of the 20 closest datapoints in MJD
             closest_MJD_diff = MJD_diff[sort_by_MJD_closeness[0]]
-            sc_interp_err_term = abs( 0.05 * sc_L * (closest_MJD_diff/10) ) # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
+            #sc_interp_err_term = abs( 0.05 * sc_L * (closest_MJD_diff/10) ) # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
 
             # our fudged error = mean wm_L_rf_err of the closest 10 datapoints in MJD + some % error for every 10 days interpolated
-            sc_poly_L_rf_er = sc_mean_L_rf_err + sc_interp_err_term # the fudged error on L_rf, scaled down
-            if sc_poly_L_rf_er > abs(sc_L): # don't let the error bars get larger than the data point itself
-                sc_poly_L_rf_er = abs(sc_L)
+            #sc_poly_L_rf_er = sc_mean_L_rf_err + sc_interp_err_term # the fudged error on L_rf, scaled down
+            sc_poly_L_rf_er = fudge_error_formula(sc_mean_L_rf_err, closest_MJD_diff, sc_L)
+            #if sc_poly_L_rf_er > abs(sc_L): # don't let the error bars get larger than the data point itself
+            #    sc_poly_L_rf_er = abs(sc_L)
             poly_L_rf_er =  sc_poly_L_rf_er / L_rf_scaledown # to scale L_rf (fudged) error
             
             if poly_L_rf_er < 0.0:
@@ -156,7 +172,6 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
     MJD_scaleconst = np.mean(ref_band_MJD) # scale the MJD down to make it easier for polyfit
     ref_band_MJD_scaled = ref_band_MJD - MJD_scaleconst
     L_rf_scalefactor = 1e-41 # define the scale factor for the rest frame luminosity, too
-    len_refband_df = len(ref_band_MJD) # the length of the reference band's dataframe - I just need this when creating the 'band' column for the other bands, using [b]*len_refband_df
 
     # within this dataframe we will store the values of each band's polyfit at the MJD values of the chosen band to generate a light curve which has datapoints for all bands
     # at the MJD values of the chosen band. I want a dataframe containing wm_MJD, wm_L_rf, wm_L_rf_err, band, but probs best to rename the columns to remove the 'wm' since
@@ -208,16 +223,24 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
 
 
         # using our chosen 'trusted' band, use the polyfit to calculate the L_rf at the MJD values present in our trusted band's data ----------------------------------------------------
-        ref_band_L_rf_scaled = polynomial_fit_scaled(ref_band_MJD_scaled)
-        ref_band_L_rf = ref_band_L_rf_scaled / L_rf_scalefactor
+        if extrapolate == True: # if we're extrapolating, then evaluate the polynomial at all of the MJDs of the trusted band, even if it's way outside the region over which we have data for this band
+            interp_MJD = ref_band_MJD
+            interp_MJD_scaled = ref_band_MJD_scaled
+
+        else: # if we're not extrapolating, only evaluate the band's polyfit at the trusted band's mjd values which are within the mjd region covered by the band's actual data
+            interp_MJD = [mjd for mjd in ref_band_MJD if (mjd >= b_lim_df['wm_MJD'].min()) and (mjd <= b_lim_df['wm_MJD'].max() )] 
+            interp_MJD_scaled = np.array(interp_MJD) - MJD_scaleconst
+        
+        interp_L_rf_scaled = polynomial_fit_scaled(interp_MJD_scaled)
+        interp_L_rf = interp_L_rf_scaled / L_rf_scalefactor
 
 
         # calculate the fudged errors on the polyfit L_rf values
-        ref_band_L_rf_err = fudge_polyfit_L_rf_err(b_df, ref_band_L_rf_scaled, ref_band_MJD_scaled, MJD_scaleconst, L_rf_scalefactor)
-        interp_b_df = pd.DataFrame({'MJD': ref_band_MJD, 
-                                    'L_rf': ref_band_L_rf, 
-                                    'L_rf_err': ref_band_L_rf_err, 
-                                    'band': [b]*len_refband_df
+        interp_L_rf_err = fudge_polyfit_L_rf_err(b_df, interp_L_rf_scaled, interp_MJD_scaled, MJD_scaleconst, L_rf_scalefactor)
+        interp_b_df = pd.DataFrame({'MJD': interp_MJD, 
+                                    'L_rf': interp_L_rf, 
+                                    'L_rf_err': interp_L_rf_err, 
+                                    'band': [b]*(len(interp_MJD))
                                     })
 
         polyfit_ref_lc_df = pd.concat([polyfit_ref_lc_df, interp_b_df], ignore_index = True)
@@ -285,7 +308,7 @@ for i, ANT in enumerate(transient_names):
         print()
         ANT_bands = list_of_bands[i]
         binned_ANT_df = bin_lc_df_list[i].copy()
-        poly_interp_df= polyfit_lcs(ANT, binned_ANT_df, fit_order = 6, df_bands = ANT_bands, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT], b_colour_dict = band_colour_dict, plot_polyfit = True)
+        poly_interp_df= polyfit_lcs(ANT, binned_ANT_df, fit_order = 5, df_bands = ANT_bands, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT], extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
 
 
