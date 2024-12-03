@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import os
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit
-from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lc
+from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit
+from functions import load_ANT_data, ANT_data_L_rf, bin_lc, polyfit_lc
 
 ##################################################################################################################################################################
 ##################################################################################################################################################################
