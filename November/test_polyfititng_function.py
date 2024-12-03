@@ -113,7 +113,7 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
         """
         def fudge_error_formula(mean_err, mjd_dif, L_scaled):
             x = abs( L_scaled * (mjd_dif / 10) )
-            er = mean_err + 0.05 * x #+ 0.0001*x**2
+            er = mean_err + 0.05 * x #+ 0.0001*x**2  # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
 
             if er > abs(L_scaled):
                 er = abs(L_scaled)
@@ -135,13 +135,8 @@ def polyfit_lcs(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, 
             sc_closest_20_err = [scaled_rb_L_rf_err[j] for j in closest_20_idx] #  a list of the wm_L_rf_err values for the 20 closest datapoints to our interpolated datapoint
             sc_mean_L_rf_err = np.mean(np.array(sc_closest_20_err)) # part of the error formula = mean L_rf_err of the 20 closest datapoints in MJD
             closest_MJD_diff = MJD_diff[sort_by_MJD_closeness[0]]
-            #sc_interp_err_term = abs( 0.05 * sc_L * (closest_MJD_diff/10) ) # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
 
-            # our fudged error = mean wm_L_rf_err of the closest 10 datapoints in MJD + some % error for every 10 days interpolated
-            #sc_poly_L_rf_er = sc_mean_L_rf_err + sc_interp_err_term # the fudged error on L_rf, scaled down
             sc_poly_L_rf_er = fudge_error_formula(sc_mean_L_rf_err, closest_MJD_diff, sc_L)
-            #if sc_poly_L_rf_er > abs(sc_L): # don't let the error bars get larger than the data point itself
-            #    sc_poly_L_rf_er = abs(sc_L)
             poly_L_rf_er =  sc_poly_L_rf_er / L_rf_scaledown # to scale L_rf (fudged) error
             
             if poly_L_rf_er < 0.0:
