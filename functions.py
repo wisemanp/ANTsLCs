@@ -149,7 +149,7 @@ def ANT_data_L_rf(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_
 
     INPUTS
     ---------------
-    ANT_df_list: a list of dataframes for each ANT
+    ANT_df_list: a list of dataframes for each ANT, with the columns: MJD, mag, magerr, band
 
     ANT_names: a list of names of each ANT, MUST be in the same order as the dataframes, so ANT_df_list[i] and ANT_names[i] MUST correspond to the same ANT
 
@@ -165,7 +165,8 @@ def ANT_data_L_rf(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_
 
     OUTPUTS
     ---------------
-    new_ANT_df_list: a list of dataframes of the ANTs, in the same order as ANT_df_list and ANT_names
+    new_ANT_df_list: a list of dataframes of the ANTs, in the same order as ANT_df_list and ANT_names. Each dataframe will have the columns:
+                    MJD, mag, magerr, band, em_cent_wl (in Angstrom), L_rf (in ergs/(s * cm^2 * Angstrom)), L_rf_err (in ergs/(s * cm^2 * Angstrom)).
     
     """
 
@@ -267,7 +268,7 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
 
     INPUTS
     -----------
-    list_lc_df: a list of dataframes for the ANT's light curve data across all bands. Must contain the columns L_rf and L_rf_err 
+    list_lc_df: a list of dataframes for the ANT's light curve data across all bands. Must contain the columns:  MJD, L_rf, L_rf_err, band, em_cent_wl
 
     MJD_binsize: the size of the MJD bins that you want
 
@@ -275,6 +276,7 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
     OUTPUTS
     -----------
     list_binned_lc_dfs: a list of dataframes of the whole ANT light curve binned into bin size = MJD_binsize. Each band within the light curve is binned separately.
+                        Each df contains the columns:  MJD_bin, wm_L_rf (ergs/s/cm^2/Angstrom), wm_L_rf_err (args/s/cm^2/Angstrom), wm_MJD, band, em_cent_wl, MJD_lower_err, MJD_upper_err
 
     """
     list_binned_lc_dfs = []
@@ -306,7 +308,9 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
                                                                 'wm_MJD': weighted_mean(g['MJD'], g['L_rf_err'])[0], 
                                                                 'min_MJD': g['MJD'].min(), 
                                                                 'max_MJD': g['MJD'].max(), 
-                                                                'count': g['MJD'].count()
+                                                                'count': g['MJD'].count(), 
+                                                                'band': g['band'].iloc[0],
+                                                                'em_cent_wl': g['em_cent_wl'].iloc[0]
                                                                 })).reset_index()
 
             # creating the upper and lower MJD errorbars-------------------------------------------------------------------------------------------------------------------------------------
@@ -333,7 +337,6 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
 
             b_binned_df['MJD_lower_err'] = MJD_lower_err
             b_binned_df['MJD_upper_err'] = MJD_upper_err
-            b_binned_df['band'] = [b]*len(b_binned_df['wm_L_rf']) # band column
             b_binned_df = b_binned_df.drop(columns = ['min_MJD', 'max_MJD', 'count']) # drop these intermediate step columns
 
             # we should now have a light curve which is binned up with weighted mean flux + its error, the weighed mean MJD, with its error bar showing the range of MJD values 
@@ -458,7 +461,8 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
 
     df: a dataframe containing the ANT's light curve, ideally this would be binned into 1 day bins or something so that we don't get a flare of scattered L_rf values at ~= MJD
          which confuses the polyfit funciton. It is assumed that there are columns within df named: 'wm_L_rf' - the weighted mean rest frame luminosity within the MJD bin, 
-         'wm_L_rf_err' the error on this weighted mean rest frame luminosity and 'wm_MJD', the weighted mean MJD value within the bin. (dataframe)
+         'wm_L_rf_err' the error on this weighted mean rest frame luminosity and 'wm_MJD', the weighted mean MJD value within the bin. (dataframe). Dataframe must contain the columns:
+         wm_MJD, wm_L_rf, wm_L_rf_err, band, em_cent_wl
 
     df_bands: a list of the bands within the ANT's lightcurve that you want to have a polyfit for. If df contains WISE_W1 data, if you don't want this to be polyfitted, just don't include
                'WISE_W1' in df_bands. (list)
@@ -483,7 +487,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
                         the other bands, their data was 'interpolated' using a polynomial fit to the band's data which was evaluated at the MJD values of the trusted band. This funciton 
                         both interpolates and extrapolates using the polyfit, so at any MJD value present within this dataframe, there will be a L_rf value for every band within df_bands. 
                         This is good if you wanted to do something like blackbody fitting, since you then have datapoints for lots of bands at a given MJD, allowing for a better blackbody
-                        fit. 
+                        fit. This contains the columns: MJD, L_rf, L_rf_err, band, em_cent_wl
 
                         NOTE: L_rf_err in polyfit_ref_lc_df for all bands except the trusted_band is calculated using a fudge formula
 
@@ -587,7 +591,8 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
     polyfit_ref_lc_df = pd.DataFrame({'MJD': ref_band_MJD, 
                                       'L_rf': np.array(ref_band_df['wm_L_rf'].copy()), 
                                       'L_rf_err': np.array(ref_band_df['wm_L_rf_err'].copy()),
-                                      'band': list(ref_band_df['band'].copy())
+                                      'band': list(ref_band_df['band'].copy()), 
+                                      'em_cent_wl': list(ref_band_df['em_cent_wl'].copy())
                                       })
     
                                                                       
@@ -596,7 +601,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
     for i, b in enumerate(df_bands):
         b_df = df[df['band'] == b].copy()
         b_lim_df = lim_df[lim_df['band'] == b].copy() # the dataframe for the band, with MJD values limited to the main light curve
-
+        b_em_cent_wl = b_df['em_cent_wl'].iloc[0] # take the first value here because this dataframe only contains data from 1 band anyways so all em_cent_wl values will be the same
         # plot the 
         if b == trusted_band: # we don't need a polyfit of the trusted band because we're just evaluating the polyfits of all other bands at the trusted_band's MJDs
             if plot_polyfit == True:
@@ -644,11 +649,13 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
 
 
         # calculate the fudged errors on the polyfit L_rf values
+        interp_column_len = len(interp_MJD)
         interp_L_rf_err = fudge_polyfit_L_rf_err(b_df, interp_L_rf_scaled, interp_MJD_scaled, MJD_scaleconst, L_rf_scalefactor)
         interp_b_df = pd.DataFrame({'MJD': interp_MJD, 
                                     'L_rf': interp_L_rf, 
                                     'L_rf_err': interp_L_rf_err, 
-                                    'band': [b]*(len(interp_MJD))
+                                    'band': [b] * interp_column_len, 
+                                    'em_cent_wl': [b_em_cent_wl] * interp_column_len 
                                     })
 
         polyfit_ref_lc_df = pd.concat([polyfit_ref_lc_df, interp_b_df], ignore_index = True)
