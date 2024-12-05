@@ -29,12 +29,14 @@ bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] #
 interp_lc, plot_poltfit_df = polyfit_lc(ANT_name, ANT_df, fit_order = 5, df_bands = bands_for_BB, trusted_band = 'ZTF_g', fit_MJD_range = MJDs_for_fit[ANT_name],
                         extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
-BB_fit_results = fit_BB_across_lc(interp_lc, brute = True, curvefit = True)
+
+
+BB_fit_results = fit_BB_across_lc(interp_lc, brute = False, curvefit = True)
 print()
 print()
 print()
 print()
-print(interp_lc['MJD'].unique())
+print(interp_lc['MJD'].unique()[:50])
 print()
 print(BB_fit_results.head(50))
 print()
