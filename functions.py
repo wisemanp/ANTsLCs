@@ -770,7 +770,7 @@ def blackbody(lam_cm, R_cm, T_K):
 
 
 
-def fit_BB(interp_df, brute, curvefit):
+def fit_BB_across_lc(interp_df, brute, curvefit):
     """
 
 
