@@ -495,6 +495,9 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
 
                         NOTE: L_rf_err in polyfit_ref_lc_df for all bands except the trusted_band is calculated using a fudge formula
 
+    plot_polyline_df: a dataframe containing the polyfit data so that it can be plotted outside of this function. Contains the columns: band, poly_MJD, poly_L_rf. Each band has just one
+                        row in the dataframe, and poly_MJD and poly_L_rf will be lists/arrays of the MJD/L_rf data for this band's polyfit
+
     """
     
     # =========================================================================================================================================================================================================
@@ -600,16 +603,20 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
                                       'em_cent_wl': list(ref_band_df['em_cent_wl'].copy())
                                       })
     
-                                                                      
-
+    columns = ['band', 'poly_MJD', 'poly_L_rf'] # allows us to plot the polyfit as a line and the interpolated values.                                                                 
+    plot_polyline_df = pd.DataFrame(columns = columns)
     # iterate through the bands and polyfit them ===========================================================================================================================================
     for i, b in enumerate(df_bands):
         b_df = df[df['band'] == b].copy()
         b_lim_df = lim_df[lim_df['band'] == b].copy() # the dataframe for the band, with MJD values limited to the main light curve
         b_em_cent_wl = b_df['em_cent_wl'].iloc[0] # take the first value here because this dataframe only contains data from 1 band anyways so all em_cent_wl values will be the same
-
+        plot_polyline_rowno = len(plot_polyline_df['band']) # the row number for this band's data
+        plot_polyline_row = np.zeros(len(columns)) # fill the plot data with zeros then overwrite these values
         if b == trusted_band: # we don't need a polyfit of the trusted band because we're just evaluating the polyfits of all other bands at the trusted_band's MJDs
             if plot_polyfit == True:
+                plot_polyline_row[:] = [trusted_band, np.nan, np.nan]
+                plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # append with this band's data
+
                 b_colour = b_colour_dict[b]
                 plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], c = b_colour, fmt = 'o', linestyle = 'None', markeredgecolor = 'k', 
                             markeredgewidth = '1.0', label = f'{b} - REF BAND')
@@ -667,6 +674,8 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
 
         polyfit_ref_lc_df = pd.concat([polyfit_ref_lc_df, interp_b_df], ignore_index = True)
 
+        plot_polyline_row[:] = [b, poly_plot_MJD, poly_plot_L_rf]
+        plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row
         # PLOTTING ====================================================================================================================================================================
         if plot_polyfit == True:
             b_colour = b_colour_dict[b]
@@ -686,7 +695,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
         plt.grid()
         plt.show()
 
-    return polyfit_ref_lc_df
+    return polyfit_ref_lc_df, plot_polyline_df
 
 
 
