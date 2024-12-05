@@ -42,7 +42,7 @@ def fit_BB(interp_df, brute, curvefit):
     # establish the bounds of the parameter space which we will investigate, as well as establishing a scaled radius (I don't scale the temp because I don't really k)
     BB_R_min = 1e13 
     BB_R_max = 1e19 
-    BB_T_min = 1e2
+    BB_T_min = 1e3
     BB_T_max = 1e6
 
 
@@ -107,7 +107,7 @@ def fit_BB(interp_df, brute, curvefit):
             # creating the values of R and T that we will try
             grid_length = 100 # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
             sc_R_values = np.logspace(np.log10(BB_R_min_sc), np.log10(BB_R_max_sc), grid_length)
-            T_values = np.logspace(BB_T_min, BB_T_max, grid_length)
+            T_values = np.logspace(np.log10(BB_T_min), np.log10(BB_T_max), grid_length)
             chi_grid = np.zeros((grid_length, grid_length)) # this 2D array will fill with the chi squared values of each blackbody fit tried with different combinations of BB T and scaled R
             for i, T_K in enumerate(T_values):
                 for j, sc_R_cm in enumerate(sc_R_values):
@@ -128,11 +128,13 @@ def fit_BB(interp_df, brute, curvefit):
                 c = col[0]
                 brute_T = T_values[r] # the parameters which give the minimum chi squared
                 brute_R = sc_R_values[c] / R_scalefactor
-                N_M = len(MJD_df['band'] - 2)
+                N_M = len(MJD_df['band']) - 2
                 brute_red_chi = min_chi / N_M 
                 red_chi_1sig = np.sqrt(2/N_M)
             else:
-                print(f"WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]}")
+                print()
+                print(f"WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[r] for r in row]}, Rs = {[sc_R_values[c]/R_scalefactor for c in col]}")
+                print()
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
@@ -164,13 +166,13 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 ANT_name = transient_names[0]
 ANT_df = binned_df_list[0]
 ANT_bands = list_of_bands[0]
-bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')]
+bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 interp_lc = polyfit_lc(ANT_name, ANT_df, fit_order = 5, df_bands = bands_for_BB, trusted_band = 'ZTF_g', fit_MJD_range = MJDs_for_fit[ANT_name],
                         extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
 
 
-BB_fit_results = fit_BB(interp_lc, brute = False, curvefit = True)
+BB_fit_results = fit_BB(interp_lc, brute = True, curvefit = True)
 print()
 print()
 print()
