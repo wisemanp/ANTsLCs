@@ -603,7 +603,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
                                       'em_cent_wl': list(ref_band_df['em_cent_wl'].copy())
                                       })
     
-    columns = ['band', 'poly_MJD', 'poly_L_rf'] # allows us to plot the polyfit as a line and the interpolated values.                                                                 
+    columns = ['band', 'poly_MJD', 'poly_L_rf', 'red_chi', 'red_chi_1sig', 'chi_sigma_dist'] # allows us to plot the polyfit as a line and the interpolated values.                                                                 
     plot_polyline_df = pd.DataFrame(columns = columns)
     # iterate through the bands and polyfit them ===========================================================================================================================================
     for i, b in enumerate(df_bands):
@@ -614,7 +614,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
         plot_polyline_row = list(np.zeros(len(columns))) # fill the plot data with zeros then overwrite these values
         if b == trusted_band: # we don't need a polyfit of the trusted band because we're just evaluating the polyfits of all other bands at the trusted_band's MJDs
             if plot_polyfit == True:
-                plot_polyline_row[:] = [trusted_band, np.nan, np.nan]
+                plot_polyline_row[:] = [trusted_band, np.nan, np.nan, np.nan, np.nan, np.nan]
                 plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # append with this band's data
 
                 b_colour = b_colour_dict[b]
@@ -645,6 +645,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
         poly_L_rf_for_chi_scaled = polynomial_fit_scaled(poly_MJD_for_chi_scaled) 
         poly_L_rf_for_chi = poly_L_rf_for_chi_scaled / L_rf_scalefactor
         red_chi, red_chi_1sig = chisq(y_m = poly_L_rf_for_chi, y = b_lim_df['wm_L_rf'], yerr = b_lim_df['wm_L_rf_err'], M = (fit_order + 1))
+        chi_sigma_dist = abs(1 - red_chi) / red_chi_1sig
 
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -674,7 +675,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
 
         polyfit_ref_lc_df = pd.concat([polyfit_ref_lc_df, interp_b_df], ignore_index = True)
 
-        plot_polyline_row[:] = [b, poly_plot_MJD, poly_plot_L_rf]
+        plot_polyline_row[:] = [b, poly_plot_MJD, poly_plot_L_rf, red_chi, red_chi_1sig, chi_sigma_dist]
         plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row
         # PLOTTING ====================================================================================================================================================================
         if plot_polyfit == True:
