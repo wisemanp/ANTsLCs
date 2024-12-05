@@ -821,7 +821,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
     # iterate through each value of MJD within the dataframe and see if we have enough bands to take a BB fit to it 
 
     mjd_values = interp_df['MJD'].unique() 
-    columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_red_chi', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi']
+    columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
     BB_fit_results = pd.DataFrame(columns = columns)
     for MJD in tqdm(mjd_values, desc = 'Progress BB fitting each MJD value', total = len(mjd_values), leave = True):
         MJD_df = interp_df[interp_df['MJD'] == MJD].copy() # THERE COULD BE FLOATING POINT ERRORS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -854,11 +854,11 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
             # calculate the reduced chi squared of the curve_fit result
             BB_sc_L_chi = [blackbody(wl_cm, sc_cf_R, cf_T) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
             cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 2, reduced_chi = True)
-
+            cf_chi_sigma_dist = abs(1 - cf_red_chi)/red_chi_1sig
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            BB_result_row[2:8] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, red_chi_1sig]
+            BB_result_row[2:9] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
 
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -891,6 +891,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
                 N_M = len(MJD_df['band']) - 2
                 brute_red_chi = min_chi / N_M 
                 red_chi_1sig = np.sqrt(2/N_M)
+                brute_chi_sigma_dist = abs(1 - brute_red_chi) / red_chi_1sig
             else:
                 print()
                 print(f"WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[r] for r in row]}, Rs = {[sc_R_values[c]/R_scalefactor for c in col]}")
@@ -898,7 +899,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            BB_result_row[7:11] = [red_chi_1sig, brute_T, brute_R, brute_red_chi]
+            BB_result_row[8:13] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]
 
         BB_fit_results.loc[df_row_index] = BB_result_row # adding the array of results from this MJD to the BB results dataframe
 
