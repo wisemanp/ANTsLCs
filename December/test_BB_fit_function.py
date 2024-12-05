@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import sys
 import scipy.optimize as opt
+from tqdm import tqdm
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
 from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, polyfit_lc, blackbody, chisq
@@ -63,7 +64,7 @@ def fit_BB(interp_df, brute, curvefit):
     mjd_values = interp_df['MJD'].unique() 
     columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_red_chi', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi']
     BB_fit_results = pd.DataFrame(columns = columns)
-    for MJD in mjd_values:
+    for MJD in tqdm(mjd_values, desc = 'Progress BB fitting each MJD value', total = len(mjd_values), leave = True):
         MJD_df = interp_df[interp_df['MJD'] == MJD].copy() # THERE COULD BE FLOATING POINT ERRORS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
         df_row_index = len(BB_fit_results['MJD'])
