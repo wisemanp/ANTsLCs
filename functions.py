@@ -611,7 +611,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
         b_lim_df = lim_df[lim_df['band'] == b].copy() # the dataframe for the band, with MJD values limited to the main light curve
         b_em_cent_wl = b_df['em_cent_wl'].iloc[0] # take the first value here because this dataframe only contains data from 1 band anyways so all em_cent_wl values will be the same
         plot_polyline_rowno = len(plot_polyline_df['band']) # the row number for this band's data
-        plot_polyline_row = np.zeros(len(columns)) # fill the plot data with zeros then overwrite these values
+        plot_polyline_row = list(np.zeros(len(columns))) # fill the plot data with zeros then overwrite these values
         if b == trusted_band: # we don't need a polyfit of the trusted band because we're just evaluating the polyfits of all other bands at the trusted_band's MJDs
             if plot_polyfit == True:
                 plot_polyline_row[:] = [trusted_band, np.nan, np.nan]
