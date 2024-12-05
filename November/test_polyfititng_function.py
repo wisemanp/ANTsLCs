@@ -37,7 +37,7 @@ for i, ANT in enumerate(transient_names):
         print()
         ANT_bands = list_of_bands[i]
         binned_ANT_df = bin_lc_df_list[i].copy()
-        poly_interp_df= polyfit_lc(ANT, binned_ANT_df, fit_order = 5, df_bands = ANT_bands, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT], extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
+        poly_interp_df, plot_polyfit_df = polyfit_lc(ANT, binned_ANT_df, fit_order = 5, df_bands = ANT_bands, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT], extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
 
 
