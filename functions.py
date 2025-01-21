@@ -243,12 +243,17 @@ def weighted_mean(data, errors):
         wm = pd.NA
         wm_err = pd.NA
 
+    if (sum(errors)) == 0.0: # if the errors in the bin all == 0.0 (like with Gaia_G) then just take the regular mean and set its error to NA
+        wm = np.mean(data)
+        wm_err = pd.NA
+
     else: # if the bin has data within it, then take the weighted mean
         weights = 1/(errors**2)
         wm = np.sum(data * weights) / (np.sum(weights))
         wm_err = np.sqrt( 1/(np.sum(weights)) )
 
     return wm, wm_err
+
 
 
 
@@ -402,7 +407,7 @@ def L_rf_to_mag(d_l_cm, bandZP, z, L_rf, L_rf_err):
 
     OUTPUTS
     -----------------------
-    m: magnitude (either abs or apparent, depending on d_l)
+    m: magnitude (either abs or apparent, depending on d_l_cm)
 
     m_err: magnitude error
 
