@@ -502,7 +502,7 @@ ANT_luminosity_dist_cm_dict = dict(zip(ANT_names, ANT_d_cm_list))
 
 
 
-MJDs_for_fit = {'ZTF18aczpgwm': (58350, 60300), 
+MJDs_for_fit = {'ZTF18aczpgwm': (58400, 59680), 
                 'ZTF19aailpwl': (58420, 59500), 
                 'ZTF19aamrjar': (58350, None), 
                 'ZTF19aatubsj': (58360, None), 
