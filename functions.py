@@ -361,6 +361,152 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
 
 
 
+
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+# CONVERTING FROM REST FRAME LUMINOSITY TO APPARENT MAGNITUDE
+
+
+
+
+
+
+
+
+def L_rf_to_mag(d_l_cm, bandZP, z, L_rf, L_rf_err):
+    """
+    Calculates the magnitude from the rest frame luminosity 
+
+    INPUTS:
+    -----------------------
+    d_l_cm: luminosity distance in cm ( can be calculated using astropy.cosmology.luminosity_distance(z) )
+
+    bandZP: observed band's AB mag zeropoint in ergs/s/cm^2/Angstrom
+
+    z: object's redshift
+
+    L_rf: rest frame luminosity in ergs/s/Angstrom
+
+    L_rf_err: rest frame luminosity error in ergs/s/Angstrom
+
+
+    OUTPUTS
+    -----------------------
+    m: magnitude (either abs or apparent, depending on d_l)
+
+    m_err: magnitude error
+
+    """
+    denom = 4 * np.pi * (d_l_cm**2) * bandZP * (1 + z)
+    m = -2.5 * np.log10(L_rf / denom)
+
+    m_err = (2.5 / (np.log(10) * L_rf)) * L_rf_err # THIS HAD A NEGATIVE SIGN IN IT BUT I THINK ITS FINE TO TAKE THE POSITIVE, CHECK GOODNOTES NOTEs
+
+    return m, m_err
+
+
+
+
+
+
+
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+##################################################################################################################################################################
+# AFTER BINNING THE LIGHT CURVE USING THE REST FRAME LUMINOSITY, WE CAN RE-CALCULATE THE APPARENT MAGNITUDE OF THE BIN
+
+
+
+
+
+
+
+
+
+def ANT_data_mags(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_ZP):
+    """
+    Once we've binned the light curves (which we can only do using rest frame luminosity or flux), we can calculate the apparent ot absolute magnitude associated with this averaged rest frame luminosity in the bin. 
+    This funciton calculates the apparent of absolute magnitude + its error given the rest frame luminosity and its error and adds these columns to each ANT light curve
+
+    INPUTS
+    ---------------
+    ANT_df_list: a list of dataframes for each ANT, with the columns: MJD, mag, magerr, band
+
+    ANT_names: a list of names of each ANT, MUST be in the same order as the dataframes, so ANT_df_list[i] and ANT_names[i] MUST correspond to the same ANT
+
+    dict_ANT_z: dictionary of ANT redshift values
+
+    dist_ANT_D_lum: dictioanry of ANT luminosity distances (calculated under a few assumptions, which can be checked in the plotting_preferences file)
+
+    dict_band_ZP: dictioanry of the zeropoints of each of the bands present for any ANT
+    
+
+
+    OUTPUTS
+    ---------------
+    new_ANT_df_list: a list of dataframes of the ANTs, in the same order as ANT_df_list and ANT_names. Each dataframe will have the columns mag amd magerr added to it
+    
+    """
+
+    new_ANT_df_list = [] # the list of ANT_dfs with the new data added such as L_rf, L_rf_err and em_cent_wl
+    for i, ANT_df in enumerate(ANT_df_list):
+        name = ANT_names[i] # ANT name
+        z = dict_ANT_z[name] # redshift
+        d_lum = dict_ANT_D_lum[name] # luminosity distance in cm
+
+        # rest frame luminosity
+        mag_list = []
+        magerr_list = []
+        for i in range(len(ANT_df['wm_MJD'])):
+            band = ANT_df['band'].iloc[i] # the datapoint's band
+            band_ZP = dict_band_ZP[band] # the band's zeropoint
+            L_rf = ANT_df['wm_L_rf'].iloc[i] # the magnitude
+            L_rf_err = ANT_df['wm_L_rf_err'].iloc[i] # the mag error
+
+            mag, magerr = L_rf_to_mag(d_lum, band_ZP, z, L_rf, L_rf_err) # the rest frame luminosity and its error
+            mag_list.append(mag)
+            magerr_list.append(magerr)
+
+        # add these columns to the ANT's dataframe
+        ANT_df['mag'] = mag_list
+        ANT_df['magerr'] = magerr_list
+
+        new_ANT_df_list.append(ANT_df)
+
+
+    return new_ANT_df_list
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##################################################################################################################################################################
 ##################################################################################################################################################################
 ##################################################################################################################################################################
@@ -685,7 +831,7 @@ def polyfit_lc(ant_name, df, fit_order, df_bands, trusted_band, fit_MJD_range, e
                          label = b, c = b_colour)
             plt.plot(poly_plot_MJD, poly_plot_L_rf, c = b_colour, label = f'red chi = {red_chi:.3f}  \n +/- {red_chi_1sig:.3f}')
             plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '0.5', 
-                         linestyle = 'None', alpha = 0.5)
+                         linestyle = 'None', alpha = 0.5, capsize = 5, capthick = 5)
             
     if plot_polyfit == True:
         plt.xlabel('MJD')
@@ -906,3 +1052,22 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
 
 
     return BB_fit_results
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
