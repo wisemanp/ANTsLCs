@@ -13,7 +13,7 @@ sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this al
 from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, fit_BB_across_lc, chisq, polyfit_lc
 
-""" def poly1(x, a, b):
+def poly1(x, a, b):
     return b*x + a
 
 def poly2(x, a, b, c):
@@ -35,10 +35,24 @@ def poly7(x, a, b, c, d, e, f, g, h):
     return h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
 
 def poly8(x, a, b, c, d, e, f, g, h, i):
-    return i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a """
+    return i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+
+def poly9(x, a, b, c, d, e, f, g, h, i, j):
+    return j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
 
 
-def polyfitting(lim_df, mjd_scale_C, L_rf_scalefactor):
+poly_dict = {1: poly1, 
+             2: poly2, 
+             3: poly3, 
+             4: poly4, 
+             5: poly5, 
+             6: poly6, 
+             7: poly7, 
+             8: poly8, 
+             9: poly9}
+
+
+def polyfitting(lim_df, mjd_scale_C, L_rf_scalefactor, poly_order_dict):
     """
     This function uses chi squred minimisation to optimise the choice of the polynomial order to fit to each band in a light curve, and also uses curve_fit to find
     the optimal parameters for each polynomial fit. Bands with little data are not allowed to use higher order polynomials to fit them
@@ -48,14 +62,7 @@ def polyfitting(lim_df, mjd_scale_C, L_rf_scalefactor):
     lim_df: a dataframe of the lightcurve which has been MJD-limited to the region that you want to be polyfitted. 
     """
     
-    def polynomial(x, *parameters): # SUGGESTED BY CHATGPT
-        return np.polyval(np.array(parameters), x) # polyval parameters go from the highest order first to the lowest order
-    
-    print('haha')
-
     df_bands = lim_df['band'].unique()
-
-    print('o')
     # iterate through the bands in the lightcurve and choose the best order polynomial fit
     for b in df_bands:
         print(b)
@@ -67,7 +74,7 @@ def polyfitting(lim_df, mjd_scale_C, L_rf_scalefactor):
         b_MJD_span = b_df['wm_MJD'].max() - b_df['wm_MJD'].min() # the span of MJDs that the band makes
         b_count = len(b_df['wm_MJD']) # the number of datapoints in the band's data
         
-        # restrict the order of polynomial available to poorly samples lightcurves
+        # restrict the order of polynomial available to poorly sampled lightcurves
         if (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01:
             poly_orders_available = [1, 2, 3]
 
@@ -77,12 +84,13 @@ def polyfitting(lim_df, mjd_scale_C, L_rf_scalefactor):
         # iterate thriugh different polynomial orders
         best_redchi = 1e10 # start off very high so it's immediately overwritten by the first fit's results
         for order in poly_orders_available: 
-            no_params = order + 1
-            popt, pcov = opt.curve_fit(polynomial, xdata = b_MJD_scaled, ydata = b_L_scaled, sigma = b_L_err_scaled, p0 = np.ones(no_params))
+            #no_params = order + 1
+            poly_function = poly_order_dict[order]
+            popt, pcov = opt.curve_fit(poly_function, xdata = b_MJD_scaled, ydata = b_L_scaled, sigma = b_L_err_scaled)#, p0 = np.ones(no_params))
             
             # now calculate the reduced chi squared of the polynomial fit
-            chi_sc_poly_L = polynomial(popt, b_MJD_scaled)
-            chi, redchi, redchi_1sig = chisq(chi_sc_poly_L, b_L_scaled, b_L_err_scaled, M = no_params, reduced_chi = True)
+            chi_sc_poly_L = np.polyval(popt[::-1], b_MJD_scaled) # using popt[::-1] just reverses the array because my polynomial functions inputs go in ascending order coefficients, whereeas polyval does the opposite
+            redchi, redchi_1sig = chisq(chi_sc_poly_L, b_L_scaled, b_L_err_scaled, M = order + 1, reduced_chi = True)
             
             # if we get a better reduced chi squared than before, overwrite the optimal parameters
             if redchi < best_redchi: 
@@ -392,7 +400,7 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 
 # polyfitting ONE light curve
-idx = 10
+idx = 0
 ANT_name = transient_names[idx]
 ANT_df = binned_df_list[idx]
 ANT_bands = list_of_bands[idx]
@@ -402,7 +410,7 @@ bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] #
 polyfit_MJD_range = MJDs_for_fit[ANT_name]
 #polyfit_MJD_range = (58500, 58770)
 
-""" 
+
 
 
 min_MJD, max_MJD = polyfit_MJD_range
@@ -412,12 +420,12 @@ MJD_scaleconst = lim_df['wm_MJD'].mean()
 L_scaleconst = 1e-41
 
 
-polyfitting(lim_df, MJD_scaleconst, L_scaleconst)
-"""
+polyfitting(lim_df, MJD_scaleconst, L_scaleconst, poly_dict)
 
-interp_lc, plot_polyfit_df = polyfit_lc2(ANT_name, ANT_df, fit_order = 9, df_bands = bands_for_BB, min_band_dps = 1, trusted_band = reference_band, fit_MJD_range = polyfit_MJD_range,
+
+""" interp_lc, plot_polyfit_df = polyfit_lc2(ANT_name, ANT_df, fit_order = 9, df_bands = bands_for_BB, min_band_dps = 1, trusted_band = reference_band, fit_MJD_range = polyfit_MJD_range,
                         extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
-
+ """
 #interp_lc, plot_polyfit_df = polyfit_lc2(ANT_name, ANT_df, fit_order = 5, df_bands = bands_for_BB, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT_name],
 #                        extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
