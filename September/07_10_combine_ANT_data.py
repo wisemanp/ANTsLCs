@@ -495,7 +495,7 @@ print(paper_lc)
 
 # Phil's lightcurves
 
-# ADDING TIME SINCE PEAK INTO PHIL'S ANT LIGHTCURVE DATA AND REMOVING OUTLIERS
+# 
 # loading in the files
 folder_path = "C:/Users/laure/OneDrive/Desktop/YoRiS Desktop/YoRiS Data/Phil's lightcurves" # folder path containing the light curve data files
 for file in os.listdir(folder_path): # file is a string of the file name such as 'file_name.dat'
@@ -513,6 +513,7 @@ for file in os.listdir(folder_path): # file is a string of the file name such as
     print(file_df['band'].unique())
     file_df = fix_ANT_bandnames(file_df).copy()
     print(file_df['band'].unique())
+    file_df = file_df.dropna(subset = ['mag'])
     print()
     print()
     #print(file_df.columns)
