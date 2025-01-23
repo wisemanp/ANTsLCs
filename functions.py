@@ -239,7 +239,7 @@ def weighted_mean(data, errors):
     if not isinstance(errors, np.ndarray):
         errors = np.array(errors)
     
-    if len(errors) == 0: # if the bin has no data within it, then the weighted mean and its error = NaN
+    if len(data) == 0: # if the bin has no data within it, then the weighted mean and its error = NaN
         wm = pd.NA
         wm_err = pd.NA
 
