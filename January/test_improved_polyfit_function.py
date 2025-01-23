@@ -51,7 +51,7 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
 
     MJD_diff = abs(all_data_x - interp_x) # takes the MJD difference between interp_x and the MJDs in the band's real data
     local_density = (MJD_diff <= local_density_region).sum() # counts the number of datapoints within local_density_region days' of interp_x
-    closest_MJD_diff = abs(interp_x - min(MJD_diff))
+    closest_MJD_diff = min(MJD_diff)
 
     if simple_cutoff == False:
         interp_lim = (band_lc_density * local_density * factor) 
@@ -165,7 +165,10 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     b_count = len(b_df['wm_MJD']) # the number of datapoints in the band's data
 
     # restrict the order of polynomial available to poorly sampled band lightcurves
-    if (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01 or (b_count < 20):
+    if b_MJD_span < 30:
+        poly_orders_available = [1]
+
+    elif (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01 or (b_count < 20):
         poly_orders_available = [1, 2, 3]
     
     elif (b_MJD_span < 500) and (b_count < 10):
@@ -173,6 +176,12 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
 
     else:
         poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
+
+    if b_count in poly_orders_available: # if the number of datapoints = polynomial order
+        idx = poly_orders_available.index(b_count)
+        print(f'FLAG: {b_count}, {poly_orders_available}')
+        poly_orders_available = poly_orders_available[:(idx - 1)] # this should be fine since we have a lower limit of 2 datapoints right now
+        print(f'NEW polyorders = {poly_orders_available}')
 
     # iterate thriugh different polynomial orders
     best_redchi = 1e10 # start off very high so it's immediately overwritten by the first fit's results
@@ -193,9 +202,11 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
                 optimal_params = polyval_coeffs
         
     #print(len(optimal_params), redchi, '+/-', redchi_1sig)
+    
     poly_sigma_dist = abs(1 - best_redchi)/(best_redchi_1sig)
     plot_poly_sc_MJD = np.arange(min(b_MJD_scaled), max(b_MJD_scaled), 1.0) # for plotting the polynomial fit
-    plot_poly_sc_L = np.polyval(polyval_coeffs, plot_poly_sc_MJD) # for plotting the polynomial fit
+    #plot_poly_sc_L = np.polyval(polyval_coeffs, plot_poly_sc_MJD) # for plotting the polynomial fit
+    plot_poly_sc_L = np.polyval(optimal_params, plot_poly_sc_MJD)
 
     plot_poly_MJD = plot_poly_sc_MJD + mjd_scale_C
     plot_poly_L = plot_poly_sc_L/L_rf_scalefactor
@@ -375,20 +386,22 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
     
     # iterate through the bands and polyfit them ===========================================================================================================================================
     for i, b in enumerate(df_bands):
+        print(b)
         b_df = df[df['band'] == b].copy()
         b_lim_df = lim_df[lim_df['band'] == b].copy() # the dataframe for the band, with MJD values limited to the main light curve
         b_em_cent_wl = b_df['em_cent_wl'].iloc[0] # take the first value here because this dataframe only contains data from 1 band anyways so all em_cent_wl values will be the same
         plot_polyline_rowno = len(plot_polyline_df['band']) # the row number for this band's data (because we're appending each row to the last row of the dataframe essentially)
         plot_polyline_row = list(np.zeros(len(columns))) # fill the plot data with zeros then overwrite these values
 
-        b_lc_density = (len(b_lim_df['wm_MJD'])) / (b_lim_df['wm_MJD'].max() - b_lim_df['wm_MJD'].min()) # the density of datapoints across the band
+        
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        if len(b_lim_df['wm_MJD']) < min_band_dps: # getting rid of bands with too little data
+        if len(b_lim_df['wm_MJD']) <= min_band_dps: # getting rid of bands with too little data
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour_dict[b])
             continue
 
+        b_lc_density = (len(b_lim_df['wm_MJD'])) / (b_lim_df['wm_MJD'].max() - b_lim_df['wm_MJD'].min()) # the density of datapoints across the band
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # when doing the polyfit, it keeps giving 'RankWarning: Polyfit may be poorly conditioned', so chatGPT suggested to try scaling down the x values input 
         # to correct for x scaling after the polyfit has been taken, we just need to generate the MJDs at which we want the polyfit evaluated, then input (MJD - MJD_scaleconst)
@@ -414,12 +427,19 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
         plot_polyline_row[:] = [b, poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist]
         plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # appending our polyfit info to a dataframe containing info on all of the bands' polynomial fits
 
+        if b == trusted_band: # we don't need ot interpolate the trusted band
+            b_colour = b_colour_dict[b]
+
+            plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+                         label = b, c = b_colour)
+            plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'fit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
+            continue
 
         # evaluate whether each MJD is worth interpolating, e.g. if it's like 500 days away from all other datapoints, don't interpolate there because the polyfit isn't 
         # well constrained there. We allow better sampled bands to interpolate further out than poorly sampled bands since their fits are better constrained. 
         allow_interp = []
         for int_sc_mjd in interp_MJD_scaled:
-            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, band_lc_density = b_lc_density, local_density_region = 50, interp_cap = 10000, factor = 1000, simple_cutoff = True, simple_cut = 50)
+            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, band_lc_density = b_lc_density, local_density_region = 50, interp_cap = 50, factor = 100, simple_cutoff = False, simple_cut = 50)
             allow_interp.append(allow_int)
 
         #allow_interp = [True]*len(allow_interp) # TESTING SOMETHING GET RID OF THIS IT OVERWRITES THE ALLOW_INTERPOLATION FUNCTION'S RESULT
@@ -455,17 +475,20 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
             plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'fit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
-            plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '0.5', 
+            plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                          linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5)
+            #plt.fill_between(x = interp_b_df['MJD'], y1 = (interp_b_df['L_rf'] - interp_b_df['L_rf_err']), y2 = (interp_b_df['L_rf'] + interp_b_df['L_rf_err']), color = b_colour, alpha = 0.5)
             
     if plot_polyfit == True:
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/polyfits/{ant_name}_polyfit.png" #C:\Users\laure\OneDrive\Desktop\YoRiS desktop\YoRiS\plots\light curves\polyfits
         plt.xlabel('MJD')
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
         plt.title(f'{ant_name} polyfit, reference band = {trusted_band}')
-        plt.legend(loc = 'lower right', bbox_to_anchor = (1.2, 0.0), fontsize = 9)
+        plt.legend(loc = 'lower right', bbox_to_anchor = (1.15, 0.0), fontsize = 7.5)
         fig.subplots_adjust(right = 0.845, left = 0.07)
         plt.grid()
+        plt.savefig(savepath)
         plt.show()
 
     return polyfit_ref_lc_df, plot_polyline_df
@@ -474,200 +497,6 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
 
 
 
-
-
-
-
-
-
-
-
-def polyfit_lc2(ant_name, df, fit_order, df_bands, trusted_band, min_band_dps, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
-    """
-    Peforms a polynomial fit for each band within df_bands for the light curve. 
-
-    INPUTS
-    ---------------
-    ant_name: the ANT's name (str)
-
-    df: a dataframe containing the ANT's light curve, ideally this would be binned into 1 day bins or something so that we don't get a flare of scattered L_rf values at ~= MJD
-         which confuses the polyfit funciton. It is assumed that there are columns within df named: 'wm_L_rf' - the weighted mean rest frame luminosity within the MJD bin, 
-         'wm_L_rf_err' the error on this weighted mean rest frame luminosity and 'wm_MJD', the weighted mean MJD value within the bin. (dataframe). Dataframe must contain the columns:
-         wm_MJD, wm_L_rf, wm_L_rf_err, band, em_cent_wl
-
-    df_bands: a list of the bands within the ANT's lightcurve that you want to have a polyfit for. If df contains WISE_W1 data, if you don't want this to be polyfitted, just don't include
-               'WISE_W1' in df_bands. (list)
-
-    trusted_band: the name of the band which is used as the reference band for the light curve. This band would ideally have a high cadence and good coverage of the light curve. 
-                  at the MJD values for which df contains data on this band, this function will use the polynomial fit for each other band and evaluate L_rf for each band at this MJD. 
-                  This band is also the one from which we will calcuate the peak of the light curve. (str)
-
-    fit_MJD_range: a tuple like (min_polyfit_MJD, max_polyfit_MJD), giving the MJD limits between which you want the bands in df_bands to be polyfitted. (tuple)
-
-    extrapolate: True if you want to extrapolate with the polyfits to the MJDs specified in fit_MJD_range, False if not. (bool)
-
-    b_colour_dict: a dictionary indicating the marker colours for each photometric band such that b_colour_dict['ZTF_g'] = ZTF_g_colour. (dict)
-
-    plot_polyfit: True if you want a plot of the polfit over the top of the actual light curve's data, as well as the interpolated data taken from the polyfit. Plot also displays the
-                    reduced chi squareds for each band's polyfit. Default is False (bool)
-
-    
-    OUTPUTS
-    ---------------
-    polyfit_ref_lc_df: a dataframe containing MJD, L_rf, L_rf_err, band for: the trusted_band's (also referred to as the reference band) actual MJD, L_rf, L_rf_err data, and then for 
-                        the other bands, their data was 'interpolated' using a polynomial fit to the band's data which was evaluated at the MJD values of the trusted band. This funciton 
-                        both interpolates and extrapolates using the polyfit, so at any MJD value present within this dataframe, there will be a L_rf value for every band within df_bands. 
-                        This is good if you wanted to do something like blackbody fitting, since you then have datapoints for lots of bands at a given MJD, allowing for a better blackbody
-                        fit. This contains the columns: MJD, L_rf, L_rf_err, band, em_cent_wl
-
-                        NOTE: L_rf_err in polyfit_ref_lc_df for all bands except the trusted_band is calculated using a fudge formula
-
-    plot_polyline_df: a dataframe containing the polyfit data so that it can be plotted outside of this function. Contains the columns: band, poly_MJD, poly_L_rf. Each band has just one
-                        row in the dataframe, and poly_MJD and poly_L_rf will be lists/arrays of the MJD/L_rf data for this band's polyfit
-
-    """
-
-    # setting up the plot
-    if plot_polyfit == True:
-        fig = plt.figure(figsize = (16, 7.5))
-    
-    # limiting the MJD over which we are polyfitting, because for some ANTs, we have some straggling datapoints far away from the rest of the light curve and we don't want to fit these
-    fit_min_MJD, fit_max_MJD = fit_MJD_range # unpack the tuple that goes as (MJD min, MJD max)
-
-    lim_df = df.copy()
-    if fit_min_MJD != None:
-        lim_df = lim_df[lim_df['wm_MJD'] > fit_min_MJD].copy() 
-
-    if fit_max_MJD != None:
-        lim_df = lim_df[lim_df['wm_MJD'] < fit_max_MJD].copy()
-
-
-    # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # getting the MJD values for the reference band 
-    ref_band_df = df[df['band'] == trusted_band].copy()
-    ref_band_MJD = np.array(ref_band_df['wm_MJD'].copy()) # the reference MJD values at which we should evaluate all other bands' polyfits
-    MJD_scaleconst = np.mean(ref_band_MJD) # scale the MJD down to make it easier for polyfit
-    ref_band_MJD_scaled = ref_band_MJD - MJD_scaleconst
-    L_rf_scalefactor = 1e-41 # define the scale factor for the rest frame luminosity, too
-
-    # within this dataframe we will store the values of each band's polyfit at the MJD values of the chosen band to generate a light curve which has datapoints for all bands
-    # at the MJD values of the chosen band. I want a dataframe containing wm_MJD, wm_L_rf, wm_L_rf_err, band, but probs best to rename the columns to remove the 'wm' since
-    # most of the data within it will be calculated from the polyfit, not the weighted mean. 
-    polyfit_ref_lc_df = pd.DataFrame({'MJD': ref_band_MJD, 
-                                      'L_rf': np.array(ref_band_df['wm_L_rf'].copy()), 
-                                      'L_rf_err': np.array(ref_band_df['wm_L_rf_err'].copy()),
-                                      'band': list(ref_band_df['band'].copy()), 
-                                      'em_cent_wl': list(ref_band_df['em_cent_wl'].copy())
-                                      })
-    
-    columns = ['band', 'poly_MJD', 'poly_L_rf', 'red_chi', 'red_chi_1sig', 'chi_sigma_dist'] # allows us to plot the polyfit as a line using plt.plot() and the interpolated values.                                                                 
-    plot_polyline_df = pd.DataFrame(columns = columns)
-    
-    # iterate through the bands and polyfit them ===========================================================================================================================================
-    for i, b in enumerate(df_bands):
-        b_df = df[df['band'] == b].copy()
-        b_lim_df = lim_df[lim_df['band'] == b].copy() # the dataframe for the band, with MJD values limited to the main light curve
-        b_em_cent_wl = b_df['em_cent_wl'].iloc[0] # take the first value here because this dataframe only contains data from 1 band anyways so all em_cent_wl values will be the same
-        plot_polyline_rowno = len(plot_polyline_df['band']) # the row number for this band's data (because we're appending each row to the last row of the dataframe essentially)
-        plot_polyline_row = list(np.zeros(len(columns))) # fill the plot data with zeros then overwrite these values
-        if b == trusted_band: # we don't need a polyfit of the trusted band because we're just evaluating the polyfits of all other bands at the trusted_band's MJDs
-            if plot_polyfit == True:
-                plot_polyline_row[:] = [trusted_band, np.nan, np.nan, np.nan, np.nan, np.nan]
-                plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # append with this band's data
-
-                b_colour = b_colour_dict[b]
-                plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], c = b_colour, fmt = 'o', linestyle = 'None', markeredgecolor = 'k', 
-                            markeredgewidth = '1.0', label = f'{b} - REF BAND')
-            continue
-
-        #print(b_lim_df['wm_MJD'])
-        elif len(b_lim_df['wm_MJD']) < min_band_dps: # GETTING RID OF BANDS WITH TOO LITTLE DATA ********************************************************************************************************************
-            continue
-
-        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # when doing the polyfit, it keeps giving 'RankWarning: Polyfit may be poorly conditioned', so chatGPT suggested to try scaling down the x values input 
-        # to correct for x scaling after the polyfit has been taken, we just need to generate the MJDs at which we want the polyfit evaluated, then input (MJD - MJD_scaleconst)
-        # into the polynomial fit instead of just MJD. To correct for the y scaling, just need to multiply the L_rf calculated by polyfit by 1/L_rf_scalefactor 
-        MJD_scaled = b_lim_df['wm_MJD'] - MJD_scaleconst
-        L_rf_scaled = b_lim_df['wm_L_rf']*L_rf_scalefactor # also scaling down the y values
-
-        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # do the polynomial fit 
-        poly_coeffs = np.polyfit(MJD_scaled, L_rf_scaled, deg = fit_order)
-        poly_coeffs = list(poly_coeffs)
-        polynomial_fit_scaled = np.poly1d(poly_coeffs, r = False) # r = False just measn that I am providing the poly coefficients, not the roots
-        poly_plot_MJD = np.arange(b_lim_df['wm_MJD'].min(), b_lim_df['wm_MJD'].max(), 1) # the MJD values at which the polyfit will be evaluated for displaying it on the plot, not for interpolation
-        poly_plot_MJD_scaled = poly_plot_MJD - MJD_scaleconst # the scaled MJDs to input into the polynomial fit
-        poly_plot_L_rf_scaled = polynomial_fit_scaled(poly_plot_MJD_scaled)
-        poly_plot_L_rf = poly_plot_L_rf_scaled / L_rf_scalefactor
-
-        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # calculate chi squared of the polyfit
-        poly_MJD_for_chi_scaled = b_lim_df['wm_MJD'] - MJD_scaleconst
-        poly_L_rf_for_chi_scaled = polynomial_fit_scaled(poly_MJD_for_chi_scaled) 
-        poly_L_rf_for_chi = poly_L_rf_for_chi_scaled / L_rf_scalefactor
-        red_chi, red_chi_1sig = chisq(y_m = poly_L_rf_for_chi, y = b_lim_df['wm_L_rf'], yerr = b_lim_df['wm_L_rf_err'], M = (fit_order + 1))
-        chi_sigma_dist = abs(1 - red_chi) / red_chi_1sig
-
-
-        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # using our chosen 'trusted' band, use the polyfit to calculate the L_rf at the MJD values present in our trusted band's data 
-        if extrapolate == True: # if we're extrapolating, then evaluate the polynomial at all of the MJDs of the trusted band, even if it's way outside the region over which we have data for this band
-            interp_MJD = ref_band_MJD
-            interp_MJD_scaled = ref_band_MJD_scaled
-
-        else: # if we're not extrapolating, only evaluate the band's polyfit at the trusted band's mjd values which are within the mjd region covered by the band's actual data
-            interp_MJD = [mjd for mjd in ref_band_MJD if (mjd >= b_lim_df['wm_MJD'].min()) and (mjd <= b_lim_df['wm_MJD'].max() )] ########################################################### HERE IS WHERE WE CHANGE THE INTERPOLATION
-            interp_MJD_scaled = np.array(interp_MJD) - MJD_scaleconst
-        
-        #band_int_lim_C = len(b_lim_df['MJD'].copy()) / (b_lim_df['MJD'].max() - b_lim_df['MJD'].min()) # the constant factor in my interpolation limit equation for the band.  = no of datapoints in band's real data / its MJD span
-        #for j, int_mjd in enumerate(interp_MJD_scaled): # loop through the MJD values at which we're trying to interpolate at and don't allow interpolation beyond a certain limit of MJD
-        #    mjd_dif = [abs(int_mjd - MJD_scaled[k]) for k in range(len(MJD_scaled))] # the MJD difference between this MJD that wer're trying to interpolate at (int_mjd) and the MJDs present in the band's real data 
-            ############################################################ SHOULD I TECHNICALLY USE THE BAND'S FULL DATASET FOR THIS (above) INSTEAD OF THE MJD LIMITED ONE ############################################################
-        #     count_within_50 = len([el for el in mjd_dif if el <=50.0]) # a count of the number of the band's real datapoints 50 days either side of the int_mjd value
-            #interp_limit = 
-
-
-        interp_L_rf_scaled = polynomial_fit_scaled(interp_MJD_scaled)
-        interp_L_rf = interp_L_rf_scaled / L_rf_scalefactor
-
-
-        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # calculate the fudged errors on the polyfit L_rf values
-        interp_column_len = len(interp_MJD)
-        interp_L_rf_err = fudge_polyfit_L_rf_err(b_df, interp_L_rf_scaled, interp_MJD_scaled, MJD_scaleconst, L_rf_scalefactor)
-        interp_b_df = pd.DataFrame({'MJD': interp_MJD, 
-                                    'L_rf': interp_L_rf, 
-                                    'L_rf_err': interp_L_rf_err, 
-                                    'band': [b] * interp_column_len, 
-                                    'em_cent_wl': [b_em_cent_wl] * interp_column_len 
-                                    })
-
-        polyfit_ref_lc_df = pd.concat([polyfit_ref_lc_df, interp_b_df], ignore_index = True)
-
-        plot_polyline_row[:] = [b, poly_plot_MJD, poly_plot_L_rf, red_chi, red_chi_1sig, chi_sigma_dist]
-        plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row
-        # PLOTTING ====================================================================================================================================================================
-        if plot_polyfit == True:
-            b_colour = b_colour_dict[b]
-
-            plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
-                         label = b, c = b_colour)
-            plt.plot(poly_plot_MJD, poly_plot_L_rf, c = b_colour, label = f'red chi = {red_chi:.3f}  \n +/- {red_chi_1sig:.3f}')
-            plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '0.5', 
-                         linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5)
-            
-    if plot_polyfit == True:
-        plt.xlabel('MJD')
-        plt.ylabel('rest frame luminosity')
-        #plt.ylim((-1e41, 5e42))
-        plt.title(f'{ant_name} polyfit order = {fit_order}, reference band = {trusted_band}')
-        plt.legend(loc = 'lower right', bbox_to_anchor = (1.2, 0.0), fontsize = 9)
-        fig.subplots_adjust(right = 0.845, left = 0.07)
-        plt.grid()
-        plt.show()
-
-    return polyfit_ref_lc_df, plot_polyline_df
 
 
 
@@ -701,41 +530,23 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 
 # polyfitting ONE light curve
-idx = 3
-ANT_name = transient_names[idx]
-ANT_df = binned_df_list[idx]
-ANT_bands = list_of_bands[idx]
-reference_band = 'ZTF_g'
-bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
+for idx in range(11):
+    ANT_name = transient_names[idx]
+    ANT_df = binned_df_list[idx]
+    ANT_bands = list_of_bands[idx]
+    polyfit_MJD_range = MJDs_for_fit[ANT_name]
+    reference_band = 'ZTF_g'
+    bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
-polyfit_MJD_range = MJDs_for_fit[ANT_name]
-#polyfit_MJD_range = (58500, 58770)
+    print(ANT_name, bands_for_BB)
+    if ANT_name == 'ZTF20abrbeie':
+        print(ANT_df[ANT_df['band'] == 'PS_i'])
 
+    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 9, min_band_dps = 2, 
+                                            fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
+    
+    print()
 
-
-
-""" min_MJD, max_MJD = polyfit_MJD_range
-lim_df = ANT_df[ANT_df['wm_MJD'] >= min_MJD].copy()
-lim_df = lim_df[lim_df['wm_MJD'] <= max_MJD].copy()
-MJD_scaleconst = lim_df['wm_MJD'].mean()
-L_scaleconst = 1e-41
-
-
-polyfitting(lim_df, MJD_scaleconst, L_scaleconst, max_poly_order = 9) """
-
-
-interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 9, min_band_dps = 5, 
-                                        fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
-
-
-#ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False)
-
-
-""" interp_lc, plot_polyfit_df = polyfit_lc2(ANT_name, ANT_df, fit_order = 9, df_bands = bands_for_BB, min_band_dps = 1, trusted_band = reference_band, fit_MJD_range = polyfit_MJD_range,
-                        extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
- """
-#interp_lc, plot_polyfit_df = polyfit_lc2(ANT_name, ANT_df, fit_order = 5, df_bands = bands_for_BB, trusted_band = reference_band, fit_MJD_range = MJDs_for_fit[ANT_name],
-#                        extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
 
 
 
