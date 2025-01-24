@@ -143,17 +143,37 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
 
     def poly9(x, a, b, c, d, e, f, g, h, i, j):
         return j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+    
+    def poly10(x, a, b, c, d, e, f, g, h, i, j, k):
+        return k*x**10 + j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+    
+    def poly11(x, a, b, c, d, e, f, g, h, i, j, k, l):
+        return l*x**11 + k*x**10 + j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+    
+    def poly12(x, a, b, c, d, e, f, g, h, i, j, k, l, m):
+        return m*x**12 + l*x**11 + k*x**10 + j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+    
+    def poly13(x, a, b, c, d, e, f, g, h, i, j, k, l, m, n):
+        return n*x**13 + m*x**12 + l*x**11 + k*x**10 + j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
+    
+    def poly14(x, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o):
+        return o*x**14 + n*x**13 + m*x**12 + l*x**11 + k*x**10 + j*x**9 + i*x**8 + h*x**7 + g*x**6 + f*x**5 + e*x**4 + d*x**3 + c*x**2 + b*x + a
 
 
     poly_order_dict = {1: poly1,  # a dictionary of polynomial orders and their associated functions, used for curve_fit in the polyfitting function
-                2: poly2, 
-                3: poly3, 
-                4: poly4, 
-                5: poly5, 
-                6: poly6, 
-                7: poly7, 
-                8: poly8, 
-                9: poly9}
+                        2: poly2, # feels like there should be a much more efficient way to write this I am slightly ashamed lol
+                        3: poly3, 
+                        4: poly4, 
+                        5: poly5, 
+                        6: poly6, 
+                        7: poly7, 
+                        8: poly8, 
+                        9: poly9, 
+                        10: poly10, 
+                        11: poly11, 
+                        12: poly12, 
+                        13: poly13, 
+                        14: poly14}
 
     # prepping the data for fitting
     b_L_scaled = b_df['wm_L_rf'].copy() * L_rf_scalefactor # scaled L_rf
@@ -542,7 +562,7 @@ for idx in range(11):
     if ANT_name == 'ZTF20abrbeie':
         print(ANT_df[ANT_df['band'] == 'PS_i'])
 
-    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 9, min_band_dps = 2, 
+    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 9, min_band_dps = 4, 
                                             fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
     
     print()
