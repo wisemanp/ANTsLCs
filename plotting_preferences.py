@@ -511,7 +511,7 @@ MJDs_for_fit = {'ZTF18aczpgwm': (58400, 59680),
                 'ZTF20abodaps': (58920, None), 
                 'ZTF20abrbeie': (None, None), 
                 'ZTF20acvfraq': (58700, None), 
-                'ZTF21abxowzx': (59400, 60200), # this gets rid of the little UVOT burst
+                'ZTF21abxowzx': (59400, 60400), 
                 'ZTF22aadesap': (59500, None), 
                 'ASASSN-17jz': (None, None), 
                 'ASASSN-18jd': (None, None), 
