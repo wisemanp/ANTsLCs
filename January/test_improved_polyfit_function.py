@@ -79,7 +79,30 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
 
 
 
+def check_lightcurve_coverage(b_df, mjd_binsize):
+    """
+    Bins the light curve into mjd bins and counts the number of dapoints in each bin. Can be used as a measure of the light curve data coverage for the band. It's an improvement on just doing 
+    (number of datapoints in the band)/(MJD span of the band) because a lot of the data could be densely packed in a particular region and sparsely distributed across the rest, and this would give the 
+    impression that the light curve was quite well sampled when it's not really. 
 
+    You can use mean(count of datapoints in mjd_binsize bin) as a calculation of the light curve coverage. 
+    """
+
+    MJD_bin_min = int( round(b_df['wm_MJD'].min(), -1) - mjd_binsize )
+    MJD_bin_max = int( round(b_df['wm_MJD'].max(), -1) + mjd_binsize )
+    MJD_bins = range(MJD_bin_min, (MJD_bin_max + mjd_binsize), mjd_binsize) # create the bins
+
+    # binning the data
+    # data frame for the binned band data  - just adds a column of MJD_bin to the data, then we can group by all datapoints in the same MJD bin
+    b_df['MJD_bin'] = pd.cut(b_df['wm_MJD'], MJD_bins)
+
+    # binning the data by MJD_bin
+    b_binned_df = b_df.groupby('MJD_bin', observed = False).apply(lambda g: pd.Series({'count': g['wm_MJD'].count()})).reset_index()
+    mean_count = b_binned_df['count'].mean()
+    std_count = b_binned_df['count'].std()
+    coverage_term = mean_count * len(b_df['wm_MJD']) / (1 + std_count) # = mean * no datapoints / (1 + std)
+
+    return coverage_term
 
 
 
@@ -98,7 +121,7 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
 
     L_rf_scalefactor: float. Used to scale-down the rest frame luminosity. Usually = 1e-41.   
 
-    max_poly_order: int between 3 <= max_poly_order <= 9. The maximum order of polynomial that you want to be allowed to fit. 
+    max_poly_order: int between 3 <= max_poly_order <= 14. The maximum order of polynomial that you want to be allowed to fit. 
 
 
     OUTPUTS
@@ -183,19 +206,52 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     # calculate how well-sampled the band is 
     b_MJD_span = b_df['wm_MJD'].max() - b_df['wm_MJD'].min() # the span of MJDs that the band makes
     b_count = len(b_df['wm_MJD']) # the number of datapoints in the band's data
+    band_coverage_quality = check_lightcurve_coverage(b_df, mjd_binsize = 50)
 
     # restrict the order of polynomial available to poorly sampled band lightcurves
-    if b_MJD_span < 30:
-        poly_orders_available = [1]
+    #if b_MJD_span < 30:
+    #    poly_orders_available = [1]
 
-    elif (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01 or (b_count < 20):
-        poly_orders_available = [1, 2, 3]
+    #elif (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01 or (b_count < 20):
+    #    poly_orders_available = [1, 2, 3]
     
-    elif (b_MJD_span < 500) and (b_count < 10):
+    #elif (b_MJD_span < 500) and (b_count < 10):
+    #    poly_orders_available = [1, 2]
+
+    #else:
+    #    poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
+
+    if band_coverage_quality >= 80.0:
+        poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
+
+    elif (band_coverage_quality >= 50) and (band_coverage_quality < 80):
+        poly_orders_available = np.arange(1, (12 + 1), 1)
+
+    elif  (band_coverage_quality >= 30) and (band_coverage_quality < 50):
+        poly_orders_available = np.arange(1, (10 + 1), 1)
+
+    elif  (band_coverage_quality >= 10) and (band_coverage_quality < 30):
+        poly_orders_available = np.arange(1, (8 + 1), 1)
+
+    #elif  (band_coverage_quality >= 10) and (band_coverage_quality < 20):
+    #    poly_orders_available = np.arange(1, (7 + 1), 1)
+
+    elif  (band_coverage_quality >= 6) and (band_coverage_quality < 10):
+        poly_orders_available = np.arange(1, (6 + 1), 1)
+
+    elif  (band_coverage_quality >= 2) and (band_coverage_quality < 6):
+        poly_orders_available = np.arange(1, (3 + 1), 1)
+
+    elif  (band_coverage_quality >= 1) and (band_coverage_quality < 2):
         poly_orders_available = [1, 2]
 
-    else:
-        poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
+    elif  (band_coverage_quality >= 0) and (band_coverage_quality < 1):
+        poly_orders_available = [1]
+
+    if b_MJD_span < 50.0:
+        poly_orders_available = [1]
+    
+    
 
     if b_count in poly_orders_available: # if the number of datapoints = polynomial order
         idx = poly_orders_available.index(b_count)
@@ -231,7 +287,7 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     plot_poly_MJD = plot_poly_sc_MJD + mjd_scale_C
     plot_poly_L = plot_poly_sc_L/L_rf_scalefactor
 
-    return optimal_params, plot_poly_MJD, plot_poly_L, best_redchi, best_redchi_1sig, poly_sigma_dist
+    return optimal_params, plot_poly_MJD, plot_poly_L, best_redchi, best_redchi_1sig, poly_sigma_dist, band_coverage_quality
 
 
 
@@ -442,7 +498,7 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # do the polynomial fit + calculate the reduced chi squared
-        poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist = polyfitting(b_df = b_lim_df, mjd_scale_C = MJD_scaleconst, L_rf_scalefactor = L_rf_scalefactor, max_poly_order = max_poly_order)
+        poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist, b_coverage_quality = polyfitting(b_df = b_lim_df, mjd_scale_C = MJD_scaleconst, L_rf_scalefactor = L_rf_scalefactor, max_poly_order = max_poly_order)
 
         plot_polyline_row[:] = [b, poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist]
         plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # appending our polyfit info to a dataframe containing info on all of the bands' polynomial fits
@@ -452,7 +508,7 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
 
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
-            plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'fit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
+            plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'b cov quality = {b_coverage_quality:.3f} \nfit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
             continue
 
         # evaluate whether each MJD is worth interpolating, e.g. if it's like 500 days away from all other datapoints, don't interpolate there because the polyfit isn't 
@@ -494,7 +550,7 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
 
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
-            plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'fit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
+            plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'b cov quality = {b_coverage_quality:.3f} \nfit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
             plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                          linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5)
             #plt.fill_between(x = interp_b_df['MJD'], y1 = (interp_b_df['L_rf'] - interp_b_df['L_rf_err']), y2 = (interp_b_df['L_rf'] + interp_b_df['L_rf_err']), color = b_colour, alpha = 0.5)
@@ -562,7 +618,7 @@ for idx in range(11):
     if ANT_name == 'ZTF20abrbeie':
         print(ANT_df[ANT_df['band'] == 'PS_i'])
 
-    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 9, min_band_dps = 4, 
+    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
                                             fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
     
     print()
