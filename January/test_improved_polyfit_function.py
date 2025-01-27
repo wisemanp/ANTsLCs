@@ -18,7 +18,7 @@ from functions import load_ANT_data, ANT_data_L_rf, bin_lc, fit_BB_across_lc, ch
 
 
 
-def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_region = 50, interp_cap = 150, factor = 100, simple_cutoff = False, simple_cut = 50):
+def allow_interpolation(interp_x, all_data_x, b_coverage_quality, local_density_region = 50, interp_cap = 150, gapsize = 100, factor = 100, simple_cutoff = False, simple_cut = 50):
     """
     Here I have written a formula to determine whether or not to interpolate a band at a given mjd value based on
     how well-sampled the band is, so that poorly sampled bands cannot interpolate very far, and well-sampled bands can interpolate much further
@@ -33,11 +33,14 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
 
     all_data_x: array of the x values of teh actual data that we're interpolating
 
-    band_lc_density: float. band_lc_density = no. datapoints in the band / MJD span of the band. So, this is a const across the whole band
+    b_coverage_density: float. output in the function check_lightcurve_coverage. A score based on how many datapoints the band has and how well distrbuted this data is. The higher, the better the lightcurve
 
     local_density_region: The region over which we count the lcoal datapoint density. This would be: (interp_x - local_density_region) <= x <= (interp_x + local_density_region)
 
     interp_cap: the maximum value out to which we can interpolate. Only the well-sampled bands would reach this cap
+
+    gapsize: float. The distance between 2 consecutive datapoints which is considered to be a 'gap'. Since polyfits vary wildly over gaps, we will not interpolate whatsoever across a gap, so if there is a 
+            gap in the data > gapsize, we will not interpolate at all here
 
     factor: a factor in ther equation. 
 
@@ -49,12 +52,22 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
                 (provided that we're allowed to interpolate anyway)
     """
 
-    MJD_diff = abs(all_data_x - interp_x) # takes the MJD difference between interp_x and the MJDs in the band's real data
+    directional_MJD_diff = all_data_x - interp_x # takes the MJD difference between interp_x and the MJDs in the band's real data. Directional because there will be -ve values for datapoints before interp_x and +ve ones for datapoints after
+   
+    # calculating the closest MJD difference between the closest datapoints before and after interp_x, if there is one (there only wouldn't be one if interp_x was at the very edge of )
+    # in the equations below I have allowed directional_MJD_diff >=/<= 0.0 because if directional_MJD_diff == 0.0, then we'd be interpolating at an MJD at which we have a real datapoint, so we're allowed to interpolate at interp_x here, regardlesss 
+    # if there's a gap afterwrads because this wouldn't be considered interpolating over a gap, we're interpolating at a point which already had a true datapoint there
+    closest_MJD_diff_before = abs(max(directional_MJD_diff[directional_MJD_diff <= 0.0])) # closest MJD diff of datapoints before 
+
+    closest_MJD_diff_after = min(directional_MJD_diff[directional_MJD_diff >= 0.0])
+
+
+    MJD_diff = abs(directional_MJD_diff) # takes the MJD difference between interp_x and the MJDs in the band's real data
     local_density = (MJD_diff <= local_density_region).sum() # counts the number of datapoints within local_density_region days' of interp_x
     closest_MJD_diff = min(MJD_diff)
 
     if simple_cutoff == False:
-        interp_lim = (band_lc_density * local_density * factor) 
+        interp_lim = (b_coverage_quality * local_density * factor) 
         interp_lim = min(interp_cap, interp_lim) # returns the smaller of the two, so this caps the interpolation limit at interp_cap
 
         # THE MIDDLE SECTIONS GET PREFERENTIAL TREATMENT COMPARED TO THE CENTRAL ONES
@@ -62,16 +75,17 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
         #    interp_lim = interp_lim*2
         
 
-        if closest_MJD_diff < interp_lim: # if interp_x lies within our calculated interpolation limit, then allow interpolation here
+        if (closest_MJD_diff < interp_lim) and (closest_MJD_diff_before < gapsize) and (closest_MJD_diff_after < gapsize): # if interp_x lies within our calculated interpolation limit, then allow interpolation here. Also don't allow interpolation over gaps
+            interp_allowed = True
+        else: 
+            interp_allowed = False
+        
+    else:
+        if (closest_MJD_diff <= simple_cut) and (closest_MJD_diff_before < gapsize) and (closest_MJD_diff_after < gapsize): # if interp_x lies within our calculated interpolation limit, then allow interpolation here. Also don't allow interpolation over gaps
             interp_allowed = True
         else: 
             interp_allowed = False
 
-    else:
-        if closest_MJD_diff <= simple_cut: # if interp_x lies within our calculated interpolation limit, then allow interpolation here
-            interp_allowed = True
-        else: 
-            interp_allowed = False
 
     return interp_allowed, MJD_diff
     
@@ -79,13 +93,26 @@ def allow_interpolation(interp_x, all_data_x, band_lc_density, local_density_reg
 
 
 
-def check_lightcurve_coverage(b_df, mjd_binsize):
+def check_lightcurve_coverage(b_df, mjd_binsize = 50):
     """
     Bins the light curve into mjd bins and counts the number of dapoints in each bin. Can be used as a measure of the light curve data coverage for the band. It's an improvement on just doing 
     (number of datapoints in the band)/(MJD span of the band) because a lot of the data could be densely packed in a particular region and sparsely distributed across the rest, and this would give the 
     impression that the light curve was quite well sampled when it's not really. 
 
-    You can use mean(count of datapoints in mjd_binsize bin) as a calculation of the light curve coverage. 
+    coverage_term = mean(count of datapoints in mjd_binsize bin) * (no datapoints across the lightcurve) / (1 + std dev(count of datapoints in mjd_binsize bin)) as a calculation of the light curve coverage. 
+
+    INPUTS
+    -------------
+    b_df: a dataframe containing the band's data. We only actually look at the column 'wm_MJD'
+
+    mjd_binsize: int. The size of the bins within which we would like to count the number of datapoints in. This is to test how well-distributed the light curve's data is
+
+
+    RETURNS
+    ----------
+    
+    coverage_term = A score based on light curve coverage. The higher, the better. Higher scores will come from lightcurves which have well-distributed data across the light curve and lots of data in general. 
+
     """
 
     MJD_bin_min = int( round(b_df['wm_MJD'].min(), -1) - mjd_binsize )
@@ -209,19 +236,7 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     band_coverage_quality = check_lightcurve_coverage(b_df, mjd_binsize = 50)
 
     # restrict the order of polynomial available to poorly sampled band lightcurves
-    #if b_MJD_span < 30:
-    #    poly_orders_available = [1]
-
-    #elif (b_MJD_span < 100) or (b_count/b_MJD_span) < 0.01 or (b_count < 20):
-    #    poly_orders_available = [1, 2, 3]
-    
-    #elif (b_MJD_span < 500) and (b_count < 10):
-    #    poly_orders_available = [1, 2]
-
-    #else:
-    #    poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
-
-    if band_coverage_quality >= 80.0:
+    if band_coverage_quality >= 80.0: # the best covered light curves are allowed to try the max order of polynomial
         poly_orders_available = np.arange(1, (max_poly_order + 1), 1)
 
     elif (band_coverage_quality >= 50) and (band_coverage_quality < 80):
@@ -245,7 +260,7 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     elif  (band_coverage_quality >= 1) and (band_coverage_quality < 2):
         poly_orders_available = [1, 2]
 
-    elif  (band_coverage_quality >= 0) and (band_coverage_quality < 1):
+    elif  (band_coverage_quality >= 0) and (band_coverage_quality < 1): # the worst covered lightcurves have very restricted access to polynomial orders
         poly_orders_available = [1]
 
     if b_MJD_span < 50.0:
@@ -376,7 +391,7 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
 
 
 
-def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
+def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
     """
     Peforms a polynomial fit for each band within df_bands for the light curve. 
 
@@ -477,7 +492,6 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
                          label = b, c = b_colour_dict[b])
             continue
 
-        b_lc_density = (len(b_lim_df['wm_MJD'])) / (b_lim_df['wm_MJD'].max() - b_lim_df['wm_MJD'].min()) # the density of datapoints across the band
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # when doing the polyfit, it keeps giving 'RankWarning: Polyfit may be poorly conditioned', so chatGPT suggested to try scaling down the x values input 
         # to correct for x scaling after the polyfit has been taken, we just need to generate the MJDs at which we want the polyfit evaluated, then input (MJD - MJD_scaleconst)
@@ -515,7 +529,7 @@ def polyfit_lc4(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_d
         # well constrained there. We allow better sampled bands to interpolate further out than poorly sampled bands since their fits are better constrained. 
         allow_interp = []
         for int_sc_mjd in interp_MJD_scaled:
-            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, band_lc_density = b_lc_density, local_density_region = 50, interp_cap = 50, factor = 100, simple_cutoff = False, simple_cut = 50)
+            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, b_coverage_quality = b_coverage_quality, local_density_region = 50, interp_cap = 50, gapsize = 100, factor = 100, simple_cutoff = False, simple_cut = 50)
             allow_interp.append(allow_int)
 
         #allow_interp = [True]*len(allow_interp) # TESTING SOMETHING GET RID OF THIS IT OVERWRITES THE ALLOW_INTERPOLATION FUNCTION'S RESULT
@@ -618,7 +632,7 @@ for idx in range(11):
     if ANT_name == 'ZTF20abrbeie':
         print(ANT_df[ANT_df['band'] == 'PS_i'])
 
-    interp_lc, plot_polyfit_df = polyfit_lc4(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
+    interp_lc, plot_polyfit_df = new_polyfit_lc(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
                                             fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
     
     print()
