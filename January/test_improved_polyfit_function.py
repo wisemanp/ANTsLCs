@@ -15,6 +15,126 @@ from functions import load_ANT_data, ANT_data_L_rf, bin_lc, fit_BB_across_lc, ch
 
 
 
+def identify_straggler_datapoints(b_df, min_band_datapoints = 5, min_non_straggler_count = 4, straggler_dist = 200):
+    """
+    We want to target bands which have a few straggling datapoints near the start/end of the light curve and we don't want to include these in our data for polyfitting. Instead, we want to put these datapoints in a bin
+    and put them with the closest interpolated datapoint position, provided that it's not too far away. For example, if ZTF_g has one datapoint 400 days after the rest of the light curve, at MJD = 58100 and L_rf = L_Rf_dp, we don't want this
+    influencing our polynomial fit. Lets say that our reference band has nearby datapoints at [..., 58079, 58090, 58125, ...] we will assume that the L_rf is unchanged over a period of a maximum of 20 days, so we
+    will set an interpolated interp_L_rf point at 58090 = L_rf_dp. Basically, we're assuming that there will be no significant evolution of L_rf over a maximum fo a 20 day period. We should caluclate the error on this value as
+    we would with the usual interpolated datapoints, removing the term which calculates the error required to set the local reduced chi squared to 1, so just the mean error of the vlosest 20 datapoints, then a term proportional 
+    to the number of days interpolated. 
+    
+    INPUTS:
+    --------------
+    b_df: dataframe. A single band's dataframe
+
+    min_band_datapoints: (int) the minimum number of datapoints of a band for us to even bother polyfitting it. 
+
+    straggler_dist: int. The number of days out which the datapoint has to be to be considered a potential straggler. i.e. if it's > straggler_dist away from either side of the data, an
+    
+
+    OUTPUTS
+    -------------
+    stragglers: a dataframe with all the same columns as b_df, where we have taken the rows in b_df which are considered to have 'straggler' data and we have put them into this dataframe. This is the part
+    of the light curve that we don't want to fit to, but we will put into bins with the nearest interpolated datapoints (as long as this isn't too far away)
+
+    non_stragglers: a dataframe, similar to stragglers which contains all of the 'non-straggler' rows from b_df. This is the part of the light curve that we want to fit to
+    """
+    b_count = b_df['wm_MJD'].count()
+    colnames = b_df.columns.tolist()
+
+    if b_count < min_band_datapoints: # if there are less than 5 datapoints, consider each point in the band a straggler
+        stragglers = b_df.copy()
+        non_stragglers = pd.DataFrame(columns = colnames) # an empty dataframe
+
+    
+    else: # if we have a decent number of datapoints in the band, then we're just looking for general straggling datapoints at the start or end of the band's light curve that we want to cut out
+        if len(b_df['wm_MJD']) > 20:
+            check_for_stragglers1 = b_df.iloc[:10].copy()
+            check_for_stragglers2 = b_df.iloc[-10:].copy()
+            check_for_stragglers_df = pd.concat([check_for_stragglers1, check_for_stragglers2], ignore_index=False) # the first and last 10 datapoints, keep original indicies from b_df
+
+        else:
+            check_for_stragglers_df = b_df.copy()
+
+        straggler_indicies = []
+        check_for_stragglers_idx = check_for_stragglers_df.index
+        for j in range(len(check_for_stragglers_idx)):
+            i = check_for_stragglers_idx[j] # the row index in check_for_stragglers
+            dp_row = check_for_stragglers_df.loc[i].copy() # the row associated with this index
+            mjd = dp_row['wm_MJD']
+            directional_MJD_diff = b_df['wm_MJD'] - mjd
+            mjd_diff_before = directional_MJD_diff[directional_MJD_diff < 0.0] # don't put <= here or below since it will then take the MJD diff with itself into account. 
+            mjd_diff_after = directional_MJD_diff[directional_MJD_diff > 0.0]
+            no_dps_50_days = (abs(directional_MJD_diff) <= 50.0 ).sum()
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # counting the number of datapoints before and after this mjd
+            no_dps_before = len(mjd_diff_before)
+            no_dps_after = len(mjd_diff_after)
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # calculating the closest mjd difference before and after the datapoint
+            closest_MJD_diff_before = abs(max(mjd_diff_before)) if no_dps_before > 0 else None # if this datapoint isn't the very first one. This part is more used to catch out stragglers at the end of the light curve. It will catch the last datapoint
+            closest_MJD_diff_after = abs(min(mjd_diff_after)) if no_dps_after > 0 else None # if this datapoint isn't the very last one. This part is more used to catch out stragglers at the start of the light curve. It will catch the first datapoint
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # given the straggler criteria, put this datapoint's row in either the stragglers or non-stragglers dataframe
+            if (no_dps_before > 0) and (no_dps_after > 0): # if the datapoint is not the first or last datapoint
+                if ((closest_MJD_diff_before >= straggler_dist) or (closest_MJD_diff_after >= straggler_dist)) and (no_dps_50_days < 4): 
+                    
+                    if (no_dps_after < 3): # looking to the end of the light curve
+                        if i not in straggler_indicies:
+                            straggler_indicies.append(i)
+                        b = j
+                        for k in range(no_dps_after): # # iterate through the datapoints after the straggler and add them to the stragglers list
+                            b = b + 1
+                            idx = check_for_stragglers_idx[b]
+
+                            if idx not in straggler_indicies:
+                                straggler_indicies.append(idx)
+
+
+                    elif (no_dps_before < 3): # looking to the start of the light curve
+                        if i not in straggler_indicies:
+                            straggler_indicies.append(i)
+
+                        b = j
+                        for k in range(no_dps_before): # iterate through the datapoints before the straggler and add them to the stragglers list
+                            b = b - 1
+                            idx = check_for_stragglers_idx[b]
+
+                            if idx not in straggler_indicies:
+                                straggler_indicies.append(idx)
+
+
+
+                            
+                            
+
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            elif no_dps_before == 0: # if it's the very first datapoint
+                if closest_MJD_diff_after >= straggler_dist:
+                    if i not in straggler_indicies:
+                        straggler_indicies.append(i)
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            elif no_dps_after == 0: # if it's the very last datapoint
+                if closest_MJD_diff_before >= straggler_dist:
+                    if i not in straggler_indicies:
+                        straggler_indicies.append(i)
+
+        stragglers = b_df.loc[straggler_indicies].copy().reset_index(drop = True)
+        non_stragglers = b_df.drop(index = straggler_indicies).reset_index(drop = True)
+
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # if, after all of those checks, we are now left with a non-straggler dataframe of very few datapoints, we may as well not fit the light curve at all
+    if len(non_stragglers.index) < min_non_straggler_count:
+        stragglers = b_df
+        non_stragglers = pd.DataFrame(columns = colnames)      
+
+    return stragglers, non_stragglers
 
 
 
@@ -391,7 +511,7 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
 
 
 
-def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
+def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, straggler_dist, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
     """
     Peforms a polynomial fit for each band within df_bands for the light curve. 
 
@@ -442,6 +562,7 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
     if plot_polyfit == True:
         fig = plt.figure(figsize = (16, 7.5))
     
+    # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # limiting the MJD over which we are polyfitting, because for some ANTs, we have some straggling datapoints far away from the rest of the light curve and we don't want to fit these
     fit_min_MJD, fit_max_MJD = fit_MJD_range # unpack the tuple that goes as (MJD min, MJD max)
 
@@ -484,12 +605,21 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
         plot_polyline_rowno = len(plot_polyline_df['band']) # the row number for this band's data (because we're appending each row to the last row of the dataframe essentially)
         plot_polyline_row = list(np.zeros(len(columns))) # fill the plot data with zeros then overwrite these values
 
-        
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        if len(b_lim_df['wm_MJD']) <= min_band_dps: # getting rid of bands with too little data
+        # removing straggler datapoints or light curves with too few datapoints to bother fitting
+        straggler_df, non_straggler_df = identify_straggler_datapoints(b_lim_df, min_band_datapoints = min_band_dps, straggler_dist = straggler_dist)
+        b_lim_df = non_straggler_df.copy() # just re-define b_lim_df as the dataframe containing the non-stragglers, since this is the data that we're polyfitting, the rest we
+                                            # will stick into a bin and group it with the closest interpolated datapoints (provided they aren't too far apart)
+        
+        
+        if b_lim_df.empty: # plotting the bands which have too little data to bother polyfitting
+            b_colour = b_colour_dict[b]
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
-                         label = b, c = b_colour_dict[b])
+                         label = b, c = b_colour)
+            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 2)
+            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 3)
+
             continue
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -506,7 +636,7 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
             interp_MJD_scaled = ref_band_MJD_scaled
 
         else: # if we're not extrapolating, only evaluate the band's polyfit at the trusted band's mjd values which are within the mjd region covered by the band's actual data
-            interp_MJD = [mjd for mjd in ref_band_MJD if (mjd >= b_lim_df['wm_MJD'].min()) and (mjd <= b_lim_df['wm_MJD'].max() )] ########################################################### HERE IS WHERE WE CHANGE THE INTERPOLATION
+            interp_MJD = [mjd for mjd in ref_band_MJD if (mjd >= b_lim_df['wm_MJD'].min()) and (mjd <= b_lim_df['wm_MJD'].max())] 
             interp_MJD_scaled = np.array(interp_MJD) - MJD_scaleconst
 
         
@@ -519,17 +649,17 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
 
         if b == trusted_band: # we don't need ot interpolate the trusted band
             b_colour = b_colour_dict[b]
-
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
             plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'b cov quality = {b_coverage_quality:.3f} \nfit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
             continue
-
+        
+        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # evaluate whether each MJD is worth interpolating, e.g. if it's like 500 days away from all other datapoints, don't interpolate there because the polyfit isn't 
         # well constrained there. We allow better sampled bands to interpolate further out than poorly sampled bands since their fits are better constrained. 
         allow_interp = []
         for int_sc_mjd in interp_MJD_scaled:
-            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, b_coverage_quality = b_coverage_quality, local_density_region = 50, interp_cap = 50, gapsize = 100, factor = 100, simple_cutoff = False, simple_cut = 50)
+            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, b_coverage_quality = b_coverage_quality, local_density_region = 50, interp_cap = 30, gapsize = 100, factor = 1, simple_cutoff = False, simple_cut = 50)
             allow_interp.append(allow_int)
 
         #allow_interp = [True]*len(allow_interp) # TESTING SOMETHING GET RID OF THIS IT OVERWRITES THE ALLOW_INTERPOLATION FUNCTION'S RESULT
@@ -564,6 +694,8 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
 
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
+            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 50, zorder = 3)
+            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
             plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'b cov quality = {b_coverage_quality:.3f} \nfit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
             plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                          linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5)
@@ -621,6 +753,7 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 # polyfitting ONE light curve
 for idx in range(11):
+#for idx in [4]:
     ANT_name = transient_names[idx]
     ANT_df = binned_df_list[idx]
     ANT_bands = list_of_bands[idx]
@@ -628,12 +761,10 @@ for idx in range(11):
     reference_band = 'ZTF_g'
     bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
-    print(ANT_name, bands_for_BB)
-    if ANT_name == 'ZTF20abrbeie':
-        print(ANT_df[ANT_df['band'] == 'PS_i'])
+    print(ANT_name)
 
     interp_lc, plot_polyfit_df = new_polyfit_lc(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
-                                            fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
+                                            straggler_dist = 100, fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
     
     print()
 
