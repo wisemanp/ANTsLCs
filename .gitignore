@@ -9,6 +9,7 @@
 # ignore the plots and outputs folder
 plots/
 outputs/
+data/
 
 # ignore some specific pycache files
 November/__pycache__/plotting_preferences.cpython-311.pyc
