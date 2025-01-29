@@ -81,7 +81,7 @@ def identify_straggler_datapoints(b_df, min_band_datapoints = 5, min_non_straggl
             #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # given the straggler criteria, put this datapoint's row in either the stragglers or non-stragglers dataframe
             if (no_dps_before > 0) and (no_dps_after > 0): # if the datapoint is not the first or last datapoint
-                if ((closest_MJD_diff_before >= straggler_dist) or (closest_MJD_diff_after >= straggler_dist)) and (no_dps_50_days < 4): 
+                if ((closest_MJD_diff_before >= straggler_dist) and (closest_MJD_diff_after >= straggler_dist)) and (no_dps_50_days < 4): 
                     
                     if (no_dps_after < 3): # looking to the end of the light curve
                         if i not in straggler_indicies:
@@ -135,6 +135,83 @@ def identify_straggler_datapoints(b_df, min_band_datapoints = 5, min_non_straggl
         non_stragglers = pd.DataFrame(columns = colnames)      
 
     return stragglers, non_stragglers
+
+
+
+
+
+
+
+
+
+def utilise_straggler_data(interpolated_df, straggler_df, int_MJD, pairing_distance):
+    """
+    Only run this if straggler_df is not an empty dataframe. This function takes the straggler data and pairs it up with the closest MJD in the interpolation reference band, 
+    provided they aren't too far apart. 
+    
+    Let's say we have a straggler datapoint with MJD_s and L_rf_s, and the closest interpolation MJD is MJD_i = MJD_s + 10. Provided that 10 < pairing_distance, this funciton
+    will assume that L_rf(MJD_s) = L_rf(MJD_i), such that we now have a datapoint at MJD_i to use for the blackbody fit. We will add a fudged error onto L_rf(MJD_i) which
+    has terms which account for the uncertainty on L_rf_s and how far apart MJD_s and MJD_i are. 
+
+    
+    INPUTS
+    -------------
+    interpolated_df: (DataFrame). A Dataframe for ONE BAND of a light curve, containing its interpolated light curve data
+
+    straggler_df: (DataFrame). A dataframe for ONE BAND containing the datapoints which have been considered to be 'stragglers'
+
+    int_MJD: (Pandas Series). A series of the MJD values at which the band's interpolation will be evaluated at
+
+    pairing_distance: (float). The maximum distance in MJD over which we can assume the luminosity is constant to pair up our straggler datapoint with the
+    closest MJD value within int_MJD. i.e. if the closest value in int_MJD is 15 days away from the straggler datapoint's MJD, and pairing distance = 10, we would not be able
+    to make use of this straggler datapoint. 
+
+    
+    OUTPUTS
+    -------------
+    interpolated_df: (DataFrame). A DataFrame containing all of the same data as the input interpolated_df, with the addition of the 'interpolated' straggler datapoints, too. This
+    is where we assumed that the luminosity was a constant over a small window and paired up the straggler datapoint with an interpolation mjd value.
+
+    """
+
+
+    colnames = straggler_df.columns.tolist()
+    paired_straggler_df = pd.DataFrame(columns = colnames) # make a new dataframe for the straggler datapoints which have been paired up with the closest interpolaton MJD and include its fudged error
+
+    for i in straggler_df.index:
+        straggler_row = straggler_df.loc[i].copy()
+        mjd_s = straggler_row['wm_MJD']
+        directional_mjd_diff = int_MJD - mjd_s
+        mag_mjd_diff = abs(directional_mjd_diff)
+        closest_diff = min(mag_mjd_diff) 
+
+        if closest_diff <= pairing_distance: # if the closest interpolating MJD is close enough, then we can assume L_rf = const in this small time window (this is almost like binning)
+            closest_idx = mag_mjd_diff.idxmin()
+            closest_int_MJD = int_MJD.iloc[closest_idx] # this is the MJD that we will assign to the straggling datapoint to make it usable for the BB fitting
+
+            # calculating hthe fudged error
+            L_s = straggler_row['wm_L_rf']
+            L_err_s = straggler_row['wm_L_rf_err']
+            fudged_err = fudge_interpolation_error_formula(mean_err = L_err_s, mjd_dif = closest_diff, L = L_s, straggler = True)
+
+            # reassigning the values in straggler_row to our updated ones, ready for BB fitting
+            straggler_row['wm_MJD'] = closest_int_MJD 
+            straggler_row['wm_L_rf_err'] = fudged_err
+
+            # add this updated straggler row to the paired straggler dataframe ready to concatenate to the dataframe containing the dta for BB fitting
+            paired_straggler_df = pd.concat([paired_straggler_df, straggler_row.to_frame().T], ignore_index = True)
+
+    if paired_straggler_df.empty == False:
+        interpolated_df = pd.concat([interpolated_df, paired_straggler_df], ignore_index = True)
+
+
+    return interpolated_df
+
+
+
+
+
+
 
 
 
@@ -255,7 +332,7 @@ def check_lightcurve_coverage(b_df, mjd_binsize = 50):
 
 
 
-def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
+def polyfitting(b_df, band_coverage_quality, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     """
     This function uses chi squred minimisation to optimise the choice of the polynomial order to fit to a band in a light curve, and also uses curve_fit to find
     the optimal parameters for each polynomial fit. Bands with little data are not allowed to use higher order polynomials to fit them
@@ -263,6 +340,9 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     INPUTS:
     ---------------
     b_df: a dataframe of the (single-band) lightcurve which has been MJD-limited to the region that you want to be polyfitted. 
+
+    band_coverage_quality: (float). A score calculated within teh check_lightcurve_coverage function which si large for light curves with lots fo datapoints
+    which are well-distributed across the light curve's mjd span
 
     mjd_scale_C: float. best as the mean MJD in the band or overall lightcurve. Used to scale-down the MJD values that we're fitting
 
@@ -353,7 +433,7 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
     # calculate how well-sampled the band is 
     b_MJD_span = b_df['wm_MJD'].max() - b_df['wm_MJD'].min() # the span of MJDs that the band makes
     b_count = len(b_df['wm_MJD']) # the number of datapoints in the band's data
-    band_coverage_quality = check_lightcurve_coverage(b_df, mjd_binsize = 50)
+    
 
     # restrict the order of polynomial available to poorly sampled band lightcurves
     if band_coverage_quality >= 80.0: # the best covered light curves are allowed to try the max order of polynomial
@@ -385,6 +465,9 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
 
     if b_MJD_span < 50.0:
         poly_orders_available = [1]
+
+    elif b_MJD_span < 100:
+        poly_orders_available = [1, 2]
     
     
 
@@ -428,6 +511,42 @@ def polyfitting(b_df, mjd_scale_C, L_rf_scalefactor, max_poly_order):
 
 
 
+def fudge_interpolation_error_formula(mean_err, mjd_dif, L, straggler = False):
+        """
+        A fudge formula inspired by superbol which calculates an error for interpolated datapoints. 
+
+        INPUTS
+        -----------
+        mean_err: (float) the mean error on the nearest X datapoints. If you're utilising straggler data, just input the error on your straggler datapoint
+
+        mjd_dif: (float) the mjd span over which we are interpolating
+
+        L: (float) the rest frame luminosity of the interpolated datapoint. Ideally, this would be scaled down
+
+        Straggler: (bool) whether or not you're calculating the error when trying to utilise straggler datapoints, or just calculating the error on the interpolated datapoints
+        from the polynomial fits. False if interpolating with polynomial fits, True if utilising straggler datapoints
+
+        RETURNS
+        -------------
+        er: (float). The fudged error calculated for the interpolated datapoint. If you input L as a scaled value, er will be scaled by the same value as well. 
+
+        """
+        if straggler == False:
+            fraction = 0.05
+
+        else: # this adds a larger % error on the straggler points becuase we're assuming constant L_rf in a time window
+            fraction = 0.075
+
+        x = abs( L * (mjd_dif / 10) ) 
+        er = mean_err + fraction * x  # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
+
+        if er > abs(L):
+            er = abs(L)
+
+        return er
+
+
+
 
 
 def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs, MJD_scaledown, L_rf_scaledown):
@@ -467,15 +586,6 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
     poly_L_rf_err_list: a list of our fudged L_rf_err values for our polyfit interpolated data. 
 
     """
-    def fudge_error_formula(mean_err, mjd_dif, L_scaled):
-        x = abs( L_scaled * (mjd_dif / 10) )
-        er = mean_err + 0.05 * x  # this adds some % error for every 10 days interpolated - inspired by Superbol who were inspired by someone else
-
-        if er > abs(L_scaled):
-            er = abs(L_scaled)
-
-        return er
-    #---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     rb_df = real_b_df.sort_values(by = 'wm_MJD', ascending = True) # making sure that the dataframe is sorted in ascending order of MJD, just in case. The real band's dataframe
     rb_MJDs = np.array(rb_df['wm_MJD'].copy())
@@ -493,7 +603,7 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
         sc_mean_L_rf_err = np.mean(np.array(sc_closest_20_err)) # part of the error formula = mean L_rf_err of the 20 closest datapoints in MJD
         closest_MJD_diff = MJD_diff[sort_by_MJD_closeness[0]]
 
-        sc_poly_L_rf_er = fudge_error_formula(sc_mean_L_rf_err, closest_MJD_diff, sc_L)
+        sc_poly_L_rf_er = fudge_interpolation_error_formula(sc_mean_L_rf_err, closest_MJD_diff, sc_L)
         poly_L_rf_er =  sc_poly_L_rf_er / L_rf_scaledown # to scale L_rf (fudged) error
         
         if poly_L_rf_er < 0.0:
@@ -619,8 +729,11 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
                          label = b, c = b_colour)
             plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 2)
             plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 3)
-
             continue
+        
+        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # evaluating the quality of the band's light curve. Band_coverage quality is a score which is larger for lightcurves with lots of datapoints more evenly distributed across the mjd span
+        band_coverage_quality = check_lightcurve_coverage(b_lim_df, mjd_binsize = 50)
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # when doing the polyfit, it keeps giving 'RankWarning: Polyfit may be poorly conditioned', so chatGPT suggested to try scaling down the x values input 
@@ -642,7 +755,7 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # do the polynomial fit + calculate the reduced chi squared
-        poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist, b_coverage_quality = polyfitting(b_df = b_lim_df, mjd_scale_C = MJD_scaleconst, L_rf_scalefactor = L_rf_scalefactor, max_poly_order = max_poly_order)
+        poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist, b_coverage_quality = polyfitting(b_df = b_lim_df, band_coverage_quality = band_coverage_quality, mjd_scale_C = MJD_scaleconst, L_rf_scalefactor = L_rf_scalefactor, max_poly_order = max_poly_order)
 
         plot_polyline_row[:] = [b, poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist]
         plot_polyline_df.loc[plot_polyline_rowno] = plot_polyline_row # appending our polyfit info to a dataframe containing info on all of the bands' polynomial fits
@@ -694,7 +807,7 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
 
             plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                          label = b, c = b_colour)
-            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 50, zorder = 3)
+            plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
             plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
             plt.plot(plot_poly_MJD, plot_poly_L_rf, c = b_colour, label = f'b cov quality = {b_coverage_quality:.3f} \nfit order = {(len(poly_coeffs)-1)} \nred chi = {redchi:.3f}  \n +/- {redchi_1sig:.3f}')
             plt.errorbar(interp_b_df['MJD'], interp_b_df['L_rf'], yerr = interp_b_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
@@ -707,8 +820,13 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
         plt.title(f'{ant_name} polyfit, reference band = {trusted_band}')
-        plt.legend(loc = 'lower right', bbox_to_anchor = (1.15, 0.0), fontsize = 7.5)
-        fig.subplots_adjust(right = 0.845, left = 0.07)
+        plt.legend(loc = 'lower right', bbox_to_anchor = (1.275, 0.0), fontsize = 7.5, ncols = 2)
+        fig.subplots_adjust(top=0.92,
+                            bottom=0.11,
+                            left=0.055,
+                            right=0.785,
+                            hspace=0.2,
+                            wspace=0.2)
         plt.grid()
         plt.savefig(savepath)
         plt.show()
@@ -764,7 +882,7 @@ for idx in range(11):
     print(ANT_name)
 
     interp_lc, plot_polyfit_df = new_polyfit_lc(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
-                                            straggler_dist = 100, fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
+                                            straggler_dist = 80, fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
     
     print()
 
