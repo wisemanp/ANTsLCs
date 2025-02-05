@@ -108,11 +108,6 @@ def identify_straggler_datapoints(b_df, min_band_datapoints = 5, min_non_straggl
                                 straggler_indicies.append(idx)
 
 
-
-                            
-                            
-
-
             #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             elif no_dps_before == 0: # if it's the very first datapoint
                 if closest_MJD_diff_after >= straggler_dist:
@@ -632,13 +627,81 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
 
 
 
+def choose_reference_band(ANT_name, df_bands, df_band_coverage_qualities, override_choice_dict):
+    """
+    Chooses the reference band for each band's interpolation. The polynomial fits to each band in the light curve (besides the reference band) will be evaluated at
+    the reference band data's MJD values to produce an interpolated light curve which has lots of data at exact MJD values to be used for BB fitting. This function
+    chooses the band with the highest band coverage quality score given by check_lightcurve_coverage(), but can override this decision if there is a preferred band
+    specified in override_choice_dict. 
+
+    INPUTS
+    --------------
+    ANT_name: (str) the ANT's name
+
+    df_bands: (list) of the band names present in the light curve which we are fitting and interpolating
+
+    df_band_coverage_qualities: (list) of the band coverage quality scores given by check_lightcurve_coverage()
+
+    override_choice_dict: (distionary). The keys are the ANT names and the values are your choice to override the decision made on the reference band based on maximising the light curve
+    coverage quality score. 
+
+    OUTPUTS
+    ---------------
+    ref_band: (str) the name of the reference band for the ANT
+    """
+
+    override = override_choice_dict[ANT_name] 
+    if override is not None:
+        ref_band = override
+
+    else:
+        best_band_score = 0 # start off with a score which the first band is guaranteed to beat
+        for i, b in enumerate(df_bands):
+            band_score = df_band_coverage_qualities[i]
+
+            if band_score > best_band_score: # every time the band's coverage quality score gets larger, we overwrite ' best_band_score' and 'ref_band'
+                best_band_score = band_score
+                ref_band = b
+
+
+    return ref_band
 
 
 
 
 
+def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
+    """
+    Applying a limit to a dataframe based on the values in a particular column.
 
-def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, straggler_dist, straggler_max_binsize, fit_MJD_range, extrapolate, b_colour_dict, plot_polyfit = False):
+    INPUTS
+    ----------------
+    df: (dataframe) the ANT's entire dataframe containing all bands
+
+    min_value: (float) the minimum column value that you want to limit the dataframe to. Can be None if you don't want to limit the dataframe to a minimum value
+
+    max_value: (float) the maximum column value  that you want to limit the dataframe to. Can be None if you don't want to limit the dataframe to a maximum value
+
+    column: (str) the column in the dataframe which you want to limit the dataframe by. Default is 'wm_MJD'
+
+    OUTPUT
+    ---------------
+    lim_df: (DataFrame). The ANT's dataframe which has been limited to the bounds specified in fit_MJD_range
+    """
+
+    lim_df = df.copy()
+    if min_value != None:
+        lim_df = lim_df[lim_df[column] > min_value].copy() 
+
+    if max_value != None:
+        lim_df = lim_df[lim_df[column] < max_value].copy()
+    
+    return lim_df
+
+
+
+
+def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_band_dps, straggler_dist, straggler_max_binsize, fit_MJD_range, extrapolate, max_interp_distance, b_colour_dict, plot_polyfit = False):
     """
     Peforms a polynomial fit for each band within df_bands for the light curve. 
 
@@ -693,13 +756,14 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
     # limiting the MJD over which we are polyfitting, because for some ANTs, we have some straggling datapoints far away from the rest of the light curve and we don't want to fit these
     fit_min_MJD, fit_max_MJD = fit_MJD_range # unpack the tuple that goes as (MJD min, MJD max)
 
-    lim_df = df.copy()
-    if fit_min_MJD != None:
-        lim_df = lim_df[lim_df['wm_MJD'] > fit_min_MJD].copy() 
+    #lim_df = df.copy()
+    #if fit_min_MJD != None:
+    #    lim_df = lim_df[lim_df['wm_MJD'] > fit_min_MJD].copy() 
 
-    if fit_max_MJD != None:
-        lim_df = lim_df[lim_df['wm_MJD'] < fit_max_MJD].copy()
+    #if fit_max_MJD != None:
+    #    lim_df = lim_df[lim_df['wm_MJD'] < fit_max_MJD].copy()
 
+    lim_df = restrict_dataframe(df, min_value = fit_min_MJD, max_value = fit_max_MJD, column = 'wm_MJD') # limit the dataframe to the MJD range that we want to polyfit
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # getting the MJD values for the reference band 
@@ -798,10 +862,9 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
         # well constrained there. We allow better sampled bands to interpolate further out than poorly sampled bands since their fits are better constrained. 
         allow_interp = []
         for int_sc_mjd in interp_MJD_scaled:
-            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, b_coverage_quality = b_coverage_quality, local_density_region = 50, interp_cap = 30, gapsize = 100, factor = 1, simple_cutoff = False, simple_cut = 50)
+            allow_int, MJD_dist = allow_interpolation(interp_x = int_sc_mjd, all_data_x = MJD_scaled, b_coverage_quality = b_coverage_quality, local_density_region = 50, interp_cap = max_interp_distance, gapsize = 100, factor = 1, simple_cutoff = False, simple_cut = 50)
             allow_interp.append(allow_int)
 
-        #allow_interp = [True]*len(allow_interp) # TESTING SOMETHING GET RID OF THIS IT OVERWRITES THE ALLOW_INTERPOLATION FUNCTION'S RESULT
         # interpolate at the MJDs which we have calculated are good enough
         interp_MJD_scaled = np.array(interp_MJD_scaled)
         interp_MJD = np.array(interp_MJD)
@@ -894,17 +957,20 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
 # load in the data
 lc_df_list, transient_names, list_of_bands = load_ANT_data()
 
+
 # calculate the rest frame luminosity + emitted central wavelength
 add_lc_df_list = ANT_data_L_rf(lc_df_list, transient_names, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, band_ZP_dict, band_obs_centwl_dict)
+
 
 # bin up the light curve into 1 day MJD bins
 MJD_binsize = 1
 binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 
+save_interp_data_folder = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs/"
 # polyfitting ONE light curve
 for idx in range(11):
-#for idx in [1]:
+#for idx in [10]:
     ANT_name = transient_names[idx]
     ANT_df = binned_df_list[idx]
     ANT_bands = list_of_bands[idx]
@@ -913,14 +979,25 @@ for idx in range(11):
     bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
     print(ANT_name)
-
-    interp_lc, plot_polyfit_df = new_polyfit_lc(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = 14, min_band_dps = 4, 
-                                            straggler_dist = 80, straggler_max_binsize = 15, fit_MJD_range = polyfit_MJD_range, extrapolate = False, b_colour_dict = band_colour_dict, plot_polyfit = True)
+    max_poly_order = 14
+    min_band_dps = 4
+    straggler_dist = 80
+    straggler_max_binsize = 15
+    max_interp_distance = 20
     
+
+
+    interp_lc, plot_polyfit_df = new_polyfit_lc(ANT_name, ANT_df, df_bands = bands_for_BB, trusted_band = reference_band, max_poly_order = max_poly_order, min_band_dps = min_band_dps, 
+                                            straggler_dist = straggler_dist, straggler_max_binsize = straggler_max_binsize, fit_MJD_range = polyfit_MJD_range, extrapolate = False, max_interp_distance = max_interp_distance,
+                                            b_colour_dict = band_colour_dict, plot_polyfit = True)
+    
+    if idx == 0:
+        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n straggler_max_binsize = {straggler_max_binsize} \n max_interp_distance = {max_interp_distance}"
+        with open(save_interp_data_folder+"README.txt", "w") as f:
+            f.write(readme_content)
+
+    interp_lc.to_csv(save_interp_data_folder+f"interp_{ANT_name}_lc.csv")
     print()
-
-
-
 
 
 
