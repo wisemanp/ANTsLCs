@@ -539,6 +539,9 @@ def fudge_interpolation_error_formula(mean_err, mjd_dif, L, straggler = False):
 
 
 
+
+
+
 def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs, MJD_scaledown, L_rf_scaledown, optimal_params):
     """
     Fudges the uncertainties on the rest frame luminosity values calculated using the polynomial fit of the band,
@@ -627,6 +630,9 @@ def fudge_polyfit_L_rf_err(real_b_df, scaled_polyfit_L_rf, scaled_reference_MJDs
 
 
 
+
+
+
 def choose_reference_band(ANT_name, df_bands, df_band_coverage_qualities, override_choice_dict):
     """
     Chooses the reference band for each band's interpolation. The polynomial fits to each band in the light curve (besides the reference band) will be evaluated at
@@ -670,6 +676,9 @@ def choose_reference_band(ANT_name, df_bands, df_band_coverage_qualities, overri
 
 
 
+
+
+
 def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
     """
     Applying a limit to a dataframe based on the values in a particular column.
@@ -697,6 +706,10 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
         lim_df = lim_df[lim_df[column] < max_value].copy()
     
     return lim_df
+
+
+
+
 
 
 
@@ -755,14 +768,6 @@ def new_polyfit_lc(ant_name, df, df_bands, trusted_band, max_poly_order, min_ban
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # limiting the MJD over which we are polyfitting, because for some ANTs, we have some straggling datapoints far away from the rest of the light curve and we don't want to fit these
     fit_min_MJD, fit_max_MJD = fit_MJD_range # unpack the tuple that goes as (MJD min, MJD max)
-
-    #lim_df = df.copy()
-    #if fit_min_MJD != None:
-    #    lim_df = lim_df[lim_df['wm_MJD'] > fit_min_MJD].copy() 
-
-    #if fit_max_MJD != None:
-    #    lim_df = lim_df[lim_df['wm_MJD'] < fit_max_MJD].copy()
-
     lim_df = restrict_dataframe(df, min_value = fit_min_MJD, max_value = fit_max_MJD, column = 'wm_MJD') # limit the dataframe to the MJD range that we want to polyfit
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
