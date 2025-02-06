@@ -508,14 +508,20 @@ for file in os.listdir(folder_path): # file is a string of the file name such as
     #                                                         these would be considered outliers anyway because (weighted_mean_mag - datapoint_mag)/magerr = infinity because magerr = 0.00
     file_df = file_df[file_df['magerr'] < MAGERR_LIM].copy()
 
+    if ANT_name == 'ZTF19aailpwl':
+        filter_errors_df = file_df[(file_df['MJD'] > 58856) & (file_df['MJD'] < 58858) & (file_df['mag'] > 19.5)].copy()
+        file_df = file_df.drop(filter_errors_df.index).copy()
+        #print(ANT_name)
+        #print(filter_errors_df)
+
 
     #print(file_df)
-    print(file_df['band'].unique())
+    #print(file_df['band'].unique())
     file_df = fix_ANT_bandnames(file_df).copy()
-    print(file_df['band'].unique())
+    #print(file_df['band'].unique())
     file_df = file_df.dropna(subset = ['mag'])
-    print()
-    print()
+    #print()
+    #print()
     #print(file_df.columns)
     savepath = Phil_file_save_dir + f"{ANT_name}_lc.csv"
     file_df.to_csv(savepath, index = False)
