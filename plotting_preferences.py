@@ -520,3 +520,34 @@ MJDs_for_fit = {'ZTF18aczpgwm': (58400, 59680),
                 'Gaia18cdj': (None, None), 
                 'PS1-10adi': (None, None), 
                 'PS1-13jw': (None, None)} 
+
+
+
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+# WHETHER OR NOT WE'D LIKE TO OVERRIDE THE CHOICE OF REFERENCE BAND FOR THE POLYNOMIAL FIT INTERPOLATION    #########################################################################
+
+
+
+override_ref_band_dict = {'ZTF18aczpgwm': None, 
+                        'ZTF19aailpwl': None, 
+                        'ZTF19aamrjar': None, 
+                        'ZTF19aatubsj': None, 
+                        'ZTF20aanxcpf': None, 
+                        'ZTF20abgxlut': None, 
+                        'ZTF20abodaps': 'ZTF_g', 
+                        'ZTF20abrbeie': None, 
+                        'ZTF20acvfraq': 'ZTF_r', 
+                        'ZTF21abxowzx': None, 
+                        'ZTF22aadesap': None, 
+                        'ASASSN-17jz': None, 
+                        'ASASSN-18jd': None, 
+                        'CSS100217': None, 
+                        'Gaia16aaw': None, 
+                        'Gaia18cdj': None, 
+                        'PS1-10adi': None, 
+                        'PS1-13jw': None} 
+
+
