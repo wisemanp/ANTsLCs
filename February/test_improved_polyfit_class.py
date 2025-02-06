@@ -672,7 +672,7 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, df, bands, override_ref_band, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False):
+    def __init__(self, ant_name, df, bands, override_ref_band, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
         self.df = df
         self.bands = bands
@@ -685,6 +685,7 @@ class polyfit_lightcurve:
         self.max_poly_order = max_poly_order
         self.b_colour_dict = b_colour_dict
         self.plot_polyfit = plot_polyfit
+        self.save_interp_df = save_interp_df
 
         self.b_df_dict = {b: df[df['band'] == b].copy() for b in bands} # a dictionary of band dataframes, so self.b_df_dict[band] gives the band's dataframe
         self.lim_df = None # will be set later
@@ -772,8 +773,9 @@ class polyfit_lightcurve:
     def choose_interp_MJD(self):
         if self.interp_at_ref_band == True:
             self.choose_reference_band()
-            ref_lim_df = self.b_lim_df_dict[self.ref_band]
+            
             # append the reference band data to the results dataframe, since we aren't interpolating at these values
+            ref_lim_df = self.b_lim_df_dict[self.ref_band]
             result_df = self.generate_result_df(ref_lim_df['wm_MJD'], ref_lim_df['wm_L_rf'], ref_lim_df['wm_L_rf_err'], self.ref_band, self.b_em_cent_wl_dict[self.ref_band])
             self.interp_df = pd.concat([self.interp_df, result_df], ignore_index = True)
 
@@ -783,6 +785,7 @@ class polyfit_lightcurve:
 
 
         else:
+            self.ref_band = None
             interp_MJDs = np.arange(self.lim_df['wm_MJD'].min(), (self.lim_df['wm_MJD'].max() + 2.5) , 5.0) # if we don't want to interpolate at the reference band (+ straggler) MJDs, then interpolate every 5 days
 
 
@@ -799,11 +802,13 @@ class polyfit_lightcurve:
                     b_straggler_MJDs = b_straggler_df['wm_MJD'].copy().tolist()
                     b_interp_MJDs = [mjd for mjd in b_interp_MJDs if mjd not in b_straggler_MJDs] # remove the band's own straggler MJDs from the interp_MJDs list, since we aren't interpolating the band's straggler datapoints, 
                                                                                                   # we're just going to insert the straggler data into the final interp_df
-                    
+            else:
+                b_interp_MJDs = interp_MJDs
                     
 
             b_lim_df = self.b_lim_df_dict[b]
             b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
+
             filtered_interp_MJDs = [mjd for mjd in b_interp_MJDs if (mjd >= b_non_straggler_df['wm_MJD'].min()) and (mjd <= b_non_straggler_df['wm_MJD'].max())]  # make sure interp_MJD doesn't go beyond the bounds of the band's data
             
             # evaluate whether each MJD is worth interpolating, e.g. if it's like 500 days away from all other datapoints, don't interpolate there because the polyfit isn't 
@@ -884,7 +889,7 @@ class polyfit_lightcurve:
                 if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
                     plt.plot(b_plot_polyfit['poly_plot_MJD'], b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
-        #savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/polyfits/{self.ant_name}_polyfit.png" #C:\Users\laure\OneDrive\Desktop\YoRiS desktop\YoRiS\plots\light curves\polyfits
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/polyfits/{self.ant_name}_polyfit" 
         plt.xlabel('MJD')
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
@@ -897,14 +902,18 @@ class polyfit_lightcurve:
                                 hspace=0.2,
                                 wspace=0.2)
         plt.grid()
-        #plt.savefig(savepath)
+        plt.savefig(savepath)
         plt.show()
 
+
+    def save_interpolated_df(self):
+        if self.save_interp_df == True:
+            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs/{self.ant_name}_interp_lc.csv"
+            self.interp_df.to_csv(savepath, index = False)
 
 
 
     def run_fitting_pipeline(self):
-        #print(type(self.prepping_data.index[0]))
         self.get_scalefactors()
         self.initialise_plot()
         self.MJD_limit_df()
@@ -912,6 +921,7 @@ class polyfit_lightcurve:
         self.choose_interp_MJD()
         self.polynomial_fit_and_interp()
         self.plot_polyfit_funciton()
+        self.save_interpolated_df()
 
         
         
@@ -945,7 +955,19 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 
 
-# polyfitting ONE light curve
+max_poly_order = 14
+min_band_dps = 4
+straggler_dist = 80
+max_interp_distance = 20
+interp_at_ref_band = True
+max_interp_dist = 20
+plot_polyfit = True
+save_interp_df = True
+save_README = True # this doesn't go into the class
+
+
+
+# polyfitting light curves
 for idx in range(11):
 #for idx in [10]:
     ANT_name = transient_names[idx]
@@ -955,27 +977,31 @@ for idx in range(11):
     reference_band = 'ZTF_g'
     bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
+    print(ANT_name)
+    
+
     lightcurve = polyfit_lightcurve(ant_name = ANT_name, 
                                     df = ANT_df, 
                                     bands = bands_for_BB, 
                                     override_ref_band=None, # CHANGE ===============================================================    
-                                    interp_at_ref_band = True, 
-                                    min_band_dps = 4, 
-                                    straggler_dist = 80,
+                                    interp_at_ref_band = interp_at_ref_band, 
+                                    min_band_dps = min_band_dps, 
+                                    straggler_dist = straggler_dist,
                                     fit_MJD_range = polyfit_MJD_range, 
-                                    max_interp_distance = 20, 
-                                    max_poly_order = 14, 
+                                    max_interp_distance = max_interp_distance, 
+                                    max_poly_order = max_poly_order, 
                                     b_colour_dict = band_colour_dict, 
-                                    plot_polyfit = True)
+                                    plot_polyfit = plot_polyfit, 
+                                    save_interp_df = save_interp_df)
     
     lightcurve.run_fitting_pipeline()
 
-    print(ANT_name)
-    max_poly_order = 14
-    min_band_dps = 4
-    straggler_dist = 80
-    straggler_max_binsize = 15
-    max_interp_distance = 20
+    if (save_README == True) & (idx == 0):
+        save_interp_data_folder = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs/"
+        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n max_interp_distance = {max_interp_distance} \n interp_at_ref_band = {interp_at_ref_band} \n max_interp_dist = {max_interp_dist}"
+        with open(save_interp_data_folder+"README.txt", "w") as f:
+            f.write(readme_content)
+   
     
     print()
 
