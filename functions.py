@@ -1329,11 +1329,11 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, df, bands, override_ref_band, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
+    def __init__(self, ant_name, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
         self.df = df
         self.bands = bands
-        self.override_ref_band = override_ref_band
+        self.override_ref_band = override_ref_band_dict[ant_name]
         self.interp_at_ref_band = interp_at_ref_band
         self.min_band_dps = min_band_dps
         self.straggler_dist = straggler_dist
