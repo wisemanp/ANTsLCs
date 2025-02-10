@@ -1790,7 +1790,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
     # iterate through each value of MJD within the dataframe and see if we have enough bands to take a BB fit to it 
 
     mjd_values = interp_df['MJD'].unique() 
-    columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
+    columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
     BB_fit_results = pd.DataFrame(columns = columns)
     for MJD in tqdm(mjd_values, desc = 'Progress BB fitting each MJD value', total = len(mjd_values), leave = True):
         MJD_df = interp_df[interp_df['MJD'] == MJD].copy() # THERE COULD BE FLOATING POINT ERRORS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1817,7 +1817,8 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
             cf_T_err = np.sqrt(pcov[1, 1])
             cf_R = sc_cf_R / R_scalefactor
             cf_R_err = sc_cf_R_err / R_scalefactor
-            print(f'cov = {pcov[1,0]}')
+            cf_covariance = pcov[1,0]
+            #print(f'cov = {pcov[1,0]}')
 
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1829,14 +1830,14 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
             #print(cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig)
-            BB_result_row[2:9] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
+            BB_result_row[2:10] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_covariance, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
 
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # brute force grid curve fitting
         if brute == True:
             # creating the values of R and T that we will try
-            grid_length = 100 # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
+            grid_length = 5 # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
             sc_R_values = np.logspace(np.log10(BB_R_min_sc), np.log10(BB_R_max_sc), grid_length)
             T_values = np.logspace(np.log10(BB_T_min), np.log10(BB_T_max), grid_length)
             chi_grid = np.zeros((grid_length, grid_length)) # this 2D array will fill with the chi squared values of each blackbody fit tried with different combinations of BB T and scaled R
@@ -1870,7 +1871,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            BB_result_row[8:13] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]
+            BB_result_row[9:14] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]
 
         BB_fit_results.loc[df_row_index] = BB_result_row # adding the array of results from this MJD to the BB results dataframe
 
