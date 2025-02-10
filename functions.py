@@ -1492,8 +1492,15 @@ class polyfit_lightcurve:
             # do the polynomial fit + calculate the reduced chi squared
             non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
 
+            # also, add the real (not interpolated) straggler datapoints into the final result interp_df, since we're evaluating the polyfits of each band at the straggler MJDs
+            straggler_df = self.prepping_data.at[b, 'straggler_df']
+            if straggler_df.empty == False:
+                straggler_result_df = self.generate_result_df(MJD = straggler_df['wm_MJD'], L_rf = straggler_df['wm_L_rf'], L_rf_err = straggler_df['wm_L_rf_err'], band = [b]*len(straggler_df), em_cent_wl = [self.b_em_cent_wl_dict[b]]*len(straggler_df))
+                self.interp_df = pd.concat([self.interp_df, straggler_result_df], ignore_index = True)
+
             if non_straggler_df.empty == True: # if our band has no non-straggler data, don't bother polyfitting
                 self.plot_results.loc[b] = [None, None, None, None, None, None]
+                
                 continue
 
             poly_coeffs, plot_poly_MJD, plot_poly_L_rf, redchi, redchi_1sig, chi_sig_dist = polyfitting(b_df = non_straggler_df, band_coverage_quality = self.prepping_data.at[b, 'b_coverage_score'], mjd_scale_C = self.MJD_scaleconst, L_rf_scalefactor = self.L_scalefactor, max_poly_order = self.max_poly_order)
@@ -1505,12 +1512,7 @@ class polyfit_lightcurve:
             final_interp_L = sc_interp_L / self.L_scalefactor
             final_interp_MJD = sc_interp_MJD + self.MJD_scaleconst
 
-            # also, add the real (not interpolated) straggler datapoints into the final result interp_df, since we're evaluating the polyfits of each band at the straggler MJDs
-            straggler_df = self.prepping_data.at[b, 'straggler_df']
-            if straggler_df.empty == False:
-                straggler_result_df = self.generate_result_df(MJD = straggler_df['wm_MJD'], L_rf = straggler_df['wm_L_rf'], L_rf_err = straggler_df['wm_L_rf_err'], band = [b]*len(straggler_df), em_cent_wl = [self.b_em_cent_wl_dict[b]]*len(straggler_df))
-                self.interp_df = pd.concat([self.interp_df, straggler_result_df], ignore_index = True)
-
+            
             # calculate the fudged errors 
             interp_L_err = fudge_polyfit_L_rf_err(real_b_df = non_straggler_df, scaled_polyfit_L_rf = sc_interp_L, scaled_reference_MJDs = sc_interp_MJD, MJD_scaledown = self.MJD_scaleconst, L_rf_scaledown = self.L_scalefactor, optimal_params = poly_coeffs)
             if isinstance(final_interp_MJD, np.ndarray): 
@@ -1815,6 +1817,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
             cf_T_err = np.sqrt(pcov[1, 1])
             cf_R = sc_cf_R / R_scalefactor
             cf_R_err = sc_cf_R_err / R_scalefactor
+            print(f'cov = {pcov[1,0]}')
 
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1825,6 +1828,7 @@ def fit_BB_across_lc(interp_df, brute, curvefit):
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
+            #print(cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig)
             BB_result_row[2:9] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
 
 
