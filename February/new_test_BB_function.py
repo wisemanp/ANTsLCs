@@ -358,7 +358,7 @@ class fit_BB_across_lightcurve:
 
         else:
             print()
-            print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[r] for r in row]}, Rs = {[sc_R_values[c]/R_scalefactor for c in col]}")
+            print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[r] for r in row]}, Rs = {[sc_R_values[c]/self.R_scalefactor for c in col]}")
             print(f"Chi values = {chi[row, col]} {Style.RESET_ALL}")
             print()
 
