@@ -569,8 +569,8 @@ def chisq(y_m, y, yerr, M, reduced_chi = True):
         N_M = N-M # (N - M) the degrees of freedom
 
         if N_M <= 0.0: # if the number of parameters >= number of datapoints to fit
-            red_chi = pd.NA
-            red_chi_1sig = pd.NA
+            red_chi = np.nan
+            red_chi_1sig = np.nan
         else:
             red_chi = chi / (N_M)
             red_chi_1sig = np.sqrt(2/N_M) # red_chi is a good chisq if it falls within (1 +/- red_chi_1sig)
