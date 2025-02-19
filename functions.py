@@ -1329,8 +1329,9 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
+    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
+        self.ant_z = ant_z
         self.df = df
         self.bands = bands
         self.override_ref_band = override_ref_band_dict[ant_name]
@@ -1552,7 +1553,7 @@ class polyfit_lightcurve:
         plt.xlabel('MJD')
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
-        plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler". Black star = "interpolated datraggler datapoint"')
+        plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"')
         plt.legend(loc = 'lower right', bbox_to_anchor = (1.275, 0.0), fontsize = 7.5, ncols = 2)
         self.fig.subplots_adjust(top=0.92,
                                 bottom=0.11,
@@ -1561,8 +1562,17 @@ class polyfit_lightcurve:
                                 hspace=0.2,
                                 wspace=0.2)
         plt.grid()
-        plt.savefig(savepath)
+        plt.savefig(savepath, dpi = 300)
         plt.show()
+
+
+    
+    def calc_days_since_peak(self):
+        ref_band_max_idx = np.argmax( self.plot_results.loc[self.ref_band]['poly_plot_L_rf'] )
+        ref_band_peak_MJD = self.plot_results.loc[self.ref_band]['poly_plot_MJD'][ref_band_max_idx]
+        self.interp_df['peak_MJD'] = [ref_band_peak_MJD]*len(self.interp_df)
+        self.interp_df['d_since_peak'] = (self.interp_df['MJD'] - self.interp_df['peak_MJD']) * (1 + self.ant_z) # days since peak in the rest frame
+
 
 
     def save_interpolated_df(self):
@@ -1580,6 +1590,7 @@ class polyfit_lightcurve:
         self.choose_interp_MJD()
         self.polynomial_fit_and_interp()
         self.plot_polyfit_funciton()
+        self.calc_days_since_peak()
         self.save_interpolated_df()
 
         
