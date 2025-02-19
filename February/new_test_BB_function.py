@@ -89,7 +89,7 @@ class fit_BB_across_lightcurve:
         interp_df['em_cent_wl_cm'] = interp_df['em_cent_wl'] * 1e-8 # the blackbody function takes wavelength in centimeters. 1A = 1e-10 m.     1A = 1e-8 cm
 
         self.mjd_values = self.interp_df['MJD'].unique() 
-        self.columns = ['MJD', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
+        self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
 
         
@@ -118,12 +118,12 @@ class fit_BB_across_lightcurve:
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            self.BB_fit_results.loc[MJD, self.columns[2:10]] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_covariance, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]  
+            self.BB_fit_results.loc[MJD, self.columns[3:11]] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_covariance, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]  
 
 
         except RuntimeError:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
-            self.BB_fit_results.loc[MJD, self.columns[2:10]] = np.nan
+            self.BB_fit_results.loc[MJD, self.columns[3:11]] = np.nan
 
         
 
@@ -190,7 +190,7 @@ class fit_BB_across_lightcurve:
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # add the result to the results row which will be appended to the results dataframe
-        self.BB_fit_results.loc[MJD, self.columns[9:14]] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]#, param_grid, chi] # add parameter grid and chi grid
+        self.BB_fit_results.loc[MJD, self.columns[10:15]] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]#, param_grid, chi] # add parameter grid and chi grid
 
     
 
@@ -205,9 +205,10 @@ class fit_BB_across_lightcurve:
         # iterate through each value of MJD within the dataframe and see if we have enough bands to take a BB fit to it 
         for MJD in tqdm(self.mjd_values, desc = 'Progress BB fitting each MJD value', total = len(self.mjd_values), leave = False):
             MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy() # THERE COULD BE FLOATING POINT ERRORS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
             MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
             self.BB_fit_results.loc[MJD, :] = np.nan # set all values to nan for now, then overwrite them if we have data for thsi column, so that if (e.g.) brute = False, then the brute columns would contain nan values
-            self.BB_fit_results.loc[MJD, self.columns[0:2]] = [MJD, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
+            self.BB_fit_results.loc[MJD, self.columns[0:3]] = [MJD, MJD_d_since_peak, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
             
             if MJD_no_bands <= 1: # don't try fitting a BB spectrum to a single datapoint, so the BB results in this row will all be nan
                 continue
@@ -273,6 +274,7 @@ class fit_BB_across_lightcurve:
             for i, MJD in enumerate(self.indiv_plot_MJDs):
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
+                d_since_peak = MJD_df['d_since_peak'].iloc[0]
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
                 plot_BB_L = blackbody(plot_wl, self.BB_fit_results.loc[MJD, 'brute_R_cm'], self.BB_fit_results.loc[MJD, 'brute_T_K'])
                 ax.plot(plot_wl*1e8, plot_BB_L, label = 'Blackbody fit', c = 'k')
@@ -283,7 +285,7 @@ class fit_BB_across_lightcurve:
                     b_colour = band_colour_dict[b]
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
                     legend_dict[b] = h[0]
-                title1 = f'MJD = {MJD:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
+                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
                 title2 = r'$T_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_T_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T_err_K']:.1e} K \n"
                 title3 = r'$R_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_R_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R_err_cm']:.1e} cm"
                 title = title1 + title2 + title3
@@ -350,8 +352,8 @@ interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
 
 
 
-#for idx in range(11):
-for idx in [10]:
+for idx in range(11):
+#for idx in [10]:
 
     ANT_name = transient_names[idx]
     interp_lc= interp_df_list[idx]
@@ -402,7 +404,7 @@ for idx in [10]:
     for b in ANT_bands: # iterate through all of the bands present in the ANT's light curve
         b_df = interp_lc[interp_lc['band'] == b].copy()
         b_colour = band_colour_dict[b]
-        ax1.errorbar(b_df['MJD'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
+        ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                     linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
         ax1.set_ylabel('Rest frame luminosity')
         
@@ -417,11 +419,11 @@ for idx in [10]:
 
         #norm = Normalize(vmin = BB_fit_results['cf_chi_sigma_dist'].min(), vmax = BB_fit_results['cf_chi_sigma_dist'].max())
         # ax2 top right: blackbody radius vs MJD
-        ax2.errorbar(BB_fit_results['MJD'], BB_fit_results['cf_R_cm'], yerr = BB_fit_results['cf_R_err_cm'], linestyle = 'None', c = 'k', 
+        ax2.errorbar(BB_fit_results['d_since_peak'], BB_fit_results['cf_R_cm'], yerr = BB_fit_results['cf_R_err_cm'], linestyle = 'None', c = 'k', 
                     fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
-        ax2.errorbar(BB_2dp['MJD'], BB_2dp['cf_R_cm'], yerr = BB_2dp['cf_R_err_cm'], linestyle = 'None', c = 'k', mfc = 'white',
+        ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R_cm'], yerr = BB_2dp['cf_R_err_cm'], linestyle = 'None', c = 'k', mfc = 'white',
                     fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
-        sc = ax2.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['cf_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['cf_chi_sigma_dist']), 
+        sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['cf_chi_sigma_dist']), 
                     label = 'Curve fit results', marker = 'o', zorder = 2, edgecolors = 'k', linewidths = 0.5)
 
         cbar_label = r'CF Goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -430,14 +432,14 @@ for idx in [10]:
 
 
         # ax3 bottom left: reduced chi squared sigma distance vs MJD
-        ax3.scatter(BB_fit_results['MJD'], BB_fit_results['cf_chi_sigma_dist'], marker = 'o', label = 'Curve fit results', edgecolors = 'k', linewidths = 0.5)
+        ax3.scatter(BB_fit_results['d_since_peak'], BB_fit_results['cf_chi_sigma_dist'], marker = 'o', label = 'Curve fit results', edgecolors = 'k', linewidths = 0.5)
 
         # ax4 bottom right: blackbody temperature vs MJD
-        ax4.errorbar(BB_fit_results['MJD'], BB_fit_results['cf_T_K'], yerr = BB_fit_results['cf_T_err_K'], linestyle = 'None', c = 'k', 
+        ax4.errorbar(BB_fit_results['d_since_peak'], BB_fit_results['cf_T_K'], yerr = BB_fit_results['cf_T_err_K'], linestyle = 'None', c = 'k', 
                     fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
-        ax4.errorbar(BB_2dp['MJD'], BB_2dp['cf_T_K'], yerr = BB_2dp['cf_T_err_K'], linestyle = 'None', c = 'k', mfc = 'white',
+        ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T_K'], yerr = BB_2dp['cf_T_err_K'], linestyle = 'None', c = 'k', mfc = 'white',
                     fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
-        sc = ax4.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['cf_T_K'], cmap = 'jet', c = BB_low_chi_dist['cf_chi_sigma_dist'], 
+        sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T_K'], cmap = 'jet', c = BB_low_chi_dist['cf_chi_sigma_dist'], 
                     label = 'Curve fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 2)
         
         #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
@@ -454,13 +456,13 @@ for idx in [10]:
         BB_high_chi_dist = BB_fit_results[BB_fit_results['brute_chi_sigma_dist'] > colour_cutoff]
 
         # ax2 top right: blackbody radius vs MJD
-        ax2.scatter(BB_fit_results['MJD'], BB_fit_results['brute_R_cm'], linestyle = 'None', c = 'k', 
+        ax2.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_R_cm'], linestyle = 'None', c = 'k', 
                     label = 'brute force gridding results', marker = '^')
         
-        ax2.scatter(BB_2dp['MJD'], BB_2dp['brute_R_cm'], linestyle = 'None', c = 'white', 
+        ax2.scatter(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], linestyle = 'None', c = 'white', 
                     marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
         
-        sc = ax2.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['brute_chi_sigma_dist']), 
+        sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['brute_chi_sigma_dist']), 
                     label = 'Brute force gridding results', marker = '^', zorder = 3, edgecolors = 'k', linewidths = 0.5)
 
         cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -468,16 +470,16 @@ for idx in [10]:
         cbar.set_label(label = cbar_label)
         
         # ax3 bottom left: reduced chi squared sigma distance vs MJD
-        ax3.scatter(BB_fit_results['MJD'], BB_fit_results['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
+        ax3.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
 
         # ax4 bottom right: blackbody temperature vs MJD
-        ax4.scatter(BB_fit_results['MJD'], BB_fit_results['brute_T_K'], linestyle = 'None', c = 'k', 
+        ax4.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_T_K'], linestyle = 'None', c = 'k', 
                     label = 'Brute force gridding results', marker = '^')
         
-        ax4.scatter(BB_2dp['MJD'], BB_2dp['brute_T_K'], linestyle = 'None', c = 'white', 
+        ax4.scatter(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], linestyle = 'None', c = 'white', 
                     marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
         
-        sc = ax4.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['brute_chi_sigma_dist'], 
+        sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['brute_chi_sigma_dist'], 
                     label = 'Brute fit results', marker = '^', edgecolors = 'k', linewidths = 0.5, zorder = 3)
         
         #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
@@ -488,14 +490,44 @@ for idx in [10]:
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.grid(True)
-        ax.set_xlim(MJDs_for_fit[ANT_name])
+        #ax.set_xlim(MJDs_for_fit[ANT_name])
         ax.legend(fontsize = 8)
+
+    if ANT_name == 'ZTF22aadesap':
+        ax4.set_ylim(0.0, 4e4)
+
+    elif ANT_name == 'ZTF19aailpwl':
+        ax4.set_ylim(0.0, 2e4)
+
+    elif ANT_name == 'ZTF19aamrjar':
+        ax4.set_ylim(0.0, 2.5e4)
+
+    elif ANT_name == 'ZTF19aatubsj':
+        ax4.set_ylim(0.0, 2.5e4)
+
+    elif ANT_name == 'ZTF20abgxlut':
+        ax2.set_ylim(0.0, 8e15)
+        ax4.set_ylim(0.0, 2.3e4)
+
+    elif ANT_name == 'ZTF20abodaps':
+        ax2.set_ylim(0.0, 1.2e16)
+        ax4.set_ylim(0.0, 4e4)
+
+    elif ANT_name == 'ZTF20abrbeie':
+        ax4.set_ylim(0.0, 2e4)
+
+    elif ANT_name == 'ZTF21abxowzx':
+        ax4.set_ylim(0.0, 2.5e4)
+
+    elif ANT_name == 'ZTF22aadesap':
+        ax2.set_ylim(0.0, 5e15)
+        ax4.set_ylim(0.0, 2.5e4)
 
     ax2.set_ylabel('Blackbody radius / cm')
     ax3.set_ylabel('Reduced chi squared sigma distance \n (<=1 = Good fit)')
     ax4.set_ylabel('Blackbody temperature / K')
     fig.suptitle(f"Blackbody fit results across {ANT_name}'s light curve")
-    fig.supxlabel('MJD')
+    fig.supxlabel('days since peak (rest frame time)')
     fig.subplots_adjust(top=0.92,
                         bottom=0.085,
                         left=0.055,
