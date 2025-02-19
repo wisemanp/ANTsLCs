@@ -56,6 +56,7 @@ for idx in range(11):
     
 
     lightcurve = polyfit_lightcurve(ant_name = ANT_name, 
+                                    ant_z = ANT_redshift_dict[ANT_name],
                                     df = ANT_df, 
                                     bands = bands_for_BB, 
                                     override_ref_band_dict = override_ref_band_dict,   
