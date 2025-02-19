@@ -18,7 +18,7 @@ from functions import load_interp_ANT_data, blackbody, chisq
 
 
 class fit_BB_across_lightcurve:
-    def __init__(self, interp_df, curvefit, brute, brute_gridsize, brute_param_sigma = 1, BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7):
+    def __init__(self, interp_df, curvefit, brute, brute_gridsize, ant_name, brute_param_sigma = 1, BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7, individual_BB_plot = 'None', save_indiv_BB_plot = False):
         """
         INPUTS
         ---------------
@@ -43,6 +43,8 @@ class fit_BB_across_lightcurve:
         brute_gridsize: (int) the number of trial values of R and T that will be tried in the brute force method. The number of trial values of R and T form a 2D grid of parameters and
         each combination of R and T will be tried in the BB fit.
 
+        ant_name: (str) the ANT's name
+
         brute_param_sigma: (float or int) the number of sigma that the brute force method will use to calculate the error on the BB fit parameters. 
 
         BB_R_min: (float) the minimum value of the radius parameter that will be tried in the BB fit. 
@@ -52,16 +54,26 @@ class fit_BB_across_lightcurve:
         BB_T_min: (float) the minimum value of the temperature parameter that will be tried in the BB fit.
 
         BB_T_max: (float) the maximum value of the temperature parameter that will be tried in the BB fit.
+
+        individual_BB_plot: (str) opitons: 'UVOT', 'whole_lc' or 'None'. If 'UVOT', the BB fits taken at MJDs which have UVOT data will be shown. If 'whole_lc', the BB fits taken
+        at MJDs across the light curve will be shown. If 'None', no individual BB fits will be shown. The plot will display a grid of 12 BB fits and their chi squared parameter space. 
+
+        save_indiv_BB_plot: (bool) if True, the plot of the individual BB fits will be saved.
+
+
         """
         self.interp_df = interp_df
         self.curvefit = curvefit
         self.brute = brute
         self.brute_gridsize = brute_gridsize
+        self.ant_name = ant_name
         self.brute_param_sigma = brute_param_sigma
         self.BB_R_min = BB_R_min
         self.BB_R_max = BB_R_max
         self.BB_T_min = BB_T_min
         self.BB_T_max = BB_T_max
+        self.individual_BB_plot = individual_BB_plot
+        self.save_indiv_BB_plot = save_indiv_BB_plot
 
         self.brute_dchi = (brute_param_sigma)**2 # the number of sigma that the brute force method will use to calculate the error on the BB fit parameters. look to Christians stats module if confused about this
 
@@ -81,6 +93,9 @@ class fit_BB_across_lightcurve:
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
 
         
+
+
+
 
 
     
@@ -111,6 +126,8 @@ class fit_BB_across_lightcurve:
             self.BB_fit_results.loc[MJD, self.columns[2:10]] = np.nan
 
         
+
+
 
 
 
@@ -175,7 +192,12 @@ class fit_BB_across_lightcurve:
         # add the result to the results row which will be appended to the results dataframe
         self.BB_fit_results.loc[MJD, self.columns[9:14]] = [red_chi_1sig, brute_T, brute_R, brute_red_chi, brute_chi_sigma_dist]#, param_grid, chi] # add parameter grid and chi grid
 
-        
+    
+
+
+
+
+
 
 
     def run_BB_fit(self):
@@ -186,6 +208,9 @@ class fit_BB_across_lightcurve:
             MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
             self.BB_fit_results.loc[MJD, :] = np.nan # set all values to nan for now, then overwrite them if we have data for thsi column, so that if (e.g.) brute = False, then the brute columns would contain nan values
             self.BB_fit_results.loc[MJD, self.columns[0:2]] = [MJD, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
+            
+            if MJD_no_bands <= 1: # don't try fitting a BB spectrum to a single datapoint, so the BB results in this row will all be nan
+                continue
 
             if self.curvefit == True:
                 self.BB_curvefit(MJD, MJD_df)
@@ -197,7 +222,99 @@ class fit_BB_across_lightcurve:
     
 
 
-    #def plot_individual_BB_fits(self):
+
+
+
+    def get_individual_BB_fit_MJDs(self, no_MJDs = 24):
+        """
+        This function will find the MJD values at which we will plot the individual BB fits. We will plot the BB fits at these MJD values in a grid of (no_MJD) number of plots, 
+        with the BB fit and the chi squared parameter space grid
+
+        no_MJDs: (int) the number of MJD values at which we will plot the individual BB fits. If there are less than 12 MJD values with UVOT data, we will add some regular MJD values to the plot too
+        """
+        BB_MJDs = self.BB_fit_results[self.BB_fit_results['no_bands'] > 1].index # the MJD values at which we have more than 1 band present, so we can fit a BB to the data
+        if self.individual_BB_plot == 'UVOT':
+            UVOT_df = self.interp_df[self.interp_df['band'].isin(['UVOT_U', 'UVOT_B', 'UVOT_V', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2'])].copy()
+            UVOT_MJDs = UVOT_df['MJD'].unique()
+            if UVOT_df.empty == True: # if we have no UVOT data, just get MJDs from the whole light curve
+                self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_MJDs)] # plot every 12th MJD value
+                self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+                return
+            
+            self.indiv_plot_MJDs = UVOT_MJDs[::int(len(UVOT_MJDs)/no_MJDs)] # plot every 12th MJD value
+            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+            len_UVOT_mjd_choice = len(self.indiv_plot_MJDs)
+
+            if len_UVOT_mjd_choice < no_MJDs: # if we want to plot the UVOT data but there are less than 12 instances of UVOT data, add some regular MJDs to the plot too
+                no_missing = no_MJDs - len_UVOT_mjd_choice
+                add_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_missing)]
+                add_MJDs = add_MJDs[:no_missing]
+                self.indiv_plot_MJDs = np.concatenate((self.indiv_plot_MJDs, add_MJDs))
+
+
+        elif self.individual_BB_plot == 'whole_lc':
+            self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_MJDs)] # plot every 12th MJD value
+            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+            
+
+        else:
+            self.indiv_plot_MJDs = None
+
+
+
+
+
+
+    def plot_individual_BB_fits(self, band_colour_dict):
+        if self.indiv_plot_MJDs is not None:
+            fig, axs = plt.subplots(4, 6, figsize = (16, 7.5), sharex = True)
+            axs = axs.flatten()
+            legend_dict = {}
+            for i, MJD in enumerate(self.indiv_plot_MJDs):
+                ax = axs[i]
+                MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
+                plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                plot_BB_L = blackbody(plot_wl, self.BB_fit_results.loc[MJD, 'brute_R_cm'], self.BB_fit_results.loc[MJD, 'brute_T_K'])
+                ax.plot(plot_wl*1e8, plot_BB_L, label = 'Blackbody fit', c = 'k')
+                ax.grid(True)
+                
+                for b in MJD_df['band'].unique():
+                    b_df = MJD_df[MJD_df['band'] == b].copy()
+                    b_colour = band_colour_dict[b]
+                    h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
+                    legend_dict[b] = h[0]
+                title1 = f'MJD = {MJD:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
+                title2 = r'$T_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_T_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T_err_K']:.1e} K \n"
+                title3 = r'$R_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_R_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R_err_cm']:.1e} cm"
+                title = title1 + title2 + title3
+                ax.set_title(title, fontsize = 6.5, fontweight = 'bold')
+            
+            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold')
+            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            fig.suptitle(f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve', fontweight = 'bold')
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
+            fig.subplots_adjust(top=0.874,
+                                bottom=0.094,
+                                left=0.06,
+                                right=0.92,
+                                hspace=0.7,
+                                wspace=0.2)
+            
+            if self.save_indiv_BB_plot == True:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_BB_fits.png"
+                plt.savefig(savepath, dpi = 300) 
+
+
+
+
+
+    def run_individual_BB_fits(self, band_colour_dict):
+        self.get_individual_BB_fit_MJDs()
+        self.plot_individual_BB_fits(band_colour_dict)
+    
+        
+
+        
 
 
 
@@ -248,9 +365,12 @@ for idx in [10]:
 
     BB_curvefit = True
     BB_brute = True
+    save_BB_plot = True
     #BB_fit_results = fit_BB_across_lc(interp_lc, brute = BB_brute, curvefit = BB_curvefit, brute_gridsize = 1000)
-    BB_fitting = fit_BB_across_lightcurve(interp_lc, curvefit = BB_curvefit, brute = BB_brute, brute_gridsize = 1000)
+    BB_fitting = fit_BB_across_lightcurve(interp_lc, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', save_indiv_BB_plot = True)
     BB_fit_results = BB_fitting.run_BB_fit()
+    BB_fitting.run_individual_BB_fits(band_colour_dict)
+    
     BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
     #print(BB_fit_results)
     print()
@@ -300,7 +420,7 @@ for idx in [10]:
         ax2.errorbar(BB_fit_results['MJD'], BB_fit_results['cf_R_cm'], yerr = BB_fit_results['cf_R_err_cm'], linestyle = 'None', c = 'k', 
                     fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
         ax2.errorbar(BB_2dp['MJD'], BB_2dp['cf_R_cm'], yerr = BB_2dp['cf_R_err_cm'], linestyle = 'None', c = 'k', mfc = 'white',
-                    fmt = 'o', label = f'cf no bands = 2..', mec = 'k', mew = 0.5)
+                    fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
         sc = ax2.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['cf_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['cf_chi_sigma_dist']), 
                     label = 'Curve fit results', marker = 'o', zorder = 2, edgecolors = 'k', linewidths = 0.5)
 
@@ -316,7 +436,7 @@ for idx in [10]:
         ax4.errorbar(BB_fit_results['MJD'], BB_fit_results['cf_T_K'], yerr = BB_fit_results['cf_T_err_K'], linestyle = 'None', c = 'k', 
                     fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
         ax4.errorbar(BB_2dp['MJD'], BB_2dp['cf_T_K'], yerr = BB_2dp['cf_T_err_K'], linestyle = 'None', c = 'k', mfc = 'white',
-                    fmt = 'o', label = f'cf no bands = 2..', mec = 'k', mew = 0.5)
+                    fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
         sc = ax4.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['cf_T_K'], cmap = 'jet', c = BB_low_chi_dist['cf_chi_sigma_dist'], 
                     label = 'Curve fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 2)
         
@@ -338,7 +458,7 @@ for idx in [10]:
                     label = 'brute force gridding results', marker = '^')
         
         ax2.scatter(BB_2dp['MJD'], BB_2dp['brute_R_cm'], linestyle = 'None', c = 'white', 
-                    marker = '^', label = f'brute no bands = 2..', edgecolors = 'k', linewidths = 0.5)
+                    marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
         
         sc = ax2.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['brute_chi_sigma_dist']), 
                     label = 'Brute force gridding results', marker = '^', zorder = 3, edgecolors = 'k', linewidths = 0.5)
@@ -355,7 +475,7 @@ for idx in [10]:
                     label = 'Brute force gridding results', marker = '^')
         
         ax4.scatter(BB_2dp['MJD'], BB_2dp['brute_T_K'], linestyle = 'None', c = 'white', 
-                    marker = '^', label = f'brute no bands = 2..', edgecolors = 'k', linewidths = 0.5)
+                    marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
         
         sc = ax4.scatter(BB_low_chi_dist['MJD'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['brute_chi_sigma_dist'], 
                     label = 'Brute fit results', marker = '^', edgecolors = 'k', linewidths = 0.5, zorder = 3)
@@ -382,5 +502,9 @@ for idx in [10]:
                         right=0.97,
                         hspace=0.15,
                         wspace=0.19)
+    
+    if save_BB_plot == True:
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}_lc_BB_fit.png"
+        plt.savefig(savepath, dpi = 300) 
     plt.show()
 
