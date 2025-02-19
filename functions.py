@@ -1548,7 +1548,7 @@ class polyfit_lightcurve:
                 if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
                     plt.plot(b_plot_polyfit['poly_plot_MJD'], b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
-        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/polyfits/{self.ant_name}_polyfit" 
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit" 
         plt.xlabel('MJD')
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
