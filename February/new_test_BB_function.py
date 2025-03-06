@@ -44,6 +44,30 @@ def double_blackbody(lam, R1, T1, R2, T2):
 
 
 
+def power_law_SED(lam, A, gamma):
+    """
+    A function which models a power law SED like rest frame luminosity density = A*(wavelength)**gamma
+
+    INPUTS
+    --------------
+    lam: (float) wavelength in cm
+
+    A: (float) Amplitude factor of the power law
+
+    gamma: (float) the power of the power law
+
+
+    OUTPUTS
+    --------------
+    L_rf: (float) the value of the rest-frame luminosity (density) given by the power law. (I say luminosity(density) because I often just refer to this as rest frame luminosity, 
+            but since it's per unit Angstrom, its actually a luminoisty density) I think the units are kind of arbitrary?
+
+    """
+    L_rf = A*(lam**gamma)
+
+    return L_rf
+
+
 
 
 class fit_BB_across_lightcurve:
@@ -66,7 +90,8 @@ class fit_BB_across_lightcurve:
             value per band per MJD value for the interpolated data, since the polynomials are single-valued for any given MJD value). 
             columns: MJD, L_rf, L_rf_err, band, em_cent_wl
 
-        SED_type: (str) options: 'single_BB', 'double_BB'. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit
+        SED_type: (str) options: 'single_BB', 'double_BB' or 'power-law. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
+        If 'power-law', the SED fit will be a power law fit like A*(wavelength)**gamma. 
 
         curvefit: (bool) if True, the BB fit will be tried using scipy's curve_fit. If False, no curve_fit calculation will be tried
 
@@ -411,9 +436,15 @@ class fit_BB_across_lightcurve:
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
+
+                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
+                title2 = r'$T_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_T_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T_err_K']:.1e} K \n"
+                title3 = r'$R_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_R_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R_err_cm']:.1e} cm"
+
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
                 plot_BB_L = blackbody(plot_wl, self.BB_fit_results.loc[MJD, 'brute_R_cm'], self.BB_fit_results.loc[MJD, 'brute_T_K'])
-                ax.plot(plot_wl*1e8, plot_BB_L, label = 'Blackbody fit', c = 'k')
+                h_BB, = ax.plot(plot_wl*1e8, plot_BB_L, c = 'k', label = title2 + title3)
+                #ax.plot(plot_wl*1e8, plot_BB_L, c = 'k')
                 ax.grid(True)
                 
                 for b in MJD_df['band'].unique():
@@ -421,18 +452,18 @@ class fit_BB_across_lightcurve:
                     b_colour = band_colour_dict[b]
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
                     legend_dict[b] = h[0]
-                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
-                title2 = r'$T_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_T_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T_err_K']:.1e} K \n"
-                title3 = r'$R_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_R_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R_err_cm']:.1e} cm"
-                title = title1 + title2 + title3
-                ax.set_title(title, fontsize = 6.5, fontweight = 'bold')
+                
+                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '4.5'})
+                ax.set_title(title1, fontsize = 7.5, fontweight = 'bold')
             
             titlefontsize = 18
             fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.suptitle(f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve', fontweight = 'bold', fontsize = titlefontsize)
+            titleline1 = f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve \n'
+            titleline2 = f'Parameter limits: (R: {self.BB_R_min:.1e} - {self.BB_R_max:.1e}), (T: {self.BB_T_min:.1e} - {self.BB_T_max:.1e})'
+            fig.suptitle(titleline1 + titleline2, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=0.874,
+            fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
                                 left=0.06,
                                 right=0.92,
@@ -493,7 +524,7 @@ class fit_BB_across_lightcurve:
             titlefontsize = 18
             fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel(r'Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            titleline1 = f'Curve fit blackbody fits at MJD values across {self.ant_name} lightcurve'
+            titleline1 = f'Curve fit double blackbody fits at MJD values across {self.ant_name} lightcurve'
             titleline2 = f'\nParameter limits: (R: {self.DBB_R_min:.1e} - {self.DBB_R_max:.1e}), (T1: {self.DBB_T1_min:.1e} - {self.DBB_T1_max:.1e}), (T2: {self.DBB_T2_min:.1e} - {self.DBB_T2_max:.1e})'
             fig.suptitle(titleline1 + titleline2, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
@@ -575,11 +606,12 @@ for idx in range(11):
     
     #if idx == 10:
     #    interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
-    
+    #interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
 
     BB_curvefit = True
-    BB_brute = False
-    SED_type = 'double_BB'
+    BB_brute = True
+    SED_type = 'single_BB'
+    #SED_type = 'double_BB'
     save_BB_plot = False
     save_indiv_BB_plot = True
     no_indiv_SED_plots = 24 # current options are 24, 20, 12
