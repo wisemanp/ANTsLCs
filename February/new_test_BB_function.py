@@ -47,7 +47,9 @@ def double_blackbody(lam, R1, T1, R2, T2):
 
 
 class fit_BB_across_lightcurve:
-    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_param_sigma = 1, BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7, individual_BB_plot = 'None', save_indiv_BB_plot = False):
+    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_param_sigma = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False,
+                BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
+                DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19):
         """
         INPUTS
         ---------------
@@ -78,19 +80,17 @@ class fit_BB_across_lightcurve:
 
         brute_param_sigma: (float or int) the number of sigma that the brute force method will use to calculate the error on the BB fit parameters. 
 
-        BB_R_min: (float) the minimum value of the radius parameter that will be tried in the BB fit. 
-
-        BB_R_max: (float) the maximum value of the radius parameter that will be tried in the BB fit.
-
-        BB_T_min: (float) the minimum value of the temperature parameter that will be tried in the BB fit.
-
-        BB_T_max: (float) the maximum value of the temperature parameter that will be tried in the BB fit.
-
         individual_BB_plot: (str) opitons: 'UVOT', 'whole_lc' or 'None'. If 'UVOT', the BB fits taken at MJDs which have UVOT data will be shown. If 'whole_lc', the BB fits taken
         at MJDs across the light curve will be shown. If 'None', no individual BB fits will be shown. The plot will display a grid of 12 BB fits and their chi squared parameter space. 
 
+        no_indiv_SED_plots: (int) how many individual SEDs you want plotted, if individual_BB_plot != 'None' (if you want the individual SED plot). Options are: 24, 20, 12
+        
         save_indiv_BB_plot: (bool) if True, the plot of the individual BB fits will be saved.
 
+        BB_R_min, BB_R_max, BB_T_min, BB_T_max: (each are floats). The parameter space limits for the single BB SED fits
+
+        DBB_T1_min, DBB_T1_max, DBB_T2_min, DBB_T2_ma, DBB_R_min, DBB_R_max: (each are floats). The parameter space limits for the double BB SED fits
+        
 
         """
         self.interp_df = interp_df
@@ -100,37 +100,54 @@ class fit_BB_across_lightcurve:
         self.brute_gridsize = brute_gridsize
         self.ant_name = ant_name
         self.brute_param_sigma = brute_param_sigma
-        self.BB_R_min = BB_R_min
-        self.BB_R_max = BB_R_max
-        self.BB_T_min = BB_T_min
-        self.BB_T_max = BB_T_max
+        
         self.individual_BB_plot = individual_BB_plot
+        self.no_indiv_SED_plots = no_indiv_SED_plots
         self.save_indiv_BB_plot = save_indiv_BB_plot
 
         self.brute_dchi = (brute_param_sigma)**2 # the number of sigma that the brute force method will use to calculate the error on the BB fit parameters. look to Christians stats module if confused about this
 
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # scale down the radius values to explore - this requires scaling down the rest frame luminosity by (R_scalefactor)**2 because L ~ R^2 
+        # if we scale down the radius values to explore - this requires scaling down the rest frame luminosity by (R_scalefactor)**2 because L ~ R^2 
         self.R_scalefactor = 1e-16
         self.L_scalefactor = (self.R_scalefactor)**2
         self.interp_df['L_rf_scaled'] = self.interp_df['L_rf'] * self.L_scalefactor
         self.interp_df['L_rf_err_scaled'] = self.interp_df['L_rf_err'] * self.L_scalefactor
-        self.BB_R_min_sc = BB_R_min * self.R_scalefactor # scaling down the bounds for the radius parameter space
-        self.BB_R_max_sc = BB_R_max * self.R_scalefactor
         interp_df['em_cent_wl_cm'] = interp_df['em_cent_wl'] * 1e-8 # the blackbody function takes wavelength in centimeters. 1A = 1e-10 m.     1A = 1e-8 cm
 
-        self.mjd_values = self.interp_df['MJD'].unique() 
+        # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # define limits on our SED model parameters and the results dataframe (whole columns are dependent on the SED type)
+        self.mjd_values = self.interp_df['MJD'].unique()
 
         if self.SED_type == 'single_BB':
             self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_R_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
-        
+            self.BB_R_min = BB_R_min
+            self.BB_R_max = BB_R_max
+            self.BB_T_min = BB_T_min
+            self.BB_T_max = BB_T_max
+
+            self.BB_R_min_sc = BB_R_min * self.R_scalefactor # scaling down the bounds for the radius parameter space
+            self.BB_R_max_sc = BB_R_max * self.R_scalefactor
+
+
         elif self.SED_type == 'double_BB':
             self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig']
+            self.DBB_T1_min = DBB_T1_min
+            self.DBB_T1_max = DBB_T1_max
+            self.DBB_T2_min = DBB_T2_min
+            self.DBB_T2_max = DBB_T2_max
+            self.DBB_R_min = DBB_R_min
+            self.DBB_R_max = DBB_R_max
+
+            self.DBB_R_min_sc = self.DBB_R_min * self.R_scalefactor # scaling down the bounds for the radius parameter space (we input this into curve_fit as the bound rather than the unscaled one)
+            self.DBB_R_max_sc = self.DBB_R_max * self.R_scalefactor
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
-
         
+
+    
+            
 
 
 
@@ -161,6 +178,7 @@ class fit_BB_across_lightcurve:
 
         except RuntimeError:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
+            self.no_failed_curvefits += 1 # counting the number of failed curve fits
             self.BB_fit_results.loc[MJD, self.columns[3:11]] = np.nan
 
         
@@ -168,10 +186,12 @@ class fit_BB_across_lightcurve:
 
 
 
-    def double_BB_curvefit(self, MJD, MJD_df):
+    def double_BB_curvefit(self, MJD, MJD_df, T1_min = 1e2, T1_max = 1e4, T2_min = 1e4, T2_max = 1e7):
+
         try:
             popt, pcov = opt.curve_fit(double_blackbody, xdata = MJD_df['em_cent_wl_cm'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
-                                    bounds = (np.array([self.BB_R_min_sc, 1e2, self.BB_R_min_sc, 1e4]), np.array([self.BB_R_max_sc, 1e4, self.BB_R_max_sc, 1e7])))
+                                    bounds = (np.array([self.DBB_R_min_sc, self.DBB_T1_min, self.DBB_R_min_sc, self.DBB_T2_min]), np.array([self.DBB_R_max_sc, self.DBB_T1_max, self.DBB_R_max_sc, self.DBB_T2_max])))
+                                    #                     (R1_min,           T1_min,             R2_min,        T2_min)                   (     R1_max,          T1_max,              R2_max,           T2_max)
             
             sc_cf_R1, cf_T1, sc_cf_R2, cf_T2 = popt
             sc_cf_R1_err = np.sqrt(pcov[0, 0])
@@ -198,6 +218,7 @@ class fit_BB_across_lightcurve:
 
         except RuntimeError:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
+            self.no_failed_curvefits += 1 # counting the number of failed curve fits
             self.BB_fit_results.loc[MJD, self.columns[3:14]] = np.nan
 
 
@@ -276,6 +297,12 @@ class fit_BB_across_lightcurve:
     def run_BB_fit(self):
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # iterate through each value of MJD within the dataframe and see if we have enough bands to take a BB fit to it 
+        single_BB = self.SED_type == 'single_BB'
+        double_BB = self.SED_type == 'double_BB'
+
+        if self.curvefit: # count the number of failed curve_fits
+            self.no_failed_curvefits = 0
+
         for MJD in tqdm(self.mjd_values, desc = 'Progress BB fitting each MJD value', total = len(self.mjd_values), leave = False):
             MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy() # THERE COULD BE FLOATING POINT ERRORS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
@@ -285,18 +312,23 @@ class fit_BB_across_lightcurve:
             
             if MJD_no_bands <= 1: # don't try fitting a BB spectrum to a single datapoint, so the BB results in this row will all be nan
                 continue
-
-            if self.SED_type == 'single_BB':
-                if self.curvefit == True:
+            
+            #for a single BB fit
+            if single_BB:
+                if self.curvefit:
                     self.BB_curvefit(MJD, MJD_df)
 
-                if self.brute == True:
+                if self.brute:
                     self.BB_brute(MJD, MJD_df)
 
-            elif self.SED_type == 'double_BB':
-                if self.curvefit == True:
+            # for a double BB fit
+            elif double_BB:
+                if self.curvefit:
                     self.double_BB_curvefit(MJD, MJD_df)
 
+        # print a message to indicate that the fitting was successful
+        if self.curvefit:
+            print(f'{Fore.GREEN}SED fitting complete for {self.ant_name} :)  (# curve_fits failed = {self.no_failed_curvefits}) ============================================================================================= {Style.RESET_ALL}')
 
         return self.BB_fit_results
     
@@ -305,36 +337,37 @@ class fit_BB_across_lightcurve:
 
 
 
-    def get_individual_BB_fit_MJDs(self, no_MJDs = 24):
+    def get_individual_BB_fit_MJDs(self):
         """
         This function will find the MJD values at which we will plot the individual BB fits. We will plot the BB fits at these MJD values in a grid of (no_MJD) number of plots, 
         with the BB fit and the chi squared parameter space grid
 
-        no_MJDs: (int) the number of MJD values at which we will plot the individual BB fits. If there are less than 12 MJD values with UVOT data, we will add some regular MJD values to the plot too
+        if you choose self.individual_BB_plot == 'UVOT', and, for example self.no_indiv_plots == 12 and there are < 12 MJDS with UVOT data, the code will plot some non-UVOT SEDs too
+
         """
         BB_MJDs = self.BB_fit_results[self.BB_fit_results['no_bands'] > 1].index # the MJD values at which we have more than 1 band present, so we can fit a BB to the data
         if self.individual_BB_plot == 'UVOT':
             UVOT_df = self.interp_df[self.interp_df['band'].isin(['UVOT_U', 'UVOT_B', 'UVOT_V', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2'])].copy()
             UVOT_MJDs = UVOT_df['MJD'].unique()
             if UVOT_df.empty == True: # if we have no UVOT data, just get MJDs from the whole light curve
-                self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_MJDs)] # plot every 12th MJD value
-                self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+                self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
+                self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
                 return
             
-            self.indiv_plot_MJDs = UVOT_MJDs[::int(len(UVOT_MJDs)/no_MJDs)] # plot every 12th MJD value
-            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+            self.indiv_plot_MJDs = UVOT_MJDs[::int(len(UVOT_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
+            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
             len_UVOT_mjd_choice = len(self.indiv_plot_MJDs)
 
-            if len_UVOT_mjd_choice < no_MJDs: # if we want to plot the UVOT data but there are less than 12 instances of UVOT data, add some regular MJDs to the plot too
-                no_missing = no_MJDs - len_UVOT_mjd_choice
+            if len_UVOT_mjd_choice < self.no_indiv_SED_plots: # if we want to plot the UVOT data but there are less than 12 instances of UVOT data, add some regular MJDs to the plot too
+                no_missing = self.no_indiv_SED_plots - len_UVOT_mjd_choice
                 add_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_missing)]
                 add_MJDs = add_MJDs[:no_missing]
                 self.indiv_plot_MJDs = np.concatenate((self.indiv_plot_MJDs, add_MJDs))
 
 
         elif self.individual_BB_plot == 'whole_lc':
-            self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/no_MJDs)] # plot every 12th MJD value
-            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:no_MJDs] # only plot the first 12 values, in case the line above finds 13
+            self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
+            self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
             
 
         else:
@@ -343,11 +376,35 @@ class fit_BB_across_lightcurve:
 
 
 
+    @staticmethod
+    def get_indiv_SED_plot_rows_cols(no_SEDs):
+        """
+        (Gets called within plot_individual_BB_fits() and plot_individual_double_BB_fits() )
+        This function takes in the number of individual SEDs you want to plot in a single plot and gives the number of rows and columns needed to allow for this. 
+        """
+        if no_SEDs == 24:
+            nrows, ncols = (4, 6)
+
+        elif no_SEDs == 20:
+            nrows, ncols = (4, 5)
+
+        elif no_SEDs == 12:
+            nrows, ncols = (3, 4)
+
+        return nrows, ncols
+
+
+
 
 
     def plot_individual_BB_fits(self, band_colour_dict):
+        """
+        Make a subplot of many of the individual single BB SEDs fit at a particular MJD.
+        """
+        nrows, ncols = self.get_indiv_SED_plot_rows_cols(no_SEDs = self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
+
         if self.indiv_plot_MJDs is not None:
-            fig, axs = plt.subplots(4, 6, figsize = (16, 7.5), sharex = True)
+            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
             axs = axs.flatten()
             legend_dict = {}
             for i, MJD in enumerate(self.indiv_plot_MJDs):
@@ -370,9 +427,10 @@ class fit_BB_across_lightcurve:
                 title = title1 + title2 + title3
                 ax.set_title(title, fontsize = 6.5, fontweight = 'bold')
             
-            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold')
-            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
-            fig.suptitle(f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve', fontweight = 'bold')
+            titlefontsize = 18
+            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            fig.suptitle(f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve', fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
             fig.subplots_adjust(top=0.874,
                                 bottom=0.094,
@@ -389,18 +447,37 @@ class fit_BB_across_lightcurve:
 
 
 
-    def plot_individual_double_BB_fits(self, band_colour_dict):
+    def plot_individual_double_BB_fits(self, band_colour_dict): 
+        """
+        Make a subplot of many of the individual double BB SEDs fit at a particular MJD.
+        """
+        nrows, ncols = self.get_indiv_SED_plot_rows_cols(self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
+
         if self.indiv_plot_MJDs is not None:
-            fig, axs = plt.subplots(4, 6, figsize = (16, 7.5), sharex = True)
+            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
             axs = axs.flatten()
             legend_dict = {}
             for i, MJD in enumerate(self.indiv_plot_MJDs):
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
+
+
+                # sort out the titles to present all of the model parameters
+                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
+                title2 = r'T1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T1_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T1_err_K']:.1e} K"
+                title3 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R1_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R1_err_cm']:.1e} cm"
+                title4 = r'T2 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T2_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T2_err_K']:.1e} K"
+                title5 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R2_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']:.1e} cm"
+
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
-                plot_BB_L = double_blackbody(lam = plot_wl, R1 = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], T1 = self.BB_fit_results.loc[MJD, 'cf_T1_K'], R2 = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], T2 = self.BB_fit_results[MJD, 'cf_T2_K'])
-                ax.plot(plot_wl*1e8, plot_BB_L, c = 'k')
+                plot_BB_L = double_blackbody(lam = plot_wl, R1 = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], T1 = self.BB_fit_results.loc[MJD, 'cf_T1_K'], R2 = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], T2 = self.BB_fit_results.loc[MJD, 'cf_T2_K'])
+                plot_BB1_L = blackbody(lam_cm = plot_wl, R_cm = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], T_K = self.BB_fit_results.loc[MJD, 'cf_T1_K'])
+                plot_BB2_L = blackbody(lam_cm = plot_wl, R_cm = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], T_K = self.BB_fit_results.loc[MJD, 'cf_T2_K'])
+                plot_wl_A = plot_wl*1e8 # the wavelengths for the plot in Angstrom
+                ax.plot(plot_wl_A, plot_BB_L, c = 'k')
+                h1, = ax.plot(plot_wl_A, plot_BB1_L, c = 'red', linestyle = '--', alpha = 0.5) # 'h1, =' upakcs the 2D array given by ax.plot(), although there is only one element in this since we're only plotting one line
+                h2, = ax.plot(plot_wl_A, plot_BB2_L, c = 'blue', linestyle = '--', alpha = 0.5)
                 ax.grid(True)
                 
                 for b in MJD_df['band'].unique():
@@ -408,44 +485,49 @@ class fit_BB_across_lightcurve:
                     b_colour = band_colour_dict[b]
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
                     legend_dict[b] = h[0]
-                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}\n'
-                title2 = r'T1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T1_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T1_err_K']:.1e} K \n"
-                title3 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R1_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R1_err_cm']:.1e} cm"
-                title4 = r'T2 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T2_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T2_err_K']:.1e} K \n"
-                title5 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R2_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']:.1e} cm"
-                title = title1 + title2 + title3
-                ax.set_title(title, fontsize = 6.5, fontweight = 'bold')
+
+                title = title1 #+ title2 + title3 + title4 + title5
+                ax.set_title(title, fontsize = 7.5, fontweight = 'bold')
+                ax.legend(handles = [h1, h2], labels = [title2 + '\n'+ title3, title4 + '\n'+ title5], fontsize = 4.5, prop = {'weight': 'bold', 'size': 4.5})
             
-            titlefontsize = 40
+            titlefontsize = 18
             fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel(r'Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.suptitle(f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve', fontweight = 'bold', fontsize = titlefontsize)
+            titleline1 = f'Curve fit blackbody fits at MJD values across {self.ant_name} lightcurve'
+            titleline2 = f'\nParameter limits: (R: {self.DBB_R_min:.1e} - {self.DBB_R_max:.1e}), (T1: {self.DBB_T1_min:.1e} - {self.DBB_T1_max:.1e}), (T2: {self.DBB_T2_min:.1e} - {self.DBB_T2_max:.1e})'
+            fig.suptitle(titleline1 + titleline2, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=0.874,
+            fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
-                                left=0.06,
+                                left=0.065,
                                 right=0.92,
-                                hspace=0.7,
+                                hspace=0.355,
                                 wspace=0.2)
             
+
             if self.save_indiv_BB_plot == True:
                 savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_double_BB_fits.png"
                 plt.savefig(savepath, dpi = 300) 
 
+            plt.show()
 
 
-    def run_individual_BB_fits(self, band_colour_dict):
-        self.get_individual_BB_fit_MJDs()
-        self.plot_individual_BB_fits(band_colour_dict)
 
-
-    def run_individual_double_BB_fits(self, band_colour_dict):
-        self.get_individual_BB_fit_MJDs()
-        self.plot_individual_double_BB_fits(band_colour_dict)
     
         
 
+    def run_SED_fitting_process(self, band_colour_dict):
+        SED_fit_results = self.run_BB_fit() # iterate through the MJDs and fit our chosen SED to them
+        self.get_individual_BB_fit_MJDs() # if we want to plot the individual SEDs, get the MJDs at which we will plot their SEDs
         
+        # plot the individual SEDs:
+        if self.SED_type == 'single_BB': # only plots if the individual_fit_MJDs is not None, so this should be find even if you dont want the individual BB fits plot
+            self.plot_individual_BB_fits(band_colour_dict)
+
+        elif self.SED_type == 'double_BB':
+            self.plot_individual_double_BB_fits(band_colour_dict)
+
+        return SED_fit_results
 
 
 
@@ -482,8 +564,8 @@ interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
 
 
 #
-# for idx in range(11):
-for idx in [10]:
+for idx in range(11):
+#for idx in [10]:
 
     ANT_name = transient_names[idx]
     interp_lc= interp_df_list[idx]
@@ -496,22 +578,27 @@ for idx in [10]:
     
 
     BB_curvefit = True
-    BB_brute = True
-    SED_type = 'single_BB'
-    save_BB_plot = True
-    #BB_fit_results = fit_BB_across_lc(interp_lc, brute = BB_brute, curvefit = BB_curvefit, brute_gridsize = 1000)
-    BB_fitting = fit_BB_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', save_indiv_BB_plot = True)
-    BB_fit_results = BB_fitting.run_BB_fit()
+    BB_brute = False
+    SED_type = 'double_BB'
+    save_BB_plot = False
+    save_indiv_BB_plot = True
+    no_indiv_SED_plots = 24 # current options are 24, 20, 12
+
+    BB_fitting = fit_BB_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot)
     
     
-    BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
+    
+    
     #print(BB_fit_results)
     print()
     if SED_type == 'double_BB':
-        BB_fitting.run_individual_double_BB_fits(band_colour_dict)
+        BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+    
     
     if SED_type == 'single_BB':
-        BB_fitting.run_individual_BB_fits(band_colour_dict)
+        BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+        BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
+        
         # what we want: 
         # L_rf vs MJD: on this plot there will be the actual (binned) data, the polyfit and the interpolated data from the polyfit
         # BB R vs MJD: on this plot we'll have curve_fit R and brute force grid R, perhaps with a colour scale to indicate the sigma distance of the reduced chi squared for the 
