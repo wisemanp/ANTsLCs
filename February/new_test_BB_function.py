@@ -90,8 +90,8 @@ class fit_BB_across_lightcurve:
             value per band per MJD value for the interpolated data, since the polynomials are single-valued for any given MJD value). 
             columns: MJD, L_rf, L_rf_err, band, em_cent_wl
 
-        SED_type: (str) options: 'single_BB', 'double_BB' or 'power-law. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
-        If 'power-law', the SED fit will be a power law fit like A*(wavelength)**gamma. 
+        SED_type: (str) options: 'single_BB', 'double_BB' or 'power_law. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
+        If 'power_law', the SED fit will be a power law fit like A*(wavelength)**gamma. 
 
         curvefit: (bool) if True, the BB fit will be tried using scipy's curve_fit. If False, no curve_fit calculation will be tried
 
@@ -168,6 +168,10 @@ class fit_BB_across_lightcurve:
             self.DBB_R_min_sc = self.DBB_R_min * self.R_scalefactor # scaling down the bounds for the radius parameter space (we input this into curve_fit as the bound rather than the unscaled one)
             self.DBB_R_max_sc = self.DBB_R_max * self.R_scalefactor
 
+
+        elif self.SED_type == 'power_law':
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig']#, 'brute_A', 'brute_A_err', 'brute_gamma', 'brute_gamma_err', 'brute_chi', 'brute_red_chi']
+
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
         
 
@@ -212,7 +216,6 @@ class fit_BB_across_lightcurve:
 
 
     def double_BB_curvefit(self, MJD, MJD_df, T1_min = 1e2, T1_max = 1e4, T2_min = 1e4, T2_max = 1e7):
-
         try:
             popt, pcov = opt.curve_fit(double_blackbody, xdata = MJD_df['em_cent_wl_cm'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
                                     bounds = (np.array([self.DBB_R_min_sc, self.DBB_T1_min, self.DBB_R_min_sc, self.DBB_T2_min]), np.array([self.DBB_R_max_sc, self.DBB_T1_max, self.DBB_R_max_sc, self.DBB_T2_max])))
@@ -248,6 +251,80 @@ class fit_BB_across_lightcurve:
 
 
 
+
+    def power_law_curvefit(self, MJD, MJD_df):
+        try:
+            A_scalefactor = self.L_scalefactor # L = A(wavelength)^gamma . If we scale L down by 5, it would scale A down by 5
+            popt, pcov = opt.curve_fit(power_law_SED, xdata = MJD_df['em_cent_wl'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True)
+            cf_A_sc = popt[0]
+            cf_A = cf_A_sc/A_scalefactor
+            cf_gamma = popt[1]
+            cf_A_err_sc = np.sqrt(pcov[0, 0])
+            cf_A_err = cf_A_err_sc/A_scalefactor
+            cf_gamma_err = np.sqrt(pcov[1, 1])
+            cf_cov = pcov[1, 0] # IDK IF THIS IS COVARIANCE OR CORRELATION - I WANT THE CORRELATION?
+
+            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # calculate the reduced chi squared of the curve_fit result
+            PL_sc_L_chi = [power_law_SED(wl_A, cf_A_sc, cf_gamma) for wl_A in MJD_df['em_cent_wl']] # evaluating the power law SED model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
+            cf_red_chi, red_chi_1sig = chisq(y_m = PL_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 2, reduced_chi = True)
+            cf_chi_sigma_dist = abs(1 - cf_red_chi)/red_chi_1sig
+
+            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # add the result to the results row which will be appended to the results dataframe
+            self.BB_fit_results.loc[MJD, self.columns[3:11]] = [cf_A, cf_A_err, cf_gamma, cf_gamma_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
+
+
+        except RuntimeError:
+            print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
+            self.no_failed_curvefits += 1 # counting the number of failed curve fits
+            self.BB_fit_results.loc[MJD, self.columns[3:11]] = np.nan
+
+
+
+
+    
+    def power_law_brute(self, MJD, MJD_df):
+        A_scalefactor = self.L_scalefactor
+        A_values = np.logspace(35, 45, 1000, self.brute_gridsize)
+        sc_A_values = A_values*A_scalefactor
+        gamma_values = np.linspace(0.0, 10.0, self.brute_gridsize)
+
+        wavelengths = MJD_df['em_cent_wl'].to_numpy() # the emitted central wavelengths of the bands present at this MJD value
+        L_rfs = MJD_df['L_rf_scaled'].to_numpy() # the scaled rest frame luminosities of the bands present at this MJD value
+        L_rf_errs = MJD_df['L_rf_err_scaled'].to_numpy() # the scaled rest frame luminosity errors of the bands present at this MJD value
+
+        PL_L_sc = power_law_SED(wavelengths[:, np.newaxis, np.newaxis], sc_A_values[np.newaxis, :, np.newaxis], gamma_values[np.newaxis, np.newaxis, :]) # the calculated value of scaled rest frame luminosity using this value of T and scaled R
+        
+        # calculate the chi squared of the fit
+        chi = np.sum((L_rfs[:, np.newaxis, np.newaxis] - PL_L_sc)**2 / L_rf_errs[:, np.newaxis, np.newaxis]**2, axis = 0) # the chi squared values for each combination of R and T
+        min_chi = np.min(chi) # the minimum chi squared value
+        row, col = np.where(chi == min_chi) # the row and column indices of the minimum chi squared value
+
+        if (len(row) == 1) & (len(col) == 1): 
+            r = row[0]
+            c = col[0]
+            brute_gamma = gamma_values[c] # the parameters which give the minimum chi squared
+            brute_A = sc_A_values[r] / self.A_scalefactor
+            N_M = len(MJD_df['band']) - 2
+
+            if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
+                brute_red_chi = min_chi / N_M
+                red_chi_1sig = np.sqrt(2/N_M)
+                brute_chi_sigma_dist = abs(1 - brute_red_chi) / red_chi_1sig
+            else:
+                brute_red_chi = np.nan
+                red_chi_1sig = np.nan
+                brute_chi_sigma_dist = np.nan
+
+        else:
+            print()
+            print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[A_values[r] for r in row]}, Rs = {[gamma_values[c] for c in col]}")
+            print(f"Chi values = {chi[row, col]} {Style.RESET_ALL}")
+            print()
+
+
+        self.BB_fit_results[3:11] = [] # UNFINISHED
 
 
 
@@ -289,7 +366,7 @@ class fit_BB_across_lightcurve:
 
         else:
             print()
-            print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[r] for r in row]}, Rs = {[sc_R_values[c]/self.R_scalefactor for c in col]}")
+            print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[T_values[c] for c in col]}, Rs = {[sc_R_values[r]/self.R_scalefactor for r in row]}")
             print(f"Chi values = {chi[row, col]} {Style.RESET_ALL}")
             print()
 
@@ -324,6 +401,7 @@ class fit_BB_across_lightcurve:
         # iterate through each value of MJD within the dataframe and see if we have enough bands to take a BB fit to it 
         single_BB = self.SED_type == 'single_BB'
         double_BB = self.SED_type == 'double_BB'
+        power_law = self.SED_type == 'power_law'
 
         if self.curvefit: # count the number of failed curve_fits
             self.no_failed_curvefits = 0
@@ -350,6 +428,11 @@ class fit_BB_across_lightcurve:
             elif double_BB:
                 if self.curvefit:
                     self.double_BB_curvefit(MJD, MJD_df)
+
+            elif power_law:
+                if self.curvefit:
+                    self.power_law_curvefit(MJD, MJD_df)
+
 
         # print a message to indicate that the fitting was successful
         if self.curvefit:
@@ -424,7 +507,7 @@ class fit_BB_across_lightcurve:
 
     def plot_individual_BB_fits(self, band_colour_dict):
         """
-        Make a subplot of many of the individual single BB SEDs fit at a particular MJD.
+        Make a subplot of many of the individual single BB SEDs fit at particular MJDs.
         """
         nrows, ncols = self.get_indiv_SED_plot_rows_cols(no_SEDs = self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
 
@@ -444,7 +527,6 @@ class fit_BB_across_lightcurve:
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
                 plot_BB_L = blackbody(plot_wl, self.BB_fit_results.loc[MJD, 'brute_R_cm'], self.BB_fit_results.loc[MJD, 'brute_T_K'])
                 h_BB, = ax.plot(plot_wl*1e8, plot_BB_L, c = 'k', label = title2 + title3)
-                #ax.plot(plot_wl*1e8, plot_BB_L, c = 'k')
                 ax.grid(True)
                 
                 for b in MJD_df['band'].unique():
@@ -480,7 +562,7 @@ class fit_BB_across_lightcurve:
 
     def plot_individual_double_BB_fits(self, band_colour_dict): 
         """
-        Make a subplot of many of the individual double BB SEDs fit at a particular MJD.
+        Make a subplot of many of the individual double BB SEDs fit at particular MJDs.
         """
         nrows, ncols = self.get_indiv_SED_plot_rows_cols(self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
 
@@ -544,6 +626,62 @@ class fit_BB_across_lightcurve:
 
 
 
+
+    def plot_individual_power_law_SED_fits(self, band_colour_dict):
+        """
+        Make a subplot of many of the individual power law SEDs fit at particular MJDs.
+        """
+        nrows, ncols = self.get_indiv_SED_plot_rows_cols(no_SEDs = self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
+
+        if self.indiv_plot_MJDs is not None:
+            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
+            axs = axs.flatten()
+            legend_dict = {}
+            for i, MJD in enumerate(self.indiv_plot_MJDs):
+                ax = axs[i]
+                MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
+                d_since_peak = MJD_df['d_since_peak'].iloc[0]
+
+                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
+                title2 = r'$A_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_A']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_A_err']:.1e} \n"
+                title3 = r'$\gamma_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_gamma_err']:.1e}"
+
+                plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                plot_wl_A = plot_wl*1e8
+                plot_PL_L = power_law_SED(plot_wl_A, self.BB_fit_results.loc[MJD, 'cf_A'], self.BB_fit_results.loc[MJD, 'cf_gamma'])
+                h_BB, = ax.plot(plot_wl_A, plot_PL_L, c = 'k', label = title2 + title3)
+                ax.grid(True)
+                
+                for b in MJD_df['band'].unique():
+                    b_df = MJD_df[MJD_df['band'] == b].copy()
+                    b_colour = band_colour_dict[b]
+                    h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
+                    legend_dict[b] = h[0]
+                
+                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '4.5'})
+                ax.set_title(title1, fontsize = 7.5, fontweight = 'bold')
+            
+            titlefontsize = 18
+            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            titleline1 = f"Curve_fit power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
+            #titleline2 = f'Parameter limits: (R: {self.BB_R_min:.1e} - {self.BB_R_max:.1e}), (T: {self.BB_T_min:.1e} - {self.BB_T_max:.1e})'
+            fig.suptitle(titleline1, fontweight = 'bold', fontsize = titlefontsize)
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
+            fig.subplots_adjust(top=0.88,
+                                bottom=0.094,
+                                left=0.065,
+                                right=0.92,
+                                hspace=0.355,
+                                wspace=0.2)
+            
+            if self.save_indiv_BB_plot == True:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_power_law_fits.png"
+                plt.savefig(savepath, dpi = 300) 
+
+            plt.show()
+
+
     
         
 
@@ -557,6 +695,9 @@ class fit_BB_across_lightcurve:
 
         elif self.SED_type == 'double_BB':
             self.plot_individual_double_BB_fits(band_colour_dict)
+
+        elif self.SED_type == 'power_law':
+            self.plot_individual_power_law_SED_fits(band_colour_dict)
 
         return SED_fit_results
 
@@ -610,8 +751,9 @@ for idx in range(11):
 
     BB_curvefit = True
     BB_brute = True
-    SED_type = 'single_BB'
+    #SED_type = 'single_BB'
     #SED_type = 'double_BB'
+    SED_type = 'power_law'
     save_BB_plot = False
     save_indiv_BB_plot = True
     no_indiv_SED_plots = 24 # current options are 24, 20, 12
@@ -624,6 +766,9 @@ for idx in range(11):
     #print(BB_fit_results)
     print()
     if SED_type == 'double_BB':
+        BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+
+    if SED_type == 'power_law':
         BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
     
     
