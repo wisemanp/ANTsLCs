@@ -172,14 +172,15 @@ class fit_SED_across_lightcurve:
 
 
         elif self.SED_type == 'power_law':
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig']#, 'brute_A', 'brute_A_err', 'brute_gamma', 'brute_gamma_err', 'brute_chi', 'brute_red_chi']
+            # for the brute force parameter errors, we'll input the lower and upper errors as a tuple like (lower_err, upper_err)
+            #                  0          1              2        3         4           5             6             7                8                  9             10          11               12              13              14             15
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err', 'brute_gamma', 'brute_gamma_err', 'brute_chi', 'brute_red_chi']
+            
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
         
 
     
-            
-
 
 
 
@@ -194,17 +195,17 @@ class fit_SED_across_lightcurve:
             cf_T_err = np.sqrt(pcov[1, 1])
             cf_R = sc_cf_R / self.R_scalefactor
             cf_R_err = sc_cf_R_err / self.R_scalefactor
-            cf_covariance = pcov[1,0]
+            cf_correlation = pcov[1,0] / (cf_T_err * sc_cf_R_err) # using the scaled R error here since curve_fit is not told about the fact that R has been scaled down
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # calculate the reduced chi squared of the curve_fit result
             BB_sc_L_chi = [blackbody(wl_cm, sc_cf_R, cf_T) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
             cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 2, reduced_chi = True)
-            cf_chi_sigma_dist = abs(1 - cf_red_chi)/red_chi_1sig
+            cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            self.BB_fit_results.loc[MJD, self.columns[3:11]] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_covariance, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]  
+            self.BB_fit_results.loc[MJD, self.columns[3:11]] = [cf_T, cf_T_err, cf_R, cf_R_err, cf_correlation, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]  
 
 
         except RuntimeError:
@@ -232,13 +233,13 @@ class fit_SED_across_lightcurve:
             cf_R1_err = sc_cf_R1_err / self.R_scalefactor
             cf_R2 = sc_cf_R2 / self.R_scalefactor
             cf_R2_err = sc_cf_R2_err / self.R_scalefactor
-            cf_covariance = pcov[1,0] # BUT THIS IS PROBABLY THE COVARIANCE BETWEEN JUST THE T1 AND R1 PARAMETERS, NOT THE COVARIANCE BETWEEN ALL 4 PARAMETERS
+            cf_cov = pcov[1,0]  # BUT THIS IS PROBABLY THE COVARIANCE BETWEEN JUST THE T1 AND R1 PARAMETERS OR SOMETHING, NOT THE COVARIANCE BETWEEN ALL 4 PARAMETERS. 
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # calculate the reduced chi squared of the curve_fit result
             BB_sc_L_chi = [double_blackbody(wl_cm, sc_cf_R1, cf_T1, sc_cf_R2, cf_T2) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
             cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 4, reduced_chi = True)
-            cf_chi_sigma_dist = abs(1 - cf_red_chi)/red_chi_1sig
+            cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
@@ -254,6 +255,7 @@ class fit_SED_across_lightcurve:
 
 
 
+
     def power_law_curvefit(self, MJD, MJD_df):
         try:
             A_scalefactor = self.L_scalefactor # L = A(wavelength)^gamma . If we scale L down by 5, it would scale A down by 5
@@ -264,23 +266,23 @@ class fit_SED_across_lightcurve:
             cf_A_err_sc = np.sqrt(pcov[0, 0])
             cf_A_err = cf_A_err_sc/A_scalefactor
             cf_gamma_err = np.sqrt(pcov[1, 1])
-            cf_cov = pcov[1, 0] # IDK IF THIS IS COVARIANCE OR CORRELATION - I WANT THE CORRELATION?
+            cf_correlation = pcov[1, 0] / (cf_A_err_sc * cf_gamma_err) # I feel like we should use A's scaled error here, since curve_fit is not told about the fact that A has been scaled down at all.  
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # calculate the reduced chi squared of the curve_fit result
             PL_sc_L_chi = [power_law_SED(wl_A, cf_A_sc, cf_gamma) for wl_A in MJD_df['em_cent_wl']] # evaluating the power law SED model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
             cf_red_chi, red_chi_1sig = chisq(y_m = PL_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 2, reduced_chi = True)
-            cf_chi_sigma_dist = abs(1 - cf_red_chi)/red_chi_1sig
+            cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
-            self.BB_fit_results.loc[MJD, self.columns[3:11]] = [cf_A, cf_A_err, cf_gamma, cf_gamma_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
+            self.BB_fit_results.loc[MJD, self.columns[3:10]] = [cf_A, cf_A_err, cf_gamma, cf_gamma_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
 
 
         except RuntimeError:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
             self.no_failed_curvefits += 1 # counting the number of failed curve fits
-            self.BB_fit_results.loc[MJD, self.columns[3:11]] = np.nan
+            self.BB_fit_results.loc[MJD, self.columns[3:10]] = np.nan
 
 
 
@@ -288,7 +290,7 @@ class fit_SED_across_lightcurve:
     
     def power_law_brute(self, MJD, MJD_df):
         A_scalefactor = self.L_scalefactor
-        A_values = np.logspace(35, 45, 1000, self.brute_gridsize)
+        A_values = np.logspace(35, 45, self.brute_gridsize)
         sc_A_values = A_values*A_scalefactor
         gamma_values = np.linspace(0.0, 10.0, self.brute_gridsize)
 
@@ -313,7 +315,7 @@ class fit_SED_across_lightcurve:
             if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
                 brute_red_chi = min_chi / N_M
                 red_chi_1sig = np.sqrt(2/N_M)
-                brute_chi_sigma_dist = abs(1 - brute_red_chi) / red_chi_1sig
+                brute_chi_sigma_dist = (brute_red_chi - 1) / red_chi_1sig
             else:
                 brute_red_chi = np.nan
                 red_chi_1sig = np.nan
@@ -326,7 +328,9 @@ class fit_SED_across_lightcurve:
             print()
 
 
-        self.BB_fit_results[3:11] = [] # UNFINISHED
+        self.BB_fit_results.loc[MJD, self.columns[10:16]] = [brute_A, np.nan, brute_gamma, np.nan, brute_red_chi, brute_chi_sigma_dist] 
+
+
 
 
 
@@ -360,7 +364,7 @@ class fit_SED_across_lightcurve:
             if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
                 brute_red_chi = min_chi / N_M
                 red_chi_1sig = np.sqrt(2/N_M)
-                brute_chi_sigma_dist = abs(1 - brute_red_chi) / red_chi_1sig
+                brute_chi_sigma_dist = (brute_red_chi - 1) / red_chi_1sig
             else:
                 brute_red_chi = np.nan
                 red_chi_1sig = np.nan
@@ -482,6 +486,7 @@ class fit_SED_across_lightcurve:
 
         else:
             self.indiv_plot_MJDs = None
+
 
 
 
@@ -629,6 +634,7 @@ class fit_SED_across_lightcurve:
 
 
 
+
     def plot_individual_power_law_SED_fits(self, band_colour_dict):
         """
         Make a subplot of many of the individual power law SEDs fit at particular MJDs.
@@ -756,9 +762,10 @@ for idx in range(11):
     #SED_type = 'single_BB'
     #SED_type = 'double_BB'
     SED_type = 'power_law'
-    save_BB_plot = False
-    save_indiv_BB_plot = True
     no_indiv_SED_plots = 24 # current options are 24, 20, 12
+
+    save_BB_plot = False
+    save_indiv_BB_plot = False
 
     BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot)
     
