@@ -50,7 +50,8 @@ def power_law_SED(lam, A, gamma):
 
     INPUTS
     --------------
-    lam: (float) wavelength in cm
+    lam: (float) wavelength. Units of the wavelength should reflect the units of the luminosity density you're trying to model. If it's ergs/s/Angstrom, then input
+    lam in Angstrom, if its ergs/s/cm, then input lam in cm.
 
     A: (float) Amplitude factor of the power law
 
@@ -60,7 +61,8 @@ def power_law_SED(lam, A, gamma):
     OUTPUTS
     --------------
     L_rf: (float) the value of the rest-frame luminosity (density) given by the power law. (I say luminosity(density) because I often just refer to this as rest frame luminosity, 
-            but since it's per unit Angstrom, its actually a luminoisty density) I think the units are kind of arbitrary?
+            but since it's per unit wavelength, its actually a luminoisty density). Units determined by the luminosity you're trying to model. This model doesn't 
+            have much physical meaning, so physical units are not explicitly defined for this model, instead they reflect the luminosity density that we're modelling
 
     """
     L_rf = A*(lam**gamma)
@@ -70,7 +72,7 @@ def power_law_SED(lam, A, gamma):
 
 
 
-class fit_BB_across_lightcurve:
+class fit_SED_across_lightcurve:
     def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_param_sigma = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19):
@@ -758,7 +760,7 @@ for idx in range(11):
     save_indiv_BB_plot = True
     no_indiv_SED_plots = 24 # current options are 24, 20, 12
 
-    BB_fitting = fit_BB_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot)
+    BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_gridsize = 1000, individual_BB_plot = 'whole_lc', no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot)
     
     
     
