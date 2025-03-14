@@ -74,8 +74,10 @@ def power_law_SED(lam, A, gamma):
 
 class fit_SED_across_lightcurve:
     def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False,
+                 plot_chi_contour = False, no_chi_contours = 3,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
-                DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19):
+                DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19, 
+                PL_A_min = 1e39, PL_A_max = 1e48, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
         """
         INPUTS
         ---------------
@@ -118,9 +120,15 @@ class fit_SED_across_lightcurve:
         
         save_indiv_BB_plot: (bool) if True, the plot of the individual BB fits will be saved.
 
+        plot_chi_contour: (bool). If True and brute == True, the code will plot some chi squared contour plots in the parameter space. This is helpful to sanity check errors. 
+
+        no_chi_contours: (int). Number of individual plots of chi squared contours for a particular fit to a randomly selected SEDs. This has only been implemented in the brute force power law fitting so far
+        
         BB_R_min, BB_R_max, BB_T_min, BB_T_max: (each are floats). The parameter space limits for the single BB SED fits
 
         DBB_T1_min, DBB_T1_max, DBB_T2_min, DBB_T2_ma, DBB_R_min, DBB_R_max: (each are floats). The parameter space limits for the double BB SED fits
+
+        PL_A_min, PL_A_max, PL_gamma_min, PL_gamma_max: (each are floats). The parameter space limits for the power law SED fitting
         
 
         """
@@ -135,6 +143,8 @@ class fit_SED_across_lightcurve:
         self.individual_BB_plot = individual_BB_plot
         self.no_indiv_SED_plots = no_indiv_SED_plots
         self.save_indiv_BB_plot = save_indiv_BB_plot
+        self.no_chi_contours = no_chi_contours
+        self.plot_chi_contour = plot_chi_contour
 
 
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -177,7 +187,14 @@ class fit_SED_across_lightcurve:
             # for the brute force parameter error on A, we'll input the lower and upper errors as a tuple like (lower_err, upper_err), but single-valued for gamma's error
             #                  0          1              2        3         4           5             6             7                8                  9             10          11               12              13              14                    15
             self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist']
-            
+            self.PL_A_max = PL_A_max
+            self.PL_A_min = PL_A_min
+            self.PL_gamma_max = PL_gamma_max
+            self.PL_gamma_min = PL_gamma_min
+
+            self.A_scalefactor = self.L_scalefactor # scaling down the bounds for the amplitude parameter space (we input this into curve_fit as the bound rather than the unscaled one)
+            self.PL_sc_A_max = self.PL_A_max * self.A_scalefactor
+            self.PL_sc_A_min = self.PL_A_min * self.A_scalefactor
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
         
@@ -220,7 +237,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def double_BB_curvefit(self, MJD, MJD_df, T1_min = 1e2, T1_max = 1e4, T2_min = 1e4, T2_max = 1e7):
+    def double_BB_curvefit(self, MJD, MJD_df):
         try:
             popt, pcov = opt.curve_fit(double_blackbody, xdata = MJD_df['em_cent_wl_cm'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
                                     bounds = (np.array([self.DBB_R_min_sc, self.DBB_T1_min, self.DBB_R_min_sc, self.DBB_T2_min]), np.array([self.DBB_R_max_sc, self.DBB_T1_max, self.DBB_R_max_sc, self.DBB_T2_max])))
@@ -261,7 +278,8 @@ class fit_SED_across_lightcurve:
     def power_law_curvefit(self, MJD, MJD_df):
         try:
             A_scalefactor = self.L_scalefactor # L = A(wavelength)^gamma . If we scale L down by 5, it would scale A down by 5
-            popt, pcov = opt.curve_fit(power_law_SED, xdata = MJD_df['em_cent_wl'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True)
+            popt, pcov = opt.curve_fit(power_law_SED, xdata = MJD_df['em_cent_wl'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
+                                       bounds = (np.array([self.PL_sc_A_min, self.PL_gamma_min]), np.array([self.PL_sc_A_max, self.PL_gamma_max])))
             cf_A_sc = popt[0]
             cf_A = cf_A_sc/A_scalefactor
             cf_gamma = popt[1]
@@ -291,10 +309,16 @@ class fit_SED_across_lightcurve:
 
     
     def power_law_brute(self, MJD, MJD_df):
-        A_scalefactor = self.L_scalefactor
-        A_values = np.logspace(39, 46, self.brute_gridsize)
-        sc_A_values = A_values*A_scalefactor
-        gamma_values = np.linspace(-5.0, 5.0, self.brute_gridsize)
+        """
+        fits a power law SED to the data for a given MJD. For this brute force gridding, since gamma only really needs to explore values between -5 to 0, 
+        I decide to prioritise computational time and accuracy by increasing the number of A values that we try, and decreasing the number of gamma values
+        so that it takes just as long as if we had a square parameter grid but I think we need better resolution in A so we're prioritising it a bit. 
+        """
+        # HERE I AM TRYING 4 X AS MANY VALUES OF A AS OPPOSED TO GAMMA SO THIS IS A RECTANGULAR PARAMETER GRID NOW, BECAUSE I THINK THE A IS STRUGGING TO BE CONSTRAINED MORE THAN GAMMA
+        grid_scalefactor = 1
+        A_values = np.logspace(np.log10(self.PL_A_min), np.log10(self.PL_A_max), int(np.round(self.brute_gridsize*grid_scalefactor, -1)))
+        sc_A_values = A_values*self.A_scalefactor
+        gamma_values = np.linspace(self.PL_gamma_min, self.PL_gamma_max, int(np.round(self.brute_gridsize/grid_scalefactor)))
 
         wavelengths = MJD_df['em_cent_wl'].to_numpy() # the emitted central wavelengths of the bands present at this MJD value
         L_rfs = MJD_df['L_rf_scaled'].to_numpy() # the scaled rest frame luminosities of the bands present at this MJD value
@@ -336,7 +360,30 @@ class fit_SED_across_lightcurve:
                 brute_red_chi = np.nan
                 red_chi_1sig = np.nan
                 brute_chi_sigma_dist = np.nan
+            
+            if self.plot_chi_contour:
+                contour_MJDs = np.random.choice(self.mjd_values, self.no_chi_contours)
+                #contour_MJDs = self.mjd_values[10:15]
+                if MJD in contour_MJDs:
+                    fig, ax = plt.subplots(figsize = (16, 7.2))
+                    A_grid, gamma_grid = np.meshgrid(A_values, gamma_values)
+                    chi_cutoff = 2.3
+                    masked_chi = np.ma.masked_where((chi > (min_chi + chi_cutoff)), chi)
+                    sc = ax.pcolormesh(A_grid, gamma_grid, masked_chi.T, cmap = 'jet', zorder = 2)
+                    high_chi_mask = np.where((chi > (min_chi + chi_cutoff)), 100, np.nan)
+                    ax.pcolormesh(A_grid, gamma_grid, high_chi_mask.T, color = 'k', zorder = 1)
 
+                    fig.colorbar(sc, ax = ax, label = r'$\mathbf{\chi^2}$')
+                    ax.errorbar(brute_A, brute_gamma, yerr = brute_gamma_err, xerr = ([A_err_lower], [A_err_upper]), markersize = 15, fmt = '*', mec = 'k', mew = '0.5', color = 'white', zorder = 3)
+                    ax.set_xlabel('A', fontweight = 'bold')
+                    ax.set_ylabel(f'$\mathbf{{\gamma}}$', fontweight = 'bold')
+                    ax.set_xlim(((brute_A/50), (brute_A*50)))
+                    ax.set_ylim(((brute_gamma - brute_gamma_err*2), (brute_gamma + brute_gamma_err*2)))
+                    ax.set_xscale('log')
+                    ax.set_title(f'{self.ant_name},    MJD = {MJD:.1f}, \n'+ fr"$ \mathbf{{ A = {brute_A:.1e}^{{+{A_err_upper:.1e}}}_{{-{A_err_lower:.1e}}} }}$    "+ fr'$\mathbf{{  \gamma = {brute_gamma:.1f} \pm {brute_gamma_err:.1f}  }}$' + r'    $\mathbf{\chi}$ sig dist'+ f' = {brute_chi_sigma_dist:.2e}', fontweight = 'bold') 
+                    plt.show() #                                            fr"$ \mathbf{{ A = {brute_A:.1e}^{{+{A_err_upper:.1e}}}_{{-{A_err_lower:.1e}}} }}$"
+
+  
         else:
             print()
             print(f"{Fore.RED} WARNING - MULTIPLE R AND T PARAMETER PAIRS GIVE THIS MIN CHI VALUE. MJD = {MJD_df['MJD'].iloc[0]} \n Ts = {[A_values[r] for r in row]}, Rs = {[gamma_values[c] for c in col]}")
@@ -393,14 +440,14 @@ class fit_SED_across_lightcurve:
             print()
 
         # calculate the error on the parameters using the brute force method
-        #row_idx, col_idx = np.nonzero(chi <= (min_chi + self.brute_dchi)) # the row and column indices of the chi squared values which are within the error of the minimum chi squared value
-        #delchi_T = T_values[col_idx] # the values of T which are within the error of the minimum chi squared value
-        #delchi_sc_R = sc_R_values[row_idx]  # the values of R which are within the error of the minimum chi squared value
+        row_idx, col_idx = np.nonzero(chi <= (min_chi + self.brute_delchi)) # the row and column indices of the chi squared values which are within the error of the minimum chi squared value
+        delchi_T = T_values[col_idx] # the values of T which are within the error of the minimum chi squared value
+        delchi_sc_R = sc_R_values[row_idx]  # the values of R which are within the error of the minimum chi squared value
 
-        #brute_T_err_upper = np.max(delchi_T) - brute_T # the upper error on the temperature parameter
-        #brute_T_err_lower = brute_T - np.min(delchi_T) # the lower error on the temperature parameter
-        #brute_R_err_upper = np.max(delchi_sc_R) / self.R_scalefactor - brute_R # the upper error on the radius parameter
-        #brute_R_err_lower = brute_R - np.min(delchi_sc_R) / self.R_scalefactor # the lower error on the radius parameter
+        brute_T_err_upper = np.max(delchi_T) - brute_T # the upper error on the temperature parameter
+        brute_T_err_lower = brute_T - np.min(delchi_T) # the lower error on the temperature parameter
+        brute_R_err_upper = np.max(delchi_sc_R) / self.R_scalefactor - brute_R # the upper error on the radius parameter
+        brute_R_err_lower = brute_R - np.min(delchi_sc_R) / self.R_scalefactor # the lower error on the radius parameter
 
         #print(f'brute T err upper {brute_T_err_upper:.3e} brute T err lower {brute_T_err_lower:.3e} cf T err {cf_T_err:.3e}')
         #print(f'brute R err upper {brute_R_err_upper:.3e} brute R err lower {brute_R_err_lower:.3e} cf R err {cf_R_err:.3e}')
@@ -669,13 +716,14 @@ class fit_SED_across_lightcurve:
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
-                title2 = r'$A_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_A']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_A_err']:.1e} \n"
-                title3 = r'$\gamma_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_gamma_err']:.1e}"
+                title1 = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
+                #title2 = r'$A_{cf} =$'+f"{self.BB_fit_results.loc[MJD, 'cf_A']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_A_err']:.1e} \n"
+                title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err'][1]:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err'][0]:.1e}}} }}$"+'\n'
+                title3 = r'$\gamma = $'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
 
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
                 plot_wl_A = plot_wl*1e8
-                plot_PL_L = power_law_SED(plot_wl_A, self.BB_fit_results.loc[MJD, 'cf_A'], self.BB_fit_results.loc[MJD, 'cf_gamma'])
+                plot_PL_L = power_law_SED(plot_wl_A, self.BB_fit_results.loc[MJD, 'brute_A'], self.BB_fit_results.loc[MJD, 'brute_gamma'])
                 h_BB, = ax.plot(plot_wl_A, plot_PL_L, c = 'k', label = title2 + title3)
                 ax.grid(True)
                 
@@ -685,17 +733,17 @@ class fit_SED_across_lightcurve:
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
                     legend_dict[b] = h[0]
                 
-                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '4.5'})
+                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '7.5'})
                 ax.set_title(title1, fontsize = 7.5, fontweight = 'bold')
             
             titlefontsize = 18
-            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            titleline1 = f"Curve_fit power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
-            #titleline2 = f'Parameter limits: (R: {self.BB_R_min:.1e} - {self.BB_R_max:.1e}), (T: {self.BB_T_min:.1e} - {self.BB_T_max:.1e})'
-            fig.suptitle(titleline1, fontweight = 'bold', fontsize = titlefontsize)
+            fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            fig.supylabel('Rest frame luminosity / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            titleline1 = f"Brute force power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
+            titleline2 = fr'Parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
+            fig.suptitle(titleline1+titleline2, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=0.88,
+            fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
                                 left=0.065,
                                 right=0.92,
@@ -763,8 +811,8 @@ interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
 
 
 
-#for idx in range(11):
-for idx in [10]:
+for idx in range(11):
+#for idx in [10]:
 
     ANT_name = transient_names[idx]
     interp_lc= interp_df_list[idx]
@@ -776,20 +824,49 @@ for idx in [10]:
     #    interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
     #interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
 
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    # FITTING METHOD
     BB_curvefit = True
     BB_brute = True
     #SED_type = 'single_BB'
     #SED_type = 'double_BB'
     SED_type = 'power_law'
+    brute_gridsize = 2000
     brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
+    
     no_indiv_SED_plots = 24 # current options are 24, 20, 12
 
-    save_BB_plot = False
-    save_indiv_BB_plot = False
+    plot_chi_contour = False
+    no_chi_contours = 3 
 
-    BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, brute_delchi = brute_delchi,  brute_gridsize = 2000, individual_BB_plot = 'whole_lc', no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot)
+    # SAVING PLOTS
+    save_BB_plot = False
+    save_indiv_BB_plot = True
     
+
+
+    BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
+                                           brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = 'whole_lc', 
+                                           no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot, 
+                                           plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
     
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
+    #===============================================================================================================================================
     
     
     
@@ -800,17 +877,18 @@ for idx in [10]:
         BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
         pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all floats in the dataframe in standard form to 4 decimal places
         #print(BB_fit_results.head(20).iloc[:, 10:16])
-        print(BB_fit_results.head(20).loc[:, ['cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
-        print()
-        print(BB_fit_results.head(20).loc[:, ['cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
-        print()
-        print('max A = ', BB_fit_results['cf_A'].max())
-        print()
-        print(BB_fit_results.tail(20).loc[:, ['cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
-        print()
-        print(BB_fit_results.tail(20).loc[:, ['cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
+        #print(BB_fit_results.head(20).loc[:, ['MJD', 'cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
+        #print()
+        #print(BB_fit_results.head(20).loc[:, ['MJD', 'cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
+        #print()
+        #print('max A = ', BB_fit_results['cf_A'].max())
+        #print('min A = ',  BB_fit_results['cf_A'].min())
+        #print()
+        #print(BB_fit_results.tail(20).loc[:, ['MJD', 'cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
+        #print()
+        #print(BB_fit_results.tail(20).loc[:, ['MJD', 'cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
         #print(BB_fit_results.tail(20).iloc[:, 10:16])
-        print()
+        #print()
     
     
     if SED_type == 'single_BB':
