@@ -196,6 +196,9 @@ class fit_SED_across_lightcurve:
             self.PL_sc_A_max = self.PL_A_max * self.A_scalefactor
             self.PL_sc_A_min = self.PL_A_min * self.A_scalefactor
 
+            if self.plot_chi_contour == True:
+                self.contour_MJDs = np.random.choice(self.mjd_values, self.no_chi_contours)
+
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
         
 
@@ -311,11 +314,11 @@ class fit_SED_across_lightcurve:
     def power_law_brute(self, MJD, MJD_df):
         """
         fits a power law SED to the data for a given MJD. For this brute force gridding, since gamma only really needs to explore values between -5 to 0, 
-        I decide to prioritise computational time and accuracy by increasing the number of A values that we try, and decreasing the number of gamma values
+        I decide to balance computational time and accuracy by increasing the number of A values that we try, and decreasing the number of gamma values
         so that it takes just as long as if we had a square parameter grid but I think we need better resolution in A so we're prioritising it a bit. 
         """
-        # HERE I AM TRYING 4 X AS MANY VALUES OF A AS OPPOSED TO GAMMA SO THIS IS A RECTANGULAR PARAMETER GRID NOW, BECAUSE I THINK THE A IS STRUGGING TO BE CONSTRAINED MORE THAN GAMMA
-        grid_scalefactor = 1
+        # HERE I AM EXPLORING (grid_scalefactor)^2 TIMES AS MANY VALUES OF A AS OPPOSED TO GAMMA SO THIS IS A RECTANGULAR PARAMETER GRID NOW, BECAUSE I THINK THE A IS STRUGGING TO BE CONSTRAINED MORE THAN GAMMA
+        grid_scalefactor = 2
         A_values = np.logspace(np.log10(self.PL_A_min), np.log10(self.PL_A_max), int(np.round(self.brute_gridsize*grid_scalefactor, -1)))
         sc_A_values = A_values*self.A_scalefactor
         gamma_values = np.linspace(self.PL_gamma_min, self.PL_gamma_max, int(np.round(self.brute_gridsize/grid_scalefactor)))
@@ -361,10 +364,10 @@ class fit_SED_across_lightcurve:
                 red_chi_1sig = np.nan
                 brute_chi_sigma_dist = np.nan
             
+            # -------------------------------------------------------------------------------------------------------------------------------------------------
+            # plotting a contour plot of chi squareds for randomly chosen when desired
             if self.plot_chi_contour:
-                contour_MJDs = np.random.choice(self.mjd_values, self.no_chi_contours)
-                #contour_MJDs = self.mjd_values[10:15]
-                if MJD in contour_MJDs:
+                if MJD in self.contour_MJDs:
                     fig, ax = plt.subplots(figsize = (16, 7.2))
                     A_grid, gamma_grid = np.meshgrid(A_values, gamma_values)
                     chi_cutoff = 2.3
@@ -626,7 +629,7 @@ class fit_SED_across_lightcurve:
                                 wspace=0.2)
             
             if self.save_indiv_BB_plot == True:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_BB_fits.png"
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_indiv_BB_fits.png"
                 plt.savefig(savepath, dpi = 300) 
 
 
@@ -692,7 +695,7 @@ class fit_SED_across_lightcurve:
             
 
             if self.save_indiv_BB_plot == True:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_double_BB_fits.png"
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_indiv_double_BB_fits.png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -751,7 +754,7 @@ class fit_SED_across_lightcurve:
                                 wspace=0.2)
             
             if self.save_indiv_BB_plot == True:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}_subplot_indiv_power_law_fits.png"
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_indiv_power_law_fits.png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -1053,7 +1056,7 @@ for idx in range(11):
                             wspace=0.19)
         
         if save_BB_plot == True:
-            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}_lc_BB_fit.png"
+            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}/{ANT_name}_lc_BB_fit.png"
             plt.savefig(savepath, dpi = 300) 
         plt.show()
 
