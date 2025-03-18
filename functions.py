@@ -1388,13 +1388,13 @@ class polyfit_lightcurve:
             if non_straggler_df.empty: # if the band has too few datapoints to bother polyfitting, we know that this won't be the reference band so set it's coverage score to 0
                 self.prepping_data.at[b, 'b_coverage_score'] = 0
 
-                if self.plot_polyfit == True: # plot the bands which were too poorly sampled to bother polyfitting (100% stragglers)
-                    b_colour = self.b_colour_dict[b]
-                    plt.errorbar(self.b_df_dict[b]['wm_MJD'], self.b_df_dict[b]['wm_L_rf'], yerr = self.b_df_dict[b]['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
-                                label = b, c = b_colour)
-                    plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 2)
-                    plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 3)
-                continue
+                #if self.plot_polyfit == True: # plot the bands which were too poorly sampled to bother polyfitting (100% stragglers)
+                #    b_colour = self.b_colour_dict[b]
+                #    plt.errorbar(self.b_df_dict[b]['wm_MJD'], self.b_df_dict[b]['wm_L_rf'], yerr = self.b_df_dict[b]['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+                #                label = b, c = b_colour)
+                #    plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 2)
+                #    plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 3)
+                #continue
             
             else: # calculate the coverage score for the bands with enough non-straggler datapoints
                 self.prepping_data.at[b, 'b_coverage_score'] = check_lightcurve_coverage(non_straggler_df, mjd_binsize = 50)
@@ -1540,17 +1540,17 @@ class polyfit_lightcurve:
                 b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
                 
 
-                plt.errorbar(b_df['wm_MJD'], b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+                plt.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                                 label = b, c = b_colour)
-                plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
-                plt.scatter(straggler_df['wm_MJD'], straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
-                plt.errorbar(b_interp_df['MJD'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
+                plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
+                plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
+                plt.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                                 linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp {b}')
                 if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
-                    plt.plot(b_plot_polyfit['poly_plot_MJD'], b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
+                    plt.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit" 
-        plt.xlabel('MJD')
+        plt.xlabel('Days since peak (rest frame time)')
         plt.ylabel('rest frame luminosity')
         #plt.ylim((-1e41, 5e42))
         plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"')
@@ -1569,8 +1569,8 @@ class polyfit_lightcurve:
     
     def calc_days_since_peak(self):
         ref_band_max_idx = np.argmax( self.plot_results.loc[self.ref_band]['poly_plot_L_rf'] )
-        ref_band_peak_MJD = self.plot_results.loc[self.ref_band]['poly_plot_MJD'][ref_band_max_idx]
-        self.interp_df['peak_MJD'] = [ref_band_peak_MJD]*len(self.interp_df)
+        self.ref_band_peak_MJD = self.plot_results.loc[self.ref_band]['poly_plot_MJD'][ref_band_max_idx]
+        self.interp_df['peak_MJD'] = [self.ref_band_peak_MJD]*len(self.interp_df)
         self.interp_df['d_since_peak'] = (self.interp_df['MJD'] - self.interp_df['peak_MJD']) * (1 + self.ant_z) # days since peak in the rest frame
 
 
@@ -1589,8 +1589,8 @@ class polyfit_lightcurve:
         self.identify_stragglers_and_score_band()
         self.choose_interp_MJD()
         self.polynomial_fit_and_interp()
-        self.plot_polyfit_funciton()
         self.calc_days_since_peak()
+        self.plot_polyfit_funciton()
         self.save_interpolated_df()
 
         
