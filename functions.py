@@ -1550,10 +1550,10 @@ class polyfit_lightcurve:
                     plt.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit" 
-        plt.xlabel('Days since peak (rest frame time)')
-        plt.ylabel('rest frame luminosity')
+        plt.xlabel('Days since peak (rest frame time) / days', fontweight = 'bold')
+        plt.ylabel(r'Rest frame luminosity erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
         #plt.ylim((-1e41, 5e42))
-        plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"')
+        plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"', fontweight = 'bold')
         plt.legend(loc = 'lower right', bbox_to_anchor = (1.275, 0.0), fontsize = 7.5, ncols = 2)
         self.fig.subplots_adjust(top=0.92,
                                 bottom=0.11,
