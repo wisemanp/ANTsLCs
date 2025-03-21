@@ -74,7 +74,7 @@ def power_law_SED(lam, A, gamma):
 
 class fit_SED_across_lightcurve:
     def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False,
-                 plot_chi_contour = False, no_chi_contours = 3,
+                 plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19, 
                 PL_A_min = 1e39, PL_A_max = 1e48, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
@@ -147,6 +147,7 @@ class fit_SED_across_lightcurve:
         self.no_indiv_SED_plots = no_indiv_SED_plots
         self.save_indiv_BB_plot = save_indiv_BB_plot
         self.no_chi_contours = no_chi_contours
+        self.save_SED_fit_file = save_SED_fit_file
         self.plot_chi_contour = plot_chi_contour
 
         self.guided_UVOT_SED_fits = False # this is automatically set to true if you call self.run_UVOT_guided_SED_fitting_process() for the ANTs which have UVOT data on the rise/peak (which is what allows us to guide the nearby non-UVOT SED fits)
@@ -205,6 +206,9 @@ class fit_SED_across_lightcurve:
                 self.contour_MJDs = np.random.choice(self.mjd_values, self.no_chi_contours)
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
+
+        if SED_type == 'power_law': # allows us to assign a tuple to cells in this column
+            self.BB_fit_results['brute_A_err'] = self.BB_fit_results['brute_A_err'].astype(object)
         
 
     
@@ -458,8 +462,10 @@ class fit_SED_across_lightcurve:
             print(f"Chi values = {chi[row, col]} {Style.RESET_ALL}")
             print()
 
-
-        self.BB_fit_results.loc[MJD, self.columns[10:16]] = [brute_A, brute_A_err, brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist] 
+        
+        self.BB_fit_results.at[MJD, 'brute_A'] = brute_A
+        self.BB_fit_results.at[MJD, 'brute_A_err'] = brute_A_err
+        self.BB_fit_results.loc[MJD, self.columns[12:16]] = [brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist] 
 
 
 
@@ -630,6 +636,8 @@ class fit_SED_across_lightcurve:
 
         elif self.SED_type == 'power_law':
             self.plot_individual_power_law_SED_fits(band_colour_dict)
+
+        self.save_SED_fit_results(guided = self.guided_UVOT_SED_fits) # save the dataframe of the SED fitting results
 
         return SED_fit_results
 
@@ -890,13 +898,13 @@ class fit_SED_across_lightcurve:
                     UVOT_A = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A']
                     UVOT_A_lower_err, UVOT_A_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A_err']
                     UVOT_gamma = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_gamma']
-                    UVOT_gamma_lower_err, UVOT_gamma_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_gamma_err']
+                    UVOT_gamma_err= self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_gamma_err']
 
                     # calculate the region of parameter space to explore MJD's SED fit
                     MJD_A_min, MJD_A_max = self.param_limit_calculation(UVOT_M = UVOT_A, UVOT_M_err_lower = UVOT_A_lower_err, UVOT_M_err_upper = UVOT_A_upper_err, 
                                                                                     MJD_diff = closest_MJD_diff, err_scalefactor = self.UVOT_guided_err_scalefactor, normal_lower_lim = self.PL_A_min, normal_upper_lim = self.PL_A_max)
 
-                    MJD_gamma_min, MJD_gamma_max = self.param_limit_calculation(UVOT_M = UVOT_gamma, UVOT_M_err_lower = UVOT_gamma_lower_err, UVOT_M_err_upper = UVOT_gamma_upper_err, MJD_diff = closest_MJD_diff, 
+                    MJD_gamma_min, MJD_gamma_max = self.param_limit_calculation(UVOT_M = UVOT_gamma, UVOT_M_err_lower = UVOT_gamma_err, UVOT_M_err_upper = UVOT_gamma_err, MJD_diff = closest_MJD_diff, 
                                                                                 err_scalefactor = self.UVOT_guided_err_scalefactor, normal_lower_lim = self.PL_gamma_min, normal_upper_lim = self.PL_gamma_max)
                     
                     # running the PL brute SED fitting ---
@@ -957,8 +965,8 @@ class fit_SED_across_lightcurve:
                 self.curvefit = False
 
             self.get_UVOT_MJDs_and_SED_fit_them()
-            print('UVOT FITTING RESULTS')
-            print(self.BB_fit_results[self.BB_fit_results['MJD'].isin(self.all_UVOT_MJDs)].head(50).iloc[:, 3:11])
+            #print('UVOT FITTING RESULTS')
+            #print(self.BB_fit_results[self.BB_fit_results['MJD'].isin(self.all_UVOT_MJDs)].head(50).iloc[:, 3:11])
             SED_fit_results = self.optical_SED_fits_guided_by_UVOT()
             self.get_individual_BB_fit_MJDs() # if we want to plot the individual SEDs, get the MJDs at which we will plot their SEDs
 
@@ -977,6 +985,8 @@ class fit_SED_across_lightcurve:
 
         elif self.SED_type == 'power_law':
             self.plot_individual_power_law_SED_fits(band_colour_dict)
+
+        self.save_SED_fit_results(guided = self.guided_UVOT_SED_fits) # save the dataframe of SED fitting results
 
         return SED_fit_results
 
@@ -1259,26 +1269,29 @@ class fit_SED_across_lightcurve:
                     legend_dict[b] = h[0]
                 
                 ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '7.5'})
-                ax.set_title(subplot_title, fontsize = 7.5, fontweight = 'bold')
+                ax.set_title(subplot_title, fontsize = 6.5, fontweight = 'bold')
             
             titlefontsize = 18
             if self.guided_UVOT_SED_fits:
                 titleline1 = f"GUIDED UVOT Brute force power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
-                titleline2 = f'UVOT Guided err scalefactor = {self.UVOT_guided_err_scalefactor:.2e}'+fr' max parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
+                titleline2 = f'UVOT Guided err scalefactor = {self.UVOT_guided_err_scalefactor:.2e}\n'+fr' Max parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
+                top=0.774
+                hspace=0.845
             else:
                 titleline1 = f"Brute force power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
                 titleline2 = fr'Parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
-                
+                top = 0.82
+                hspace = 0.355
             
             fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel('Rest frame luminosity / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.suptitle(titleline1+titleline2, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=0.82,
+            fig.subplots_adjust(top=top,
                                 bottom=0.094,
                                 left=0.065,
                                 right=0.92,
-                                hspace=0.355,
+                                hspace=hspace,
                                 wspace=0.2)
             
             if self.save_indiv_BB_plot == True:
@@ -1289,6 +1302,34 @@ class fit_SED_across_lightcurve:
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
+
+
+
+
+
+    def save_SED_fit_results(self, guided):
+        """
+        This function saves the SED fitting results in a dataframe
+
+        INPUTS
+        -----------------------
+        guided: (bool) If True, this means that the SED fitting was done using the method in which we fit the UVOT MJD SEDs first then use these to fuide the nearby non-UVOT SEDs. 
+                If False, this emans each MJD SEd fit was taken independently from the last.
+        """
+        if self.save_SED_fit_file:
+            if self.SED_type == 'single_BB':
+                note = 'SBB'
+            elif self.SED_type == 'double_BB':
+                note = 'DBB'
+            elif self.SED_type == 'power_law':
+                note = 'PL'
+
+            if guided:
+                note = 'UVOT_guided_'+note
+
+            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_SED_fit_across_lc.csv"
+            self.BB_fit_results.to_csv(savepath, index = False)
+        
 
 
     
@@ -1366,7 +1407,7 @@ SED_plots = 'usual'#'compare_SEDs' #'usual'
 
 if SED_plots == 'usual':
     #for idx in range(11):
-    for idx in [10]:
+    for idx in [8]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
