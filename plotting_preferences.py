@@ -53,8 +53,8 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'WISE_W2': 5.10454e-11, 
                 'ZTF_g': 4.75724e-9, 
                 'ZTF_r': 2.64344e-9, 
-                'ASAS-SN_V': BESSEL_V_ZP, 
-                'ASAS-SN_g': SLOAN_g_ZP, 
+                'ASAS-SN_V': BESSEL_V_ZP, # https://www.zooniverse.org/projects/tharinduj/citizen-asas-sn/about/research Previously, we used Johnson V-band filters which are "green" colored, with an effective central wavelength of 551 nm, and a FWHM of 88 nm.
+                'ASAS-SN_g': SLOAN_g_ZP, # https://www.zooniverse.org/projects/tharinduj/citizen-asas-sn/about/research ASAS-SN currently uses Sloan g-band filters which are "teal" colored, with an effective central wavelength of 480 nm, and a FWHM of 141 nm
                 'B': BESSEL_B_ZP, 
                 'CSS_V': BESSEL_V_ZP, 
                 'Gaia_G': 2.78534e-9, # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
