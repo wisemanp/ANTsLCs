@@ -1981,7 +1981,7 @@ class fit_SED_across_lightcurve:
                         'ZTF20abgxlut': 'single_BB', # PL good here too but no UVOT
                         'ZTF20abodaps': 'single_BB', # PL not bad here either 
                         'ZTF20abrbeie': 'single_BB', # very few dps for this histogram since most MJD have 2 datapoints per SED 
-                        'ZTF20acvfraq': 'power_law', 
+                        'ZTF20acvfraq': 'double_BB', # see the YoRiS slides for analysis of this one
                         'ZTF21abxowzx': 'single_BB', # the DBB looks promising until you check the individual DBB SED subplot 
                         'ZTF22aadesap': 'double_BB' } # power law also pretty good - MAYBE CHECK THIS ONE 
         
@@ -2414,11 +2414,17 @@ class fit_SED_across_lightcurve:
     
 
 
-    def get_UVOT_MJDs_and_SED_fit_them(self):
+    def get_UVOT_MJDs_and_SED_fit_them(self, sigma_dist_for_good_fit):
         """
         This function takes the MJDs from interp_df which have UVOT data (if any) and fits the 'best' SED to them, as defined by get_best_SED_for_ANT(). 
         We don't return anything from this function since we're just updating BB_fit_results with the results of the UVOT MJD SED fits, but any MJDs without
         UVOT data are yet to be fit. Only necessary for the ANTs with UVOT data at the start so ZTF19aailpwl, ZTF20acvfraq, ZTF22aadesap
+
+        INPUTS
+        -------------
+        sigma_dist_for_good_fit: (float) the maximum reduced chi squared sigma distance for which we will consider the fit 'good', so all fits with chi_sig_dist <= sigma_dist_for_good_fit
+        is considered a good fit.  
+
         """
         if self.ant_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap']: # these are the only ANTs we have with UVOT at the rise/peak of the light curve
             
@@ -2470,13 +2476,13 @@ class fit_SED_across_lightcurve:
                     #if self.brute:
                     self.BB_fit_results.loc[UV_MJD, ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim']] = [self.BB_R_min, self.BB_R_max, self.BB_T_min, self.BB_T_max]
                     self.BB_brute(UV_MJD, MJD_df, R_sc_min = self.BB_R_min_sc, R_sc_max = self.BB_R_max_sc, T_min = self.BB_T_min, T_max = self.BB_T_max)
-
+                    note = 'brute'
 
                 # for a double BB fit
                 elif self.SED_type == 'double_BB': # WE CURRENTLY DON'T HAVE A FUNCTION TO BRUTE FORCE A DOUBLE BLACKBODY SO MUST USE CURVE FIT
                     self.BB_fit_results.loc[UV_MJD, ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim']] = [self.DBB_R_min, self.DBB_R_max, self.DBB_T1_min, self.DBB_T1_max, self.DBB_R_min, self.DBB_R_max, self.DBB_T2_min, self.DBB_T2_max]
                     self.double_BB_curvefit(UV_MJD, MJD_df, R1_sc_min = self.DBB_R_min_sc, R1_sc_max = self.DBB_R_max_sc, T1_min = self.DBB_T1_min, T1_max = self.DBB_T1_max, R2_sc_min = self.DBB_R_min_sc, R2_sc_max = self.DBB_R_max_sc, T2_min = self.DBB_T2_min, T2_max = self.DBB_T2_max)
-
+                    note = 'cf'
 
                 # for a power law fit
                 elif self.SED_type == 'power_law':
@@ -2485,7 +2491,7 @@ class fit_SED_across_lightcurve:
                     #if self.brute:
                     self.BB_fit_results.loc[UV_MJD, ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim']] = [self.PL_A_min, self.PL_A_max, self.PL_gamma_min, self.PL_gamma_max]
                     self.power_law_brute(UV_MJD, MJD_df, A_min = self.PL_A_min, A_max = self.PL_A_max, gamma_min = self.PL_gamma_min, gamma_max = self.PL_gamma_max)
-
+                    note = 'brute'
 
             # print a message to indicate that the fitting was successful
             if self.SED_type == 'double_BB': # since double BB is the only SED fit using curvefit anyways
@@ -2495,6 +2501,18 @@ class fit_SED_across_lightcurve:
             else:
                 print(f'{Fore.GREEN}UVOT SED fitting complete for {self.ant_name}   ============================================================================================= {Style.RESET_ALL}')
                 print()
+
+
+            UVOT_SEDs_with_good_SED_fits = self.BB_fit_results[self.BB_fit_results['MJD'].isin(self.all_UVOT_MJDs)].copy() # filter SED_fit_results for the UVOT fit results
+            UVOT_SEDs_with_good_SED_fits = UVOT_SEDs_with_good_SED_fits[UVOT_SEDs_with_good_SED_fits[f'{note}_chi_sigma_dist'] <= sigma_dist_for_good_fit].copy() # find the SED results where the fit was good
+
+            if UVOT_SEDs_with_good_SED_fits.empty: # if none of the UVOT MJDs had good SED fits, don't use their results to guide the non-UVOT fits
+                self.UVOT_MJDs_with_good_SED_fits = None
+
+            else: 
+                self.UVOT_MJDs_with_good_SED_fits = UVOT_SEDs_with_good_SED_fits['MJD'].to_numpy() # an array of MJD values with UVOT data which had a good SED fit so can be used for parameter constraint
+
+            
 
 
 
@@ -2569,10 +2587,10 @@ class fit_SED_across_lightcurve:
                 self.BB_fit_results.loc[opt_MJD, self.columns[0:3]] = [opt_MJD, MJD_d_since_peak, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
                 
                 # find the closest UVOT datapoint
-                MJD_diff = abs(opt_MJD - self.all_UVOT_MJDs)
+                MJD_diff = abs(opt_MJD - self.UVOT_MJDs_with_good_SED_fits)
                 closest_MJD_diff_idx = np.argmin(MJD_diff)
                 closest_MJD_diff = MJD_diff[closest_MJD_diff_idx]
-                closest_UVOT_MJD = self.all_UVOT_MJDs[closest_MJD_diff_idx] # a flaw of this method is that if out closest UVOT SED fit was a bad fit and has large errors, we may have been betetr off using the 2nd closest UVOT MJD or something like that
+                closest_UVOT_MJD = self.UVOT_MJDs_with_good_SED_fits[closest_MJD_diff_idx] # a flaw of this method is that if out closest UVOT SED fit was a bad fit and has large errors, we may have been betetr off using the 2nd closest UVOT MJD or something like that
                 
                 # dont bother fitting if we've only got one datapoint for the SED
                 if MJD_no_bands <=1:
@@ -2675,7 +2693,7 @@ class fit_SED_across_lightcurve:
 
 
     
-    def run_UVOT_guided_SED_fitting_process(self, err_scalefactor, band_colour_dict):
+    def run_UVOT_guided_SED_fitting_process(self, err_scalefactor, sigma_dist_for_good_fit, band_colour_dict):
         """
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
         A FUNCTION WHICH YOU MIGHT DIRECTLY CALL WHEN INITIALISING THE CLASS
@@ -2693,6 +2711,9 @@ class fit_SED_across_lightcurve:
         fits, we should allow the non-UVOT SEd to explore a larger area of parameter space around the UVOT SED parameters if the non-UVOT MJD is further away from the 
         UVOT one.
 
+        sigma_dist_for_good_fit: (float) the maximum reduced chi squared sigma distance for which we will consider the fit 'good', so all fits with chi_sig_dist <= sigma_dist_for_good_fit
+        is considered a good fit.  
+
         band_colour_dict: (dictionary) of the bands and their corresponding marker colour for plotting
 
         OUTPUTS
@@ -2704,18 +2725,30 @@ class fit_SED_across_lightcurve:
         if self.ant_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap']: # these are the ANTs with UVOT on the rise/peak so can use it to constrain non-UVOT SED fit parameter space
             self.guided_UVOT_SED_fits = True # I will use this to add details to the subplots of individual SEDs like adding in our calculated explorable parameter space 
 
-            if self.SED_type == 'single_BB':
+            if self.SED_type == 'single_BB': # setting these straight so we don't get any unexpected code trying to run
                 self.curvefit = False
             elif self.SED_type == 'double_BB':
                 self.curvefit = True
             elif self.SED_type == 'power_law':
                 self.curvefit = False
 
-            self.get_UVOT_MJDs_and_SED_fit_them()
-            #print('UVOT FITTING RESULTS')
-            #print(self.BB_fit_results[self.BB_fit_results['MJD'].isin(self.all_UVOT_MJDs)].head(50).iloc[:, 3:11])
-            SED_fit_results = self.optical_SED_fits_guided_by_UVOT()
-            self.get_individual_BB_fit_MJDs() # if we want to plot the individual SEDs, get the MJDs at which we will plot their SEDs
+            # fit SEDs to the MJDs with UVOT data, if any of these fits are considered good, we can use them to constrain the param space of the non-UVOT fits. 
+            self.get_UVOT_MJDs_and_SED_fit_them(sigma_dist_for_good_fit = sigma_dist_for_good_fit)
+
+            
+            if self.UVOT_MJDs_with_good_SED_fits is not None: # if we have UVOT MJDs which had 'good fitting' SED fits, we will use them to constrain the non-UVOT fits
+                SED_fit_results = self.optical_SED_fits_guided_by_UVOT()
+                self.get_individual_BB_fit_MJDs() # if we want to plot the individual SEDs, get the MJDs at which we will plot their SEDs
+            else:
+                # MAYBE I SHOULD SET THE self.guided_UVOT_SED_fits = FALSE???????????????????????
+                print()
+                print(f'{Fore.RED}WARNING - THERE WERE NO UVOT MJD SED FITS WITH SIG DIST <= {sigma_dist_for_good_fit}. THERE WILL BE NO UVOT GUIDED SED FITTING - ALL SED FITS \n WILL BE DONE INDEPENDENTLY OF ONE ANOTHER{Style.RESET_ALL}')
+                print()
+                print('Running the regular (non-guided) fitting process on the entire light curve')
+                SED_fit_results = self.run_BB_fit() # iterate through the MJDs and fit our chosen SED to them
+                self.get_individual_BB_fit_MJDs() # if we want to plot the individual SEDs, get the MJDs at which we will plot their SEDs
+
+
 
         else: 
             SED_fit_results = self.run_BB_fit() # iterate through the MJDs and fit our chosen SED to them
