@@ -1960,8 +1960,7 @@ class fit_SED_across_lightcurve:
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
 
-        if SED_type == 'power_law': # allows us to assign a tuple to cells in this column
-            self.BB_fit_results['brute_A_err'] = self.BB_fit_results['brute_A_err'].astype(object)
+
         
 
     
