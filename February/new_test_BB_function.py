@@ -16,42 +16,6 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 
 
 
-
-
-
-    
-
-
-
-
-
-
-
-        
-
-
-
-
-
-    
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #===============================================================================================================================================
 #===============================================================================================================================================
 #===============================================================================================================================================
@@ -69,7 +33,7 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 # load in the interpolated data
 interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
 
-SED_plots = 'usual'#'compare_SEDs' #'usual'
+SED_plots = 'usual'#'compare_SEDs' 
 
 
 
@@ -86,8 +50,8 @@ SED_plots = 'usual'#'compare_SEDs' #'usual'
 
 
 if SED_plots == 'usual':
-    for idx in range(11):
-    #for idx in [10]:
+    #for idx in range(11):
+    for idx in [8]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -119,6 +83,7 @@ if SED_plots == 'usual':
         # SAVING PLOTS
         save_BB_plot = False
         save_indiv_BB_plot = True
+        save_param_vs_time_plot = True
 
         # SAVE SED FIT RESULTS TO A DATAFRAME?
         save_SED_fit_file = True
@@ -127,7 +92,8 @@ if SED_plots == 'usual':
         BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
                                             brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = 'whole_lc', 
                                             no_indiv_SED_plots = no_indiv_SED_plots, save_SED_fit_file = save_SED_fit_file,
-                                            save_indiv_BB_plot = save_indiv_BB_plot, plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
+                                            save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
+                                            plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
         
         #===============================================================================================================================================
         #===============================================================================================================================================
