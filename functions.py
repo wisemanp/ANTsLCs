@@ -1829,7 +1829,7 @@ class fit_SED_across_lightcurve:
                  plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19, 
-                PL_A_min = 1e39, PL_A_max = 1e48, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
+                PL_A_min = 1e42, PL_A_max = 1e51, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
         """
         INPUTS
         ---------------
@@ -2437,18 +2437,18 @@ class fit_SED_across_lightcurve:
             # adding new columns to the results dataframe to show the upper and lower parameter space limits that the fit was allowed to explore
             if self.SED_type == 'single_BB':
                 #self.curvefit = False # set this to false to prevent any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
-                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R_param_lims', 'T_param_lims'])
-                self.BB_fit_results[['R_param_lims', 'T_param_lims']] = self.BB_fit_results[['R_param_lims', 'T_param_lims']].astype(object) # allows us to assign tuples to these column cells
+                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim'])
+                #self.BB_fit_results[['R_param_lims', 'T_param_lims']] = self.BB_fit_results[['R_param_lims', 'T_param_lims']].astype(object) # allows us to assign tuples to these column cells
 
             elif self.SED_type == 'double_BB':
                 #self.curvefit = True # set this to True to allow any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
-                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims'])
-                self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']] = self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']].astype(object) # allows us to assign tuples to these column cells
+                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim'])
+                #self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']] = self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']].astype(object) # allows us to assign tuples to these column cells
 
             elif self.SED_type == 'power_law':
                 #self.curvefit = False # set this to false to prevent any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
-                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['A_param_lims', 'gamma_param_lims'])
-                self.BB_fit_results[['A_param_lims', 'gamma_param_lims']] = self.BB_fit_results[['A_param_lims', 'gamma_param_lims']].astype(object) # allows us to assign tuples to these column cells
+                self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim'])
+                #self.BB_fit_results[['A_param_lims', 'gamma_param_lims']] = self.BB_fit_results[['A_param_lims', 'gamma_param_lims']].astype(object) # allows us to assign tuples to these column cells
 
 
             # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2468,13 +2468,13 @@ class fit_SED_across_lightcurve:
                     #if self.curvefit:
                     #    self.BB_curvefit(UV_MJD, MJD_df, R_sc_min = self.BB_R_min_sc, R_sc_max = self.BB_R_max_sc, T_min = self.BB_T_min, T_max = self.BB_T_max)
                     #if self.brute:
-                    self.BB_fit_results.loc[UV_MJD, ['R_param_lims', 'T_param_lims']] = pd.Series([(self.BB_R_min, self.BB_R_max), (self.BB_T_min, self.BB_T_max)], index = ['R_param_lims', 'T_param_lims'])
+                    self.BB_fit_results.loc[UV_MJD, ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim']] = [self.BB_R_min, self.BB_R_max, self.BB_T_min, self.BB_T_max]
                     self.BB_brute(UV_MJD, MJD_df, R_sc_min = self.BB_R_min_sc, R_sc_max = self.BB_R_max_sc, T_min = self.BB_T_min, T_max = self.BB_T_max)
 
 
                 # for a double BB fit
                 elif self.SED_type == 'double_BB': # WE CURRENTLY DON'T HAVE A FUNCTION TO BRUTE FORCE A DOUBLE BLACKBODY SO MUST USE CURVE FIT
-                    self.BB_fit_results.loc[UV_MJD, ['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']] = pd.Series([(self.DBB_R_min, self.DBB_R_max), (self.DBB_T1_min, self.DBB_T1_max), (self.DBB_R_min, self.DBB_R_max), (self.DBB_T2_min, self.DBB_T2_max)], index = ['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims'])
+                    self.BB_fit_results.loc[UV_MJD, ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim']] = [self.DBB_R_min, self.DBB_R_max, self.DBB_T1_min, self.DBB_T1_max, self.DBB_R_min, self.DBB_R_max, self.DBB_T2_min, self.DBB_T2_max]
                     self.double_BB_curvefit(UV_MJD, MJD_df, R1_sc_min = self.DBB_R_min_sc, R1_sc_max = self.DBB_R_max_sc, T1_min = self.DBB_T1_min, T1_max = self.DBB_T1_max, R2_sc_min = self.DBB_R_min_sc, R2_sc_max = self.DBB_R_max_sc, T2_min = self.DBB_T2_min, T2_max = self.DBB_T2_max)
 
 
@@ -2483,7 +2483,7 @@ class fit_SED_across_lightcurve:
                     #if self.curvefit:
                     #    self.power_law_curvefit(UV_MJD, MJD_df, A_sc_min = self.PL_sc_A_min, A_sc_max = self.PL_sc_A_max, gamma_min = self.PL_gamma_min, gamma_max = self.PL_gamma_max)
                     #if self.brute:
-                    self.BB_fit_results.loc[UV_MJD, ['A_param_lims', 'gamma_param_lims']] = pd.Series([(self.PL_A_min, self.PL_A_max), (self.PL_gamma_min, self.PL_gamma_max)], index = ['A_param_lims', 'gamma_param_lims'])
+                    self.BB_fit_results.loc[UV_MJD, ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim']] = [self.PL_A_min, self.PL_A_max, self.PL_gamma_min, self.PL_gamma_max]
                     self.power_law_brute(UV_MJD, MJD_df, A_min = self.PL_A_min, A_max = self.PL_A_max, gamma_min = self.PL_gamma_min, gamma_max = self.PL_gamma_max)
 
 
@@ -2525,36 +2525,25 @@ class fit_SED_across_lightcurve:
         
         normal_upper_lim: (float) the upper limit which we normally use to explore the parameter space of this model parameter, when we are fitting independently of the nearby MJDs.
         """
-        print_final_result = False
 
-        param_lower_lim = UVOT_M - err_scalefactor * MJD_diff * UVOT_M_err_lower 
-        param_upper_lim = UVOT_M + err_scalefactor * MJD_diff * UVOT_M_err_upper
+        param_lower_lim = UVOT_M - (err_scalefactor * MJD_diff + 1) * UVOT_M_err_lower # here, we make sure we explore at least 1 sigma of parameter space, so even if MJD_diff = 0, we still have searchable param space, that's what the +1 in the bracket does
+        param_upper_lim = UVOT_M + (err_scalefactor * MJD_diff + 1) * UVOT_M_err_upper
 
         # if the calculated limit goes beyond the limit which we usually use for fitting (this would happen if the UVOT param error was very large or |UVOT_MJD - MJD| is very large)
         # the second condition here would only occur if the UVOT SED fit was really bad and gave the model parameter a very very high value
         if (param_lower_lim <= normal_lower_lim) or (param_lower_lim >= normal_upper_lim): 
             param_lower_lim = normal_lower_lim
-            print_final_result = True # testing 
-            #print('PARAM CALC LOWER LIM < NORMAL LOWER LIM.')
 
         
         # if the calculated limit goes beyond the limit which we usually use for fitting (this would happen if the UVOT param error was very large or |UVOT_MJD - MJD| is very large)
         # the second condition here would only occur if the UVOT SED fit was really bad and gave the model parameter a very very low value
         if (param_upper_lim >= normal_upper_lim) or (param_upper_lim <= normal_lower_lim): 
             param_upper_lim = normal_upper_lim
-            print_final_result = True # testing 
-            #print('PARAM CALC UPPER LIM > NORMAL UPPER LIM.')
 
 
         if param_upper_lim <= param_lower_lim:
             param_lower_lim = normal_lower_lim
             param_upper_lim = normal_upper_lim
-
-        #if print_final_result == True:
-        #    print(f'LOWER, UPPER {param_lower_lim:.3e},  {param_upper_lim:.3e}       UPPER - LOWER = {(param_upper_lim - param_lower_lim):.3e}')
-        #    print()
-
-        
 
         return param_lower_lim, param_upper_lim
 
@@ -2607,7 +2596,7 @@ class fit_SED_across_lightcurve:
                                                                         err_scalefactor = self.UVOT_guided_err_scalefactor, normal_lower_lim = self.BB_T_min, normal_upper_lim = self.BB_T_max)
                     
                     # running the BB Brute SED fitting ---
-                    self.BB_fit_results.loc[opt_MJD, ['R_param_lims', 'T_param_lims']] = pd.Series([(MJD_R_min, MJD_R_max), (MJD_T_min, MJD_T_max)], index = ['R_param_lims', 'T_param_lims']) # documenting the parameter space which we searched
+                    self.BB_fit_results.loc[opt_MJD, ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim']] = [MJD_R_min, MJD_R_max, MJD_T_min, MJD_T_max] # documenting the parameter space which we searched
                     self.BB_brute(opt_MJD, MJD_df, R_sc_min = MJD_R_sc_min, R_sc_max = MJD_R_sc_max, T_min = MJD_T_min, T_max = MJD_T_max) 
 
 
@@ -2642,7 +2631,7 @@ class fit_SED_across_lightcurve:
                     MJD_R2_sc_max = MJD_R2_max * self.R_scalefactor
 
                     # running the DBB curve fit SED fitting ---
-                    self.BB_fit_results.loc[opt_MJD, ['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']] = pd.Series([(MJD_R1_min, MJD_R1_max), (MJD_T1_min, MJD_T1_max), (MJD_R2_min, MJD_R2_max), (MJD_T2_min, MJD_T2_max)], index = ['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']) # documenting the parameter space which we searched
+                    self.BB_fit_results.loc[opt_MJD, ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim']] = [MJD_R1_min, MJD_R1_max, MJD_T1_min, MJD_T1_max, MJD_R2_min, MJD_R2_max, MJD_T2_min, MJD_T2_max] # documenting the parameter space which we searched
                     self.double_BB_curvefit(opt_MJD, MJD_df,
                                             R1_sc_min = MJD_R1_sc_min, R1_sc_max = MJD_R1_sc_max, T1_min = MJD_T1_min, T1_max = MJD_T1_max, 
                                             R2_sc_min = MJD_R2_sc_min, R2_sc_max = MJD_R2_sc_max, T2_min = MJD_T2_min, T2_max = MJD_T2_max)
@@ -2666,7 +2655,7 @@ class fit_SED_across_lightcurve:
                                                                                 err_scalefactor = self.UVOT_guided_err_scalefactor, normal_lower_lim = self.PL_gamma_min, normal_upper_lim = self.PL_gamma_max)
                     
                     # running the PL brute SED fitting ---
-                    self.BB_fit_results.loc[opt_MJD, ['A_param_lims', 'gamma_param_lims']] = pd.Series([(MJD_A_min, MJD_A_max), (MJD_gamma_min, MJD_gamma_max)], index = ['A_param_lims', 'gamma_param_lims']) # documenting the parameter space which we searched
+                    self.BB_fit_results.loc[opt_MJD, ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim']] = [MJD_A_min, MJD_A_max, MJD_gamma_min, MJD_gamma_max] # documenting the parameter space which we searched
                     self.power_law_brute(opt_MJD, MJD_df, A_min = MJD_A_min, A_max = MJD_A_max, gamma_min = MJD_gamma_min, gamma_max = MJD_gamma_max)
 
 
@@ -2856,8 +2845,8 @@ class fit_SED_across_lightcurve:
                 title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
                 
                 if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
-                    title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'T_param_lims'][1]:.1e})\n"
-                    title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'R_param_lims'][1]:.1e})"
+                    title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T_param_upper_lim']:.1e})\n"
+                    title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title4 + title5
 
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -2931,10 +2920,10 @@ class fit_SED_across_lightcurve:
                 title5 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R2_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']:.1e} cm"
 
                 if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
-                    title6 = f"\nT1 lims: ({self.BB_fit_results.at[MJD, 'T1_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'T1_param_lims'][1]:.1e})\n"
-                    title7 = f"R1 lims: ({self.BB_fit_results.at[MJD, 'R1_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'R1_param_lims'][1]:.1e})\n"
-                    title8 = f"T2 lims: ({self.BB_fit_results.at[MJD, 'T2_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'T2_param_lims'][1]:.1e})\n"
-                    title9 = f"R2 lims: ({self.BB_fit_results.at[MJD, 'R2_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'R2_param_lims'][1]:.1e})"
+                    title6 = f"\nT1 lims: ({self.BB_fit_results.at[MJD, 'T1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T1_param_upper_lim']:.1e})\n"
+                    title7 = f"R1 lims: ({self.BB_fit_results.at[MJD, 'R1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R1_param_upper_lim']:.1e})\n"
+                    title8 = f"T2 lims: ({self.BB_fit_results.at[MJD, 'T2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T2_param_upper_lim']:.1e})\n"
+                    title9 = f"R2 lims: ({self.BB_fit_results.at[MJD, 'R2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R2_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title6 + title7 + title8 + title9
                 
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -3015,8 +3004,8 @@ class fit_SED_across_lightcurve:
                 title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err_upper']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err_lower']:.1e}}} }}$"+'\n'
                 title3 = r'$\gamma = $'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
                 if self.guided_UVOT_SED_fits:
-                    title4 = f"\nA lims: ({self.BB_fit_results.at[MJD, 'A_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'A_param_lims'][1]:.1e})\n"
-                    title5 = f"gamma lims: ({self.BB_fit_results.at[MJD, 'gamma_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'gamma_param_lims'][1]:.1e})"
+                    title4 = f"\nA lims: ({self.BB_fit_results.at[MJD, 'A_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'A_param_upper_lim']:.1e})\n"
+                    title5 = f"gamma lims: ({self.BB_fit_results.at[MJD, 'gamma_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'gamma_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title4 + title5
 
                 plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -3114,12 +3103,12 @@ class fit_SED_across_lightcurve:
                         label = 'brute force gridding results', fmt = 'o', mec = 'k', mew = '0.5')
             
             ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], yerr = [BB_2dp['brute_R_err_lower_cm'], BB_2dp['brute_R_err_upper_cm']], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
             #ax2.errorbar(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], yerr = [BB_low_chi_dist['brute_R_err_lower_cm'], BB_low_chi_dist['brute_R_err_upper_cm']],  c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
             #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
             
-            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
                             label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
 
             cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -3138,9 +3127,9 @@ class fit_SED_across_lightcurve:
                         label = 'Brute force gridding results', marker = 'o')
             
             ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], yerr = [BB_2dp['brute_T_err_lower_K'], BB_2dp['brute_T_err_upper_K']], linestyle = 'None', c = 'white', 
-                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
-            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
                         label = 'Brute fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
             
             #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
@@ -3169,19 +3158,12 @@ class fit_SED_across_lightcurve:
 
 
         if PL:
-            if self.guided_UVOT_SED_fits:
-                guided_note = ' UVOT GUIDED'
-
-            else:
-                guided_note = ''
-            
             fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
             ax1, ax2 = axs[0]
             ax3, ax4 = axs[1]
 
             # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
             colour_cutoff = 5.0
-            #norm = Normalize(vmin = 0.0, vmax = colour_cutoff)
 
             BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == 2].copy() # since this woudl mean N = M, so we aren't fitting, but solving
             BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > 2].copy()
@@ -3193,7 +3175,7 @@ class fit_SED_across_lightcurve:
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                             linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
             ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
-            ax1.legend()
+            #ax1.legend()
             
 
             
@@ -3205,19 +3187,20 @@ class fit_SED_across_lightcurve:
 
             # ax2 top right: A vs DSP
             ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [BB_N_greater_M['brute_A_err_lower'], BB_N_greater_M['brute_A_err_upper']], linestyle = 'None', c = 'k', 
-                        label = 'brute force gridding results', fmt = 'o', mec = 'k', mew = '0.5')
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
             
             ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_A'], yerr = [BB_2dp['brute_A_err_lower'], BB_2dp['brute_A_err_upper']], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+                        fmt = 'o', label = f'N = M = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
-            #ax2.errorbar(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], yerr = [BB_low_chi_dist['brute_R_err_lower_cm'], BB_low_chi_dist['brute_R_err_upper_cm']],  c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-            #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
+  
             if self.guided_UVOT_SED_fits:
-                ax2.errorbar()
+                ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [abs(BB_N_greater_M['brute_A'] - BB_N_greater_M['A_param_lower_lim']), abs(BB_N_greater_M['A_param_upper_lim'] - BB_N_greater_M['brute_A'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax2.set_ylim(((BB_N_greater_M['brute_A'].min())*0.7, (BB_N_greater_M['brute_A'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
-            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_A'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                            label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_A'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
 
             cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
             cbar = plt.colorbar(sc, ax = ax2)
@@ -3226,19 +3209,25 @@ class fit_SED_across_lightcurve:
 
 
             # ax3 bottom left: reduced chi squared sigma distance vs MJD
-            ax3.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
+            ax3.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_chi_sigma_dist'], marker = 'o', edgecolors = 'k', linewidths = 0.5)
 
 
 
             # ax4 bottom right: gamma vs DSP
             ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = BB_N_greater_M['brute_gamma_err'], linestyle = 'None', c = 'k', 
-                        label = 'Brute force gridding results', marker = 'o')
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', marker = 'o', capsize = 5)
             
             ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_gamma'], yerr = BB_2dp['brute_gamma_err'], linestyle = 'None', c = 'white', 
-                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+                        marker = 'o', label = f'N = M = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
-            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_gamma'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                        label = 'Brute fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
+            if self.guided_UVOT_SED_fits:
+                ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = [abs(BB_N_greater_M['brute_gamma'] - BB_N_greater_M['gamma_param_lower_lim']), abs(BB_N_greater_M['gamma_param_upper_lim'] - BB_N_greater_M['brute_gamma'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax4.set_ylim(((BB_N_greater_M['brute_gamma'].min())*1.3, (BB_N_greater_M['brute_gamma'].max())*0.7)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 10% of the most extreme A values on the plot
+
+            
+            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_gamma'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                        label = fr'N > M and $\chi_{{\nu}} \leq$  {colour_cutoff}', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
             
             #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
             cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -3247,11 +3236,20 @@ class fit_SED_across_lightcurve:
 
             for ax in [ax1, ax2, ax3, ax4]:
                 ax.grid(True)
+                ax.legend(fontsize = 8)
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
+
+            if self.guided_UVOT_SED_fits:
+                title = f"UVOT GUIDED power law SED fit results across {self.ant_name}'s light curve (UVOT guided err scalefactor = {self.UVOT_guided_err_scalefactor})"
+
+            else:
+                title = f"Power law SED fit results across {self.ant_name}'s light curve"
+
+
             ax2.set_ylabel(r'Power law amplitude (A) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
             ax3.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
             ax4.set_ylabel('Power law gamma / no units', fontweight = 'bold')
-            fig.suptitle(f"{guided_note} Power law SED fit results across {self.ant_name}'s light curve", fontweight = 'bold')
+            fig.suptitle(title, fontweight = 'bold')
             fig.supxlabel('Days since peak (rest frame time)', fontweight = 'bold')
             fig.subplots_adjust(top=0.92,
                                 bottom=0.085,
@@ -3265,6 +3263,165 @@ class fit_SED_across_lightcurve:
             else:
                 savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_PL_param_vs_DSP.png"
 
+
+
+        if DBB:
+            fig, axs = plt.subplots(2, 3, sharex=True, figsize = (16, 7.2))
+            ax1, ax2, ax3 = axs[0]
+            ax4, ax5, ax6 = axs[1]
+
+            # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
+            colour_cutoff = 5.0
+
+            M_params = 4
+            BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == M_params].copy() # since this woudl mean N = M, so we aren't fitting, but solving
+            BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > M_params].copy()
+
+            # top left = light curve
+            for b in self.interp_df['band'].unique():
+                b_df = self.interp_df[self.interp_df['band'] == b].copy()
+                b_colour = band_colour_dict[b]
+                ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
+                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
+            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            #ax1.legend()
+            
+
+            
+            # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
+            BB_low_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['cf_chi_sigma_dist']) <= colour_cutoff].copy() # taking the absolute values since we allow the sigma distance to be nagetive now, but a value of -0.5 is just as good as 0.5 (I think)
+            BB_high_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['cf_chi_sigma_dist']) > colour_cutoff].copy()
+            BB_low_chi_dist['abs_cf_chi_sig_dist'] = abs(BB_low_chi_dist['cf_chi_sigma_dist'])
+
+
+            # ax2 top middle: T1 vs DSP
+            ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = BB_N_greater_M['cf_T1_err_K'], linestyle = 'None', c = 'k', 
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            
+            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T1_K'], yerr = BB_2dp['cf_T1_err_K'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+  
+            if self.guided_UVOT_SED_fits:
+                ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = [abs(BB_N_greater_M['cf_T1_K'] - BB_N_greater_M['T1_param_lower_lim']), abs(BB_N_greater_M['T1_param_upper_lim'] - BB_N_greater_M['cf_T1_K'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax2.set_ylim(((BB_N_greater_M['cf_T1_K'].min())*0.7, (BB_N_greater_M['cf_T1_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+
+            
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T1_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax2)
+            cbar.set_label(label = cbar_label)
+
+
+
+            # ax3 top right: T2 vs DSP
+            ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = BB_N_greater_M['cf_T2_err_K'], linestyle = 'None', c = 'k', 
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            
+            ax3.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T2_K'], yerr = BB_2dp['cf_T2_err_K'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+  
+            if self.guided_UVOT_SED_fits:
+                ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = [abs(BB_N_greater_M['cf_T2_K'] - BB_N_greater_M['T2_param_lower_lim']), abs(BB_N_greater_M['T2_param_upper_lim'] - BB_N_greater_M['cf_T2_K'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax3.set_ylim(((BB_N_greater_M['cf_T2_K'].min())*0.7, (BB_N_greater_M['cf_T2_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+
+            
+            sc = ax3.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T2_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax3)
+            cbar.set_label(label = cbar_label)
+
+
+
+            # ax4 bottom left: reduced chi squared sigma distance vs MJD
+            ax4.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_chi_sigma_dist'], marker = 'o', edgecolors = 'k', linewidths = 0.5)
+
+
+
+            # ax5 bottom middle: R1 vs DSP
+            ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = BB_N_greater_M['cf_R1_err_cm'], linestyle = 'None', c = 'k', 
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            
+            ax5.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R1_cm'], yerr = BB_2dp['cf_R1_err_cm'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+  
+            if self.guided_UVOT_SED_fits:
+                ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = [abs(BB_N_greater_M['cf_R1_cm'] - BB_N_greater_M['R1_param_lower_lim']), abs(BB_N_greater_M['R1_param_upper_lim'] - BB_N_greater_M['cf_R1_cm'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax5.set_ylim(((BB_N_greater_M['cf_R1_cm'].min())*0.7, (BB_N_greater_M['cf_R1_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+
+            
+            sc = ax5.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R1_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax5)
+            cbar.set_label(label = cbar_label)
+
+
+
+            # ax6 bottom right: R2 vs DSP
+            ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = BB_N_greater_M['cf_R2_err_cm'], linestyle = 'None', c = 'k', 
+                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            
+            ax6.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R2_cm'], yerr = BB_2dp['cf_R2_err_cm'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+  
+            if self.guided_UVOT_SED_fits:
+                ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = [abs(BB_N_greater_M['cf_R2_cm'] - BB_N_greater_M['R2_param_lower_lim']), abs(BB_N_greater_M['R2_param_upper_lim'] - BB_N_greater_M['cf_R2_cm'])], linestyle = 'None', c = 'red', 
+                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+                ax6.set_ylim(((BB_N_greater_M['cf_R2_cm'].min())*0.7, (BB_N_greater_M['cf_R2_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+
+            
+            sc = ax6.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R2_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax6)
+            cbar.set_label(label = cbar_label)
+
+
+
+
+            for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
+                ax.grid(True)
+                ax.legend(fontsize = 8)
+                #ax.set_xlim(MJDs_for_fit[ANT_name])
+
+            if self.guided_UVOT_SED_fits:
+                title = f"UVOT GUIDED curve_fit double blackbody SED fit results across {self.ant_name}'s light curve (UVOT guided err scalefactor = {self.UVOT_guided_err_scalefactor})"
+
+            else:
+                title = f"Curve_fit double blackbody SED fit results across {self.ant_name}'s light curve"
+
+
+            ax2.set_ylabel('T1 / K', fontweight = 'bold')
+            ax3.set_ylabel('T2 / K', fontweight = 'bold')
+            ax4.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
+            ax5.set_ylabel('R1 / cm', fontweight = 'bold')
+            ax6.set_ylabel('R2 / cm', fontweight = 'bold')
+            fig.suptitle(title, fontweight = 'bold')
+            fig.supxlabel('Days since peak (rest frame time)', fontweight = 'bold')
+            fig.subplots_adjust(top=0.92,
+                                bottom=0.085,
+                                left=0.055,
+                                right=0.97,
+                                hspace=0.15,
+                                wspace=0.23)
+            
+            if self.guided_UVOT_SED_fits:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_DBB_param_vs_DSP.png"
+            else:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_DBB_param_vs_DSP.png"
 
 
 
