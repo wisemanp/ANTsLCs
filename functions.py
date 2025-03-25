@@ -6,6 +6,7 @@ from astropy import constants as const
 import astropy.units as u
 from astropy.cosmology import FlatLambdaCDM
 import scipy.optimize as opt
+from matplotlib.colors import Normalize
 from colorama import Fore, Style
 from tqdm import tqdm
 
@@ -1824,7 +1825,7 @@ def power_law_SED(lam, A, gamma):
 
 
 class fit_SED_across_lightcurve:
-    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False,
+    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
                  plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19, 
@@ -1895,6 +1896,7 @@ class fit_SED_across_lightcurve:
         self.brute_delchi = brute_delchi
         
         self.individual_BB_plot = individual_BB_plot
+        self.save_param_vs_time_plot = save_param_vs_time_plot
         self.no_indiv_SED_plots = no_indiv_SED_plots
         self.save_indiv_BB_plot = save_indiv_BB_plot
         self.no_chi_contours = no_chi_contours
@@ -1917,7 +1919,8 @@ class fit_SED_across_lightcurve:
         self.mjd_values = self.interp_df['MJD'].unique()
 
         if self.SED_type == 'single_BB':
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_T_err_K', 'brute_R_cm', 'brute_R_err_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
+            #                 0          1             2            3          4            5            6               7              8                  9               10            11                  12                  13                 14                  15                      16                 17                   18
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
             self.BB_R_min = BB_R_min
             self.BB_R_max = BB_R_max
             self.BB_T_min = BB_T_min
@@ -1941,9 +1944,8 @@ class fit_SED_across_lightcurve:
 
 
         elif self.SED_type == 'power_law':
-            # for the brute force parameter error on A, we'll input the lower and upper errors as a tuple like (lower_err, upper_err), but single-valued for gamma's error
-            #                  0          1              2        3         4           5             6             7                8                  9             10          11               12              13              14                    15
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist']
+            #                  0          1              2        3         4           5             6             7                8                  9             10                11               12                 13              14                    15                 16
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err_lower', 'brute_A_err_upper', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist']
             self.PL_A_max = PL_A_max
             self.PL_A_min = PL_A_min
             self.PL_gamma_max = PL_gamma_max
@@ -2168,7 +2170,7 @@ class fit_SED_across_lightcurve:
 
             A_err_upper = max(delchi_A) - brute_A # getting assymetric errors since our trialed parameter grids were logarithmically spaced, so you wouldn't expect a symmetric error about the model paremeter
             A_err_lower = brute_A - min(delchi_A)
-            brute_A_err = (A_err_lower, A_err_upper)
+            
 
             gamma_err_upper = max(delchi_gamma) - brute_gamma
             gamma_err_lower = brute_gamma - min(delchi_gamma)
@@ -2214,9 +2216,9 @@ class fit_SED_across_lightcurve:
             print()
 
         
-        self.BB_fit_results.at[MJD, 'brute_A'] = brute_A
-        self.BB_fit_results.at[MJD, 'brute_A_err'] = brute_A_err
-        self.BB_fit_results.loc[MJD, self.columns[12:16]] = [brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist] 
+        #self.BB_fit_results.at[MJD, 'brute_A'] = brute_A
+        #self.BB_fit_results.at[MJD, 'brute_A_err'] = brute_A_err
+        self.BB_fit_results.loc[MJD, self.columns[10:17]] = [brute_A, A_err_lower, A_err_upper, brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist] 
 
 
 
@@ -2284,8 +2286,8 @@ class fit_SED_across_lightcurve:
         brute_T_err_lower = brute_T - np.min(delchi_T) # the lower error on the temperature parameter
         brute_R_err_upper = np.max(delchi_sc_R) / self.R_scalefactor - brute_R # the upper error on the radius parameter
         brute_R_err_lower = brute_R - np.min(delchi_sc_R) / self.R_scalefactor # the lower error on the radius parameter
-        brute_T_err = (brute_T_err_lower, brute_T_err_upper)
-        brute_R_err = (brute_R_err_lower, brute_R_err_upper)
+        #brute_T_err = (brute_T_err_lower, brute_T_err_upper)
+        #brute_R_err = (brute_R_err_lower, brute_R_err_upper)
 
         #print(f'brute T err upper {brute_T_err_upper:.3e} brute T err lower {brute_T_err_lower:.3e} cf T err {cf_T_err:.3e}')
         #print(f'brute R err upper {brute_R_err_upper:.3e} brute R err lower {brute_R_err_lower:.3e} cf R err {cf_R_err:.3e}')
@@ -2293,8 +2295,8 @@ class fit_SED_across_lightcurve:
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # add the result to the results row which will be appended to the results dataframe
-        self.BB_fit_results.loc[MJD, self.columns[10:17]] = [red_chi_1sig,    brute_T,     brute_T_err,     brute_R,     brute_R_err,     brute_red_chi,    brute_chi_sigma_dist]
-        #                                                   'red_chi_1sig', 'brute_T_K', 'brute_T_err_K', 'brute_R_cm', 'brute_R_err_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
+        self.BB_fit_results.loc[MJD, self.columns[10:19]] = [red_chi_1sig,    brute_T,     brute_T_err_lower,     brute_T_err_upper,     brute_R,     brute_R_err_lower,      brute_R_err_upper,     brute_red_chi,    brute_chi_sigma_dist]
+        #                                                   'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
 
     
 
@@ -2387,6 +2389,10 @@ class fit_SED_across_lightcurve:
 
         elif self.SED_type == 'power_law':
             self.plot_individual_power_law_SED_fits(band_colour_dict)
+
+        # plot the SED params vs time to make sure its behaving well
+        self.plot_SED_params_vs_time(band_colour_dict=band_colour_dict)
+
 
         self.save_SED_fit_results(guided = self.guided_UVOT_SED_fits) # save the dataframe of the SED fitting results
 
@@ -2647,7 +2653,8 @@ class fit_SED_across_lightcurve:
                 elif self.SED_type == 'power_law':
                     # get the model parameters from the closest-by UVOT SED fit to help constrain the fit here
                     UVOT_A = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A']
-                    UVOT_A_lower_err, UVOT_A_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A_err']
+                    UVOT_A_lower_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A_err_lower']
+                    UVOT_A_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_A_err_upper']
                     UVOT_gamma = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_gamma']
                     UVOT_gamma_err= self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_gamma_err']
 
@@ -2736,6 +2743,11 @@ class fit_SED_across_lightcurve:
 
         elif self.SED_type == 'power_law':
             self.plot_individual_power_law_SED_fits(band_colour_dict)
+
+
+        # plot the SED params vs time to make sure its behaving well
+        self.plot_SED_params_vs_time(band_colour_dict=band_colour_dict)
+
 
         self.save_SED_fit_results(guided = self.guided_UVOT_SED_fits) # save the dataframe of SED fitting results
 
@@ -2840,8 +2852,8 @@ class fit_SED_across_lightcurve:
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
                 subplot_title = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
-                title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_K'][1]:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_K'][0]:.1e}}} }}$"+'\n'
-                title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_cm'][1]:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_cm'][0]:.1e}}} }}$"+'\n'
+                title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']:.1e}}} }}$"+'\n'
+                title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
                 
                 if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
                     title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'T_param_lims'][1]:.1e})\n"
@@ -3000,7 +3012,7 @@ class fit_SED_across_lightcurve:
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
                 subplot_title = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
-                title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err'][1]:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err'][0]:.1e}}} }}$"+'\n'
+                title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err_upper']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err_lower']:.1e}}} }}$"+'\n'
                 title3 = r'$\gamma = $'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
                 if self.guided_UVOT_SED_fits:
                     title4 = f"\nA lims: ({self.BB_fit_results.at[MJD, 'A_param_lims'][0]:.1e} - {self.BB_fit_results.at[MJD, 'A_param_lims'][1]:.1e})\n"
@@ -3053,6 +3065,217 @@ class fit_SED_across_lightcurve:
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
+
+
+
+
+
+
+    def plot_SED_params_vs_time(self, band_colour_dict):
+        """
+        A function which creates a plot of the model parameters vs time
+        """
+        PL = self.SED_type == 'power_law'
+        SBB = self.SED_type == 'single_BB'
+        DBB = self.SED_type == 'double_BB'
+
+
+        if SBB:
+            fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
+            ax1, ax2 = axs[0]
+            ax3, ax4 = axs[1]
+
+            # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
+            colour_cutoff = 5.0
+            #norm = Normalize(vmin = 0.0, vmax = colour_cutoff)
+
+            BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == 2].copy() # since this woudl mean N = M, so we aren't fitting, but solving
+            BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > 2].copy()
+
+            # top left = light curve
+            for b in self.interp_df['band'].unique():
+                b_df = self.interp_df[self.interp_df['band'] == b].copy()
+                b_colour = band_colour_dict[b]
+                ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
+                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
+            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax1.legend()
+            
+
+            # top right = BB T
+            # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
+            BB_low_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) <= colour_cutoff].copy() # taking the absolute values since we allow the sigma distance to be nagetive now, but a value of -0.5 is just as good as 0.5 (I think)
+            BB_high_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) > colour_cutoff].copy()
+            BB_low_chi_dist['abs_brute_chi_sig_dist'] = abs(BB_low_chi_dist['brute_chi_sigma_dist'])
+
+
+            # ax2 top right: blackbody radius vs MJD
+            ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_R_cm'], yerr = [BB_N_greater_M['brute_R_err_lower_cm'], BB_N_greater_M['brute_R_err_upper_cm']], linestyle = 'None', c = 'k', 
+                        label = 'brute force gridding results', fmt = 'o', mec = 'k', mew = '0.5')
+            
+            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], yerr = [BB_2dp['brute_R_err_lower_cm'], BB_2dp['brute_R_err_upper_cm']], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+            
+            #ax2.errorbar(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], yerr = [BB_low_chi_dist['brute_R_err_lower_cm'], BB_low_chi_dist['brute_R_err_upper_cm']],  c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+            #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
+            
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                            label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax2)
+            cbar.set_label(label = cbar_label)
+            
+
+
+            # ax3 bottom left: reduced chi squared sigma distance vs MJD
+            ax3.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
+
+
+
+            # ax4 bottom right: blackbody temperature vs MJD
+            ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_T_K'], yerr = [BB_N_greater_M['brute_T_err_lower_K'], BB_N_greater_M['brute_T_err_upper_K']], linestyle = 'None', c = 'k', 
+                        label = 'Brute force gridding results', marker = 'o')
+            
+            ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], yerr = [BB_2dp['brute_T_err_lower_K'], BB_2dp['brute_T_err_upper_K']], linestyle = 'None', c = 'white', 
+                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+            
+            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                        label = 'Brute fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
+            
+            #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
+            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax4)
+            cbar.set_label(label = cbar_label)
+
+            for ax in [ax1, ax2, ax3, ax4]:
+                ax.grid(True)
+                #ax.set_xlim(MJDs_for_fit[ANT_name])
+            ax2.set_ylabel('Blackbody radius / cm', fontweight = 'bold')
+            ax3.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
+            ax4.set_ylabel('Blackbody temperature / K', fontweight = 'bold')
+            fig.suptitle(f"Blackbody fit results across {self.ant_name}'s light curve", fontweight = 'bold')
+            fig.supxlabel('days since peak (rest frame time)', fontweight = 'bold')
+            fig.subplots_adjust(top=0.92,
+                                bottom=0.085,
+                                left=0.055,
+                                right=0.97,
+                                hspace=0.15,
+                                wspace=0.19)
+            
+            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_SBB_param_vs_DSP.png"
+
+
+
+
+        if PL:
+            if self.guided_UVOT_SED_fits:
+                guided_note = ' UVOT GUIDED'
+
+            else:
+                guided_note = ''
+            
+            fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
+            ax1, ax2 = axs[0]
+            ax3, ax4 = axs[1]
+
+            # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
+            colour_cutoff = 5.0
+            #norm = Normalize(vmin = 0.0, vmax = colour_cutoff)
+
+            BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == 2].copy() # since this woudl mean N = M, so we aren't fitting, but solving
+            BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > 2].copy()
+
+            # top left = light curve
+            for b in self.interp_df['band'].unique():
+                b_df = self.interp_df[self.interp_df['band'] == b].copy()
+                b_colour = band_colour_dict[b]
+                ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
+                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
+            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax1.legend()
+            
+
+            
+            # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
+            BB_low_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) <= colour_cutoff].copy() # taking the absolute values since we allow the sigma distance to be nagetive now, but a value of -0.5 is just as good as 0.5 (I think)
+            BB_high_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) > colour_cutoff].copy()
+            BB_low_chi_dist['abs_brute_chi_sig_dist'] = abs(BB_low_chi_dist['brute_chi_sigma_dist'])
+
+
+            # ax2 top right: A vs DSP
+            ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [BB_N_greater_M['brute_A_err_lower'], BB_N_greater_M['brute_A_err_upper']], linestyle = 'None', c = 'k', 
+                        label = 'brute force gridding results', fmt = 'o', mec = 'k', mew = '0.5')
+            
+            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_A'], yerr = [BB_2dp['brute_A_err_lower'], BB_2dp['brute_A_err_upper']], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+            
+            #ax2.errorbar(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], yerr = [BB_low_chi_dist['brute_R_err_lower_cm'], BB_low_chi_dist['brute_R_err_upper_cm']],  c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+            #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
+            if self.guided_UVOT_SED_fits:
+                ax2.errorbar()
+
+            
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_A'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                            label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax2)
+            cbar.set_label(label = cbar_label)
+            ax2.set_yscale('log')
+
+
+            # ax3 bottom left: reduced chi squared sigma distance vs MJD
+            ax3.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
+
+
+
+            # ax4 bottom right: gamma vs DSP
+            ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = BB_N_greater_M['brute_gamma_err'], linestyle = 'None', c = 'k', 
+                        label = 'Brute force gridding results', marker = 'o')
+            
+            ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_gamma'], yerr = BB_2dp['brute_gamma_err'], linestyle = 'None', c = 'white', 
+                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5')
+            
+            sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_gamma'], cmap = 'jet', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
+                        label = 'Brute fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
+            
+            #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
+            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            cbar = plt.colorbar(sc, ax = ax4)
+            cbar.set_label(label = cbar_label)
+
+            for ax in [ax1, ax2, ax3, ax4]:
+                ax.grid(True)
+                #ax.set_xlim(MJDs_for_fit[ANT_name])
+            ax2.set_ylabel(r'Power law amplitude (A) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax3.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
+            ax4.set_ylabel('Power law gamma / no units', fontweight = 'bold')
+            fig.suptitle(f"{guided_note} Power law SED fit results across {self.ant_name}'s light curve", fontweight = 'bold')
+            fig.supxlabel('Days since peak (rest frame time)', fontweight = 'bold')
+            fig.subplots_adjust(top=0.92,
+                                bottom=0.085,
+                                left=0.055,
+                                right=0.97,
+                                hspace=0.15,
+                                wspace=0.19)
+            
+            if self.guided_UVOT_SED_fits:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_PL_param_vs_DSP.png"
+            else:
+                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_PL_param_vs_DSP.png"
+
+
+
+
+        if self.save_param_vs_time_plot:
+            plt.savefig(savepath, dpi = 300)
+
+        plt.show()
+            
+
+
+
 
 
 
