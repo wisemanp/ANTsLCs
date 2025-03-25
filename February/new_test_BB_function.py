@@ -51,7 +51,7 @@ SED_plots = 'usual'#'compare_SEDs'
 
 if SED_plots == 'usual':
     #for idx in range(11):
-    for idx in [8]:
+    for idx in [10]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -71,7 +71,7 @@ if SED_plots == 'usual':
         #SED_type = 'power_law'
         SED_type = 'best_SED'
         UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
-        UVOT_guided_err_scalefactor = 0.05
+        UVOT_guided_err_scalefactor = 0.1 
         brute_gridsize = 2000
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
 
@@ -124,140 +124,15 @@ if SED_plots == 'usual':
         if (SED_type == 'power_law') and (UVOT_guided_fitting == False):
             BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
             pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all floats in the dataframe in standard form to 4 decimal places
-            #print(BB_fit_results.head(20).iloc[:, 10:16])
-            #print(BB_fit_results.head(20).loc[:, ['MJD', 'cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
-            #print()
-            #print(BB_fit_results.head(20).loc[:, ['MJD', 'cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
-            #print()
-            #print('max A = ', BB_fit_results['cf_A'].max())
-            #print('min A = ',  BB_fit_results['cf_A'].min())
-            #print()
-            #print(BB_fit_results.tail(20).loc[:, ['MJD', 'cf_A', 'cf_A_err', 'cf_chi_sigma_dist', 'brute_A', 'brute_A_err', 'brute_chi_sigma_dist']])
-            #print()
-            #print(BB_fit_results.tail(20).loc[:, ['MJD', 'cf_gamma', 'cf_gamma_err', 'cf_chi_sigma_dist', 'brute_gamma', 'brute_gamma_err', 'brute_chi_sigma_dist']])
-            #print(BB_fit_results.tail(20).iloc[:, 10:16])
-            #print()
+
         
         
         if (SED_type == 'single_BB') and (UVOT_guided_fitting == False):
             BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
             BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
             
-            # what we want: 
-            # L_rf vs MJD: on this plot there will be the actual (binned) data, the polyfit and the interpolated data from the polyfit
-            # BB R vs MJD: on this plot we'll have curve_fit R and brute force grid R, perhaps with a colour scale to indicate the sigma distance of the reduced chi squared for the 
-            #               BB fit to indicate how much we should trust the value
-            # BB T vs MJD: basically the same as BB R vs MJD
-            # sigma distance vs MJD?: sigma distance for the curve_fit and brute force results. I feel like this would be good to have alongside the polyfit, because if the polyfit was bad at this MJD,
-            #               then the interpolated L_rf of the band might be bad, too, which might mean that the BB fit will struggle to fit to this poorly interpolated datapoint.
-
-
-            #fig = plt.figure(figsize = (16, 7.3))
-            #ax1, ax2, ax3, ax4 = [plt.subplot(2, 2, i) for i in np.arange(1, 5, 1)]
-            fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
-            ax1, ax2 = axs[0]
-            ax3, ax4 = axs[1]
-
-            # getting the colour scale for plotting the BB T and R vs MJD coloured by chi sigma distance
-            colour_cutoff = 5.0
-            norm = Normalize(vmin = 0.0, vmax = colour_cutoff)
-
-        
-
-        
-            # top left: the L_rf vs MJD light curve
-            for b in ANT_bands: # iterate through all of the bands present in the ANT's light curve
-                b_df = interp_lc[interp_lc['band'] == b].copy()
-                b_colour = band_colour_dict[b]
-                ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
-                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-                ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
-                
-
-
-            BB_fit_results = BB_fit_results.dropna(subset = ['red_chi_1sig'])
-
-            if BB_curvefit == True:
-                # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
-                BB_low_chi_dist = BB_fit_results[BB_fit_results['cf_chi_sigma_dist'] <= colour_cutoff]
-                BB_high_chi_dist = BB_fit_results[BB_fit_results['cf_chi_sigma_dist'] > colour_cutoff]
-
-                #norm = Normalize(vmin = BB_fit_results['cf_chi_sigma_dist'].min(), vmax = BB_fit_results['cf_chi_sigma_dist'].max())
-                # ax2 top right: blackbody radius vs MJD
-                ax2.errorbar(BB_fit_results['d_since_peak'], BB_fit_results['cf_R_cm'], yerr = BB_fit_results['cf_R_err_cm'], linestyle = 'None', c = 'k', 
-                            fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
-                ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R_cm'], yerr = BB_2dp['cf_R_err_cm'], linestyle = 'None', c = 'k', mfc = 'white',
-                            fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
-                sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['cf_chi_sigma_dist']), 
-                            label = 'Curve fit results', marker = 'o', zorder = 2, edgecolors = 'k', linewidths = 0.5)
-
-                cbar_label = r'CF Goodness of BB fit ($\chi_{\nu}$ sig dist)'
-                cbar = plt.colorbar(sc, ax = ax2)
-                cbar.set_label(label = cbar_label)
-
-
-                # ax3 bottom left: reduced chi squared sigma distance vs MJD
-                ax3.scatter(BB_fit_results['d_since_peak'], BB_fit_results['cf_chi_sigma_dist'], marker = 'o', label = 'Curve fit results', edgecolors = 'k', linewidths = 0.5)
-
-                # ax4 bottom right: blackbody temperature vs MJD
-                ax4.errorbar(BB_fit_results['d_since_peak'], BB_fit_results['cf_T_K'], yerr = BB_fit_results['cf_T_err_K'], linestyle = 'None', c = 'k', 
-                            fmt = 'o', zorder = 1, label = f'BB fit chi sig dist >{colour_cutoff}')
-                ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T_K'], yerr = BB_2dp['cf_T_err_K'], linestyle = 'None', c = 'k', mfc = 'white',
-                            fmt = 'o', label = f'cf no bands = 2', mec = 'k', mew = 0.5)
-                sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T_K'], cmap = 'jet', c = BB_low_chi_dist['cf_chi_sigma_dist'], 
-                            label = 'Curve fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 2)
-                
-                #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
-                cbar_label = r'CF Goodness of BB fit ($\chi_{\nu}$ sig dist)'
-                cbar = plt.colorbar(sc, ax = ax4)
-                cbar.set_label(label = cbar_label)
-
-
-
-                
-            if (BB_brute == True):
-                # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
-                BB_low_chi_dist = BB_fit_results[BB_fit_results['brute_chi_sigma_dist'] <= colour_cutoff]
-                BB_high_chi_dist = BB_fit_results[BB_fit_results['brute_chi_sigma_dist'] > colour_cutoff]
-
-                # ax2 top right: blackbody radius vs MJD
-                ax2.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_R_cm'], linestyle = 'None', c = 'k', 
-                            label = 'brute force gridding results', marker = '^')
-                
-                ax2.scatter(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], linestyle = 'None', c = 'white', 
-                            marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
-                
-                sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'jet', c = np.ravel(BB_low_chi_dist['brute_chi_sigma_dist']), 
-                            label = 'Brute force gridding results', marker = '^', zorder = 3, edgecolors = 'k', linewidths = 0.5)
-
-                cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
-                cbar = plt.colorbar(sc, ax = ax2)
-                cbar.set_label(label = cbar_label)
-                
-                # ax3 bottom left: reduced chi squared sigma distance vs MJD
-                ax3.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
-
-                # ax4 bottom right: blackbody temperature vs MJD
-                ax4.scatter(BB_fit_results['d_since_peak'], BB_fit_results['brute_T_K'], linestyle = 'None', c = 'k', 
-                            label = 'Brute force gridding results', marker = '^')
-                
-                ax4.scatter(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], linestyle = 'None', c = 'white', 
-                            marker = '^', label = f'brute no bands = 2', edgecolors = 'k', linewidths = 0.5)
-                
-                sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'jet', c = BB_low_chi_dist['brute_chi_sigma_dist'], 
-                            label = 'Brute fit results', marker = '^', edgecolors = 'k', linewidths = 0.5, zorder = 3)
-                
-                #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
-                cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
-                cbar = plt.colorbar(sc, ax = ax4)
-                cbar.set_label(label = cbar_label)
-
-
-            for ax in [ax1, ax2, ax3, ax4]:
-                ax.grid(True)
-                #ax.set_xlim(MJDs_for_fit[ANT_name])
-                ax.legend(fontsize = 8)
-
+ 
+"""  this is here from an old plot which the class now produces, I have left these ylims here in case I want to use them later..
             if ANT_name == 'ZTF22aadesap':
                 ax4.set_ylim(0.0, 4e4)
 
@@ -287,23 +162,7 @@ if SED_plots == 'usual':
             elif ANT_name == 'ZTF22aadesap':
                 ax2.set_ylim(0.0, 5e15)
                 ax4.set_ylim(0.0, 2.5e4)
-
-            ax2.set_ylabel('Blackbody radius / cm', fontweight = 'bold')
-            ax3.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
-            ax4.set_ylabel('Blackbody temperature / K', fontweight = 'bold')
-            fig.suptitle(f"Blackbody fit results across {ANT_name}'s light curve", fontweight = 'bold')
-            fig.supxlabel('days since peak (rest frame time)', fontweight = 'bold')
-            fig.subplots_adjust(top=0.92,
-                                bottom=0.085,
-                                left=0.055,
-                                right=0.97,
-                                hspace=0.15,
-                                wspace=0.19)
-            
-            if save_BB_plot == True:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}/{ANT_name}_lc_BB_fit.png"
-                plt.savefig(savepath, dpi = 300) 
-            plt.show()
+ """
 
 
 
