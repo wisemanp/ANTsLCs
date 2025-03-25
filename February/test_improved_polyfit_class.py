@@ -31,7 +31,7 @@ import sys
 
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
 from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict
-from functions import load_ANT_data, ANT_data_L_rf, bin_lc, fit_BB_across_lc, chisq, polyfit_lightcurve
+from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lightcurve
 
 
 
@@ -58,14 +58,14 @@ max_interp_distance = 20
 interp_at_ref_band = True
 max_interp_dist = 20
 plot_polyfit = True
-save_interp_df = True
-save_README = True # this doesn't go into the class
+save_interp_df = False
+save_README = False # this doesn't go into the class
 
 
 
 # polyfitting light curves
-for idx in range(11):
-#for idx in [10]:
+#for idx in range(11):
+for idx in [8]:
     ANT_name = transient_names[idx]
     ANT_df = binned_df_list[idx]
     ANT_bands = list_of_bands[idx]
