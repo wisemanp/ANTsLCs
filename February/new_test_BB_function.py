@@ -50,8 +50,8 @@ SED_plots = 'usual'#'compare_SEDs'
 
 
 if SED_plots == 'usual':
-    #for idx in range(11):
-    for idx in [10]:
+    for idx in range(11):
+    #for idx in [1]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -70,7 +70,7 @@ if SED_plots == 'usual':
         #SED_type = 'double_BB'
         #SED_type = 'power_law'
         SED_type = 'best_SED'
-        UVOT_guided_fitting = False # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
@@ -134,37 +134,6 @@ if SED_plots == 'usual':
             BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
             
  
-"""  this is here from an old plot which the class now produces, I have left these ylims here in case I want to use them later..
-            if ANT_name == 'ZTF22aadesap':
-                ax4.set_ylim(0.0, 4e4)
-
-            elif ANT_name == 'ZTF19aailpwl':
-                ax4.set_ylim(0.0, 2e4)
-
-            elif ANT_name == 'ZTF19aamrjar':
-                ax4.set_ylim(0.0, 2.5e4)
-
-            elif ANT_name == 'ZTF19aatubsj':
-                ax4.set_ylim(0.0, 2.5e4)
-
-            elif ANT_name == 'ZTF20abgxlut':
-                ax2.set_ylim(0.0, 8e15)
-                ax4.set_ylim(0.0, 2.3e4)
-
-            elif ANT_name == 'ZTF20abodaps':
-                ax2.set_ylim(0.0, 1.2e16)
-                ax4.set_ylim(0.0, 4e4)
-
-            elif ANT_name == 'ZTF20abrbeie':
-                ax4.set_ylim(0.0, 2e4)
-
-            elif ANT_name == 'ZTF21abxowzx':
-                ax4.set_ylim(0.0, 2.5e4)
-
-            elif ANT_name == 'ZTF22aadesap':
-                ax2.set_ylim(0.0, 5e15)
-                ax4.set_ylim(0.0, 2.5e4)
- """
 
 
 
