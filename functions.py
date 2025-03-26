@@ -2741,7 +2741,7 @@ class fit_SED_across_lightcurve:
             else:
                 # MAYBE I SHOULD SET THE self.guided_UVOT_SED_fits = FALSE???????????????????????
                 print()
-                print(f'{Fore.RED}WARNING - THERE WERE NO UVOT MJD SED FITS WITH SIG DIST <= {sigma_dist_for_good_fit}. THERE WILL BE NO UVOT GUIDED SED FITTING - ALL SED FITS \n WILL BE DONE INDEPENDENTLY OF ONE ANOTHER{Style.RESET_ALL}')
+                print(f'{Fore.RED}WARNING - THERE WERE NO UVOT MJD SED FITS WITH SIG DIST <= {sigma_dist_for_good_fit}. \nTHERE WILL BE NO UVOT GUIDED SED FITTING - ALL SED FITS WILL BE DONE INDEPENDENTLY OF ONE ANOTHER{Style.RESET_ALL}')
                 print()
                 print('Running the regular (non-guided) fitting process on the entire light curve')
                 SED_fit_results = self.run_BB_fit() # iterate through the MJDs and fit our chosen SED to them
@@ -3096,10 +3096,35 @@ class fit_SED_across_lightcurve:
         """
         A function which creates a plot of the model parameters vs time
         """
+
+        # some of the plots need y lims
+        SBB_T_plot_lims = {'ZTF18aczpgwm': (None, None), 
+                            'ZTF19aailpwl': (0.0, 2e4), 
+                            'ZTF19aamrjar': (0.0, 2.5e4), 
+                            'ZTF19aatubsj': (None, None), 
+                            'ZTF20aanxcpf': (None, None), 
+                            'ZTF20abgxlut': (0.0, 2.3e4), 
+                            'ZTF20abodaps': (0.0, 4e4), 
+                            'ZTF20abrbeie': (0.0, 2e4), 
+                            'ZTF20acvfraq': (None, None), 
+                            'ZTF21abxowzx': (0.0, 2.5e4), 
+                            'ZTF22aadesap': (0.0, 4e4)}
+
+        SBB_R_plot_lims = {'ZTF18aczpgwm': (None, None), 
+                            'ZTF19aailpwl': (None, None), 
+                            'ZTF19aamrjar': (None, None), 
+                            'ZTF19aatubsj': (None, None), 
+                            'ZTF20aanxcpf': (None, None), 
+                            'ZTF20abgxlut': (0.0, 8e15), 
+                            'ZTF20abodaps': (0.0, 1.2e16), 
+                            'ZTF20abrbeie': (None, None), 
+                            'ZTF20acvfraq': (None, None), 
+                            'ZTF21abxowzx': (None, None), 
+                            'ZTF22aadesap': (0.0, 5e15)}
+
         PL = self.SED_type == 'power_law'
         SBB = self.SED_type == 'single_BB'
         DBB = self.SED_type == 'double_BB'
-
 
         if SBB:
             fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
@@ -3142,10 +3167,11 @@ class fit_SED_across_lightcurve:
             
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
                             label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
-
+            
             cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
             cbar = plt.colorbar(sc, ax = ax2)
             cbar.set_label(label = cbar_label)
+            ax2.set_ylim(SBB_R_plot_lims[self.ant_name])
             
 
 
@@ -3168,6 +3194,7 @@ class fit_SED_across_lightcurve:
             cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
             cbar = plt.colorbar(sc, ax = ax4)
             cbar.set_label(label = cbar_label)
+            ax4.set_ylim(SBB_T_plot_lims[self.ant_name])
 
             for ax in [ax1, ax2, ax3, ax4]:
                 ax.grid(True)
