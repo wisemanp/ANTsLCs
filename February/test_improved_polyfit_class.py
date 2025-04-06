@@ -30,7 +30,7 @@ from tqdm import tqdm
 import sys
 
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict
+from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lightcurve
 
 
@@ -49,30 +49,61 @@ add_lc_df_list = ANT_data_L_rf(lc_df_list, transient_names, ANT_redshift_dict, A
 MJD_binsize = 1
 binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
+ANTs_for_polyfit_dict = {'ZTF18aczpgwm': True,  # ONLY BOTHER POLYFITTING AND INTERPOLATING LIGHT CURVES WITH MORE THAN ONE DECENT BAND
+                        'ZTF19aailpwl': True, 
+                        'ZTF19aamrjar': True, 
+                        'ZTF19aatubsj': True, 
+                        'ZTF20aanxcpf': True, 
+                        'ZTF20abgxlut': True, 
+                        'ZTF20abodaps': True, 
+                        'ZTF20abrbeie': True, 
+                        'ZTF20acvfraq': True, 
+                        'ZTF21abxowzx': True, 
+                        'ZTF22aadesap': True, 
+                        'ASASSN-17jz': True, 
+                        'ASASSN-18jd': True, 
+                        'CSS100217': False, 
+                        'Gaia16aaw': False, 
+                        'Gaia18cdj': False, 
+                        'PS1-10adi': True, 
+                        'PS1-13jw': False }
 
 
 max_poly_order = 14
 min_band_dps = 4
-straggler_dist = 80
+straggler_dist = 70
 max_interp_distance = 20
+gapsize = 70 # the size of a gap whete we allow NO interpolation at all over it to occur
 interp_at_ref_band = True
 max_interp_dist = 20
 plot_polyfit = True
-save_interp_df = False
-save_README = False # this doesn't go into the class
+save_interp_df = True
+save_README = True # this doesn't go into the class
+
+
+
+
 
 
 
 # polyfitting light curves
-#for idx in range(11):
-for idx in [8]:
-    ANT_name = transient_names[idx]
+for idx in range(len(transient_names)):
+#for idx in [12]:
+    ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
+    if ANTs_for_polyfit_dict[ANT_name] == False:
+        continue
+        
+    
     ANT_df = binned_df_list[idx]
+    if ANT_name == 'ASASSN-18jd':
+        ANT_df = ANT_df.dropna(subset = ['wm_L_rf_err']) # this light curve has NaN values in magerr when it's quoting an upper limit, so drop these rows for polyfitting
+
     ANT_bands = list_of_bands[idx]
     polyfit_MJD_range = MJDs_for_fit[ANT_name]
     bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
     print(ANT_name)
+
     
 
     lightcurve = polyfit_lightcurve(ant_name = ANT_name, 
@@ -83,10 +114,12 @@ for idx in [8]:
                                     interp_at_ref_band = interp_at_ref_band, 
                                     min_band_dps = min_band_dps, 
                                     straggler_dist = straggler_dist,
+                                    gapsize = gapsize,
                                     fit_MJD_range = polyfit_MJD_range, 
                                     max_interp_distance = max_interp_distance, 
                                     max_poly_order = max_poly_order, 
                                     b_colour_dict = band_colour_dict, 
+                                    b_marker_dict = band_marker_dict,
                                     plot_polyfit = plot_polyfit, 
                                     save_interp_df = save_interp_df)
     
@@ -94,17 +127,11 @@ for idx in [8]:
 
     if (save_README == True) & (idx == 0):
         save_interp_data_folder = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs/"
-        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n max_interp_distance = {max_interp_distance} \n interp_at_ref_band = {interp_at_ref_band} \n max_interp_dist = {max_interp_dist}"
+        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n gapsize = {gapsize} \n max_interp_distance = {max_interp_distance} \n interp_at_ref_band = {interp_at_ref_band} \n max_interp_dist = {max_interp_dist}"
         with open(save_interp_data_folder+"README.txt", "w") as f:
             f.write(readme_content)
    
     
     print()
-
-
-
-
-
-
 
 
