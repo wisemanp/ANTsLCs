@@ -5,7 +5,8 @@ import os
 import sys
 from astropy.stats import bayesian_blocks
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
-from November.plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict
+from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict
+from functions import bin_lc, load_ANT_data, ANT_data_L_rf
 
 
 
