@@ -77,8 +77,8 @@ gapsize = 70 # the size of a gap whete we allow NO interpolation at all over it 
 interp_at_ref_band = True
 max_interp_dist = 20
 plot_polyfit = True
-save_interp_df = True
-save_README = True # this doesn't go into the class
+save_interp_df = False
+save_README = False # this doesn't go into the class
 
 
 
