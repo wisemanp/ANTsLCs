@@ -27,6 +27,8 @@ BESSEL_B_ZP = 5.69733e-9
 BESSEL_V_ZP = 3.62786e-9
 BESSEL_R_ZP = 2.57796e-9
 BESSEL_I_ZP = 1.69232e-9
+BESSEL_J_ZP = 7.19139e-10
+BESSEL_H_ZP = 4.04903e-10
 
 BESSEL_U_ZP_VEGA = 3.96526e-9	
 BESSEL_B_ZP_VEGA = 6.13268e-9
@@ -58,9 +60,9 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'B': BESSEL_B_ZP, 
                 'CSS_V': BESSEL_V_ZP, 
                 'Gaia_G': 2.78534e-9, # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
-                'H': 0.0, # I don't think i actually have H or J that isn't Vega maybe? I think only PS1-10adi has J and H bands anyways
+                'H': BESSEL_H_ZP, 
                 'I': BESSEL_I_ZP, 
-                'J': 0.0, # I don't think i actually have H or J that isn't Vega maybe? I think only PS1-10adi has J and H bands anyways
+                'J': BESSEL_J_ZP, 
                 'LCOGT_B': BESSEL_B_ZP, # ASSUME THESE ARE THE SAME VALUES AS THE STANDARD - USE BESSEL UBVRI FRMOM WHAT THE FLUX
                 'LCOGT_V': BESSEL_V_ZP, 
                 'LCOGT_g': SLOAN_g_ZP, 
@@ -81,13 +83,13 @@ band_ZP_dict =  {'ATLAS_c': 3.89323e-9,
                 'r': SLOAN_r_ZP, 
                 'U': BESSEL_U_ZP, 
                 'UVOT_UVW1': 1.6344e-8, 
-                'U Vega?': BESSEL_U_ZP_VEGA,
-                'B Vega?': BESSEL_B_ZP_VEGA,  
-                'V Vega?': BESSEL_V_ZP_VEGA, 
-                'R Vega?': BESSEL_R_ZP_VEGA, 
-                'I Vega?': BESSEL_I_ZP_VEGA, 
-                'J Vega?': BESSEL_J_ZP_VEGA,
-                'H Vega?': BESSEL_H_ZP_VEGA}
+                'U (Vega)': BESSEL_U_ZP_VEGA,
+                'B (Vega)': BESSEL_B_ZP_VEGA,  
+                'V (Vega)': BESSEL_V_ZP_VEGA, 
+                'R (Vega)': BESSEL_R_ZP_VEGA, 
+                'I (Vega)': BESSEL_I_ZP_VEGA, 
+                'J (Vega)': BESSEL_J_ZP_VEGA,
+                'H (Vega)': BESSEL_H_ZP_VEGA}
 
 
 
@@ -165,13 +167,13 @@ band_obs_centwl_dict = {'ATLAS_c': 5408.66,
                         'r': SLOAN_r_cw, #---
                         'U': BESSEL_U_cw, #---
                         'UVOT_UVW1': 2688.46, 
-                        'U Vega?': BESSEL_U_VEGA_cw,
-                        'B Vega?': BESSEL_B_VEGA_cw,  
-                        'V Vega?': BESSEL_V_VEGA_cw, 
-                        'R Vega?': BESSEL_R_VEGA_cw, 
-                        'I Vega?': BESSEL_I_VEGA_cw, 
-                        'J Vega?': BESSEL_J_VEGA_cw,
-                        'H Vega?': BESSEL_H_VEGA_cw}
+                        'U (Vega)': BESSEL_U_VEGA_cw,
+                        'B (Vega)': BESSEL_B_VEGA_cw,  
+                        'V (Vega)': BESSEL_V_VEGA_cw, 
+                        'R (Vega)': BESSEL_R_VEGA_cw, 
+                        'I (Vega)': BESSEL_I_VEGA_cw, 
+                        'J (Vega)': BESSEL_J_VEGA_cw,
+                        'H (Vega)': BESSEL_H_VEGA_cw}
 
 
 
@@ -241,13 +243,13 @@ band_colour_dict =  {'ATLAS_c': red,
                     'r': bright_green, 
                     'U': dark_green, 
                     'UVOT_UVW1': light_purple, 
-                    'U Vega?': deep_blue,
-                    'B Vega?': purple,  
-                    'V Vega?': pink, 
-                    'R Vega?': light_pink, 
-                    'I Vega?': light_green, 
-                    'J Vega?': light_purple,
-                    'H Vega?': grey}
+                    'U (Vega)': deep_blue,
+                    'B (Vega)': purple,  
+                    'V (Vega)': pink, 
+                    'R (Vega)': light_pink, 
+                    'I (Vega)': light_green, 
+                    'J (Vega)': light_purple,
+                    'H (Vega)': grey}
 
 
 
@@ -303,13 +305,13 @@ band_marker_dict =  {'ATLAS_c': 'o',
                     'r': '*', 
                     'U': '*',  
                     'UVOT_UVW1': '*',
-                    'U Vega?': '*',
-                    'B Vega?': '*',  
-                    'V Vega?': '*', 
-                    'R Vega?': '*', 
-                    'I Vega?': '*', 
-                    'J Vega?': '*',
-                    'H Vega?': '*'}
+                    'U (Vega)': '*',
+                    'B (Vega)': '*',  
+                    'V (Vega)': '*', 
+                    'R (Vega)': '*', 
+                    'I (Vega)': '*', 
+                    'J (Vega)': '*',
+                    'H (Vega)': '*'}
 
 
 
@@ -365,13 +367,13 @@ band_offset_dict = {'ATLAS_c': 1.5,
                     'r': 0.0, 
                     'U': 0.0, 
                     'UVOT_UVW1': -1.5, 
-                    'U Vega?': 0.0,
-                    'B Vega?': 0.0,  
-                    'V Vega?': 0.0, 
-                    'R Vega?': 0.0, 
-                    'I Vega?': 0.0, 
-                    'J Vega?': 0.0,
-                    'H Vega?': 0.0}
+                    'U (Vega)': 0.0,
+                    'B (Vega)': 0.0,  
+                    'V (Vega)': 0.0, 
+                    'R (Vega)': 0.0, 
+                    'I (Vega)': 0.0, 
+                    'J (Vega)': 0.0,
+                    'H (Vega)': 0.0}
 
 
 
@@ -459,8 +461,8 @@ ANT_redshift_dict = {'ZTF18aczpgwm': 0.4279,
                      'CSS100217': 0.147, # Drake, A. J(2011) from spectroscopic observations of which galaxy it is within
                      'Gaia16aaw': 1.03, # Hinkle, T. J(2024) a broad feature interpreted as Mg II  
                      'Gaia18cdj': 0.93747, # Hinkle, T. J(2024) clear Mg II absorption doublet
-                     'PS1-10adi': 0.203, # +/- 0.001 from Kankare, E(2017) from the Balmer lines of PS1-10adi, which is in agreement with the redshift of its host galaxy, z = 0.219 +/- 0.025
-                     'PS1-13jw': 0.345 # from Kankare, E(2017) who got it from spectroscopic redshifts from SDSS
+                     'PS1-10adi': 0.0, # 0.203 BUT ASSUME  = 0.0 SINCE WE HAVE MEASUREMENTS FOR ABS MAG SO d=10pc,  +/- 0.001 from Kankare, E(2017) from the Balmer lines of PS1-10adi, which is in agreement with the redshift of its host galaxy, z = 0.219 +/- 0.025
+                     'PS1-13jw': 0.0 #0.345 BUT ASSUME  = 0.0 SINCE WE HAVE MEASUREMENTS FOR ABS MAG SO d=10pc from Kankare, E(2017) who got it from spectroscopic redshifts from SDSS
                      } 
 
 
@@ -482,8 +484,13 @@ fcdm = FlatLambdaCDM(H0 = H0, Om0 = om_M)
 # ASSUMPTIONS FOR LUMINOSITY DISTANCE ARE ABOVE ----------------------------------------------
 
 ANT_d_cm_list = []
-for z in ANT_redshift_dict.values():
-    d = fcdm.luminosity_distance(z).to(u.cm).value # this gives the luminosity distance in cm
+for i, z in enumerate(list(ANT_redshift_dict.values())):
+    if i <= 15: 
+        d = fcdm.luminosity_distance(z).to(u.cm).value # this gives the luminosity distance in cm
+
+    else: # FOR PS1-10ADI AND PS1-13JW WE ARE GIVEN (VEGA) APPARENT MAG, SO z=~ 0.0 AND d = 10pc
+        d = 3.086e19 # distance in cm,  1pc = 3.086e16 m, so 1pc = 3.086e18cm, so 10pc = 3.086e19 cm
+
     ANT_d_cm_list.append(d)
 
 ANT_names = list(ANT_redshift_dict.keys())
@@ -514,7 +521,7 @@ MJDs_for_fit = {'ZTF18aczpgwm': (58400, 59680),
                 'ZTF21abxowzx': (59400, 60400), 
                 'ZTF22aadesap': (59500, None), 
                 'ASASSN-17jz': (None, None), 
-                'ASASSN-18jd': (None, None), 
+                'ASASSN-18jd': (58200, 59000), 
                 'CSS100217': (None, None), 
                 'Gaia16aaw': (None, None), 
                 'Gaia18cdj': (None, None), 
