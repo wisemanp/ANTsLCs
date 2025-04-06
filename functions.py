@@ -1008,13 +1008,13 @@ def polyfitting(b_df, band_coverage_quality, mjd_scale_C, L_rf_scalefactor, max_
     elif  (band_coverage_quality >= 30) and (band_coverage_quality < 50):
         poly_orders_available = np.arange(1, (10 + 1), 1)
 
-    elif  (band_coverage_quality >= 10) and (band_coverage_quality < 30):
+    elif  (band_coverage_quality >= 20) and (band_coverage_quality < 30):
         poly_orders_available = np.arange(1, (8 + 1), 1)
 
-    #elif  (band_coverage_quality >= 10) and (band_coverage_quality < 20):
-    #    poly_orders_available = np.arange(1, (7 + 1), 1)
+    elif  (band_coverage_quality >= 16) and (band_coverage_quality < 20):
+        poly_orders_available = np.arange(1, (7 + 1), 1)
 
-    elif  (band_coverage_quality >= 6) and (band_coverage_quality < 10):
+    elif  (band_coverage_quality >= 6) and (band_coverage_quality < 16):
         poly_orders_available = np.arange(1, (6 + 1), 1)
 
     elif  (band_coverage_quality >= 2) and (band_coverage_quality < 6):
@@ -1331,7 +1331,7 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, plot_polyfit = False, save_interp_df = False):
+    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, gapsize, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, b_marker_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
         self.ant_z = ant_z
         self.df = df
@@ -1340,10 +1340,12 @@ class polyfit_lightcurve:
         self.interp_at_ref_band = interp_at_ref_band
         self.min_band_dps = min_band_dps
         self.straggler_dist = straggler_dist
+        self.gapsize = gapsize
         self.fit_MJD_range = fit_MJD_range
         self.max_interp_distance = max_interp_distance
         self.max_poly_order = max_poly_order
         self.b_colour_dict = b_colour_dict
+        self.b_marker_dict = b_marker_dict
         self.plot_polyfit = plot_polyfit
         self.save_interp_df = save_interp_df
 
@@ -1477,7 +1479,7 @@ class polyfit_lightcurve:
             allow_interp = []
             for sc_int_mjd in sc_filtered_interp_MJDs:
                 allow_int = allow_interpolation(interp_x = sc_int_mjd, all_data_x = b_lim_df['sc_MJD'], b_coverage_quality = self.prepping_data.at[b, 'b_coverage_score'], 
-                                                          local_density_region = 50, interp_cap = self.max_interp_distance, gapsize = 100, factor = 1.0, 
+                                                          local_density_region = 50, interp_cap = self.max_interp_distance, gapsize = self.gapsize, factor = 1.0, 
                                                           simple_cutoff = False, simple_cut = None)
                 allow_interp.append(allow_int)
 
@@ -1531,32 +1533,53 @@ class polyfit_lightcurve:
 
 
     def plot_polyfit_funciton(self):
-        if self.plot_polyfit == True:
-            for b in self.bands:
-                b_colour = self.b_colour_dict[b]
-                b_df = self.b_df_dict[b]
-                b_plot_polyfit = self.plot_results.loc[b]
-                b_coverage_score = self.prepping_data.at[b, 'b_coverage_score']
-                straggler_df = self.prepping_data.at[b, 'straggler_df']
-                b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
-                b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
-                
+    
+        raw_and_interp_handles = []
+        raw_and_interp_labels = []
+        polyfit_handles = []
+        polyfit_labels = []
 
-                plt.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = 'o', markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
-                                label = b, c = b_colour)
-                plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
-                plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
-                plt.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
-                                linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp {b}')
-                if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
-                    plt.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
+        for b in self.bands:
+            b_colour = self.b_colour_dict[b]
+            b_marker = self.b_marker_dict[b]
+            b_df = self.b_df_dict[b]
+            b_plot_polyfit = self.plot_results.loc[b]
+            b_coverage_score = self.prepping_data.at[b, 'b_coverage_score']
+            straggler_df = self.prepping_data.at[b, 'straggler_df']
+            b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
+            b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
+            
+
+            h1 = plt.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+                            label = b, c = b_colour)
+            raw_and_interp_handles.append(h1[0])
+            raw_and_interp_labels.append(b)
+
+            plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
+            plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
+            h2 = plt.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
+                            linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp {b}')
+            raw_and_interp_handles.append(h2[0])
+            raw_and_interp_labels.append(f'interp {b}')
+
+            if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
+                h3 = plt.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
+                polyfit_handles.append(h3[0])
+                polyfit_labels.append( f"{b}'s S = {b_coverage_score:.3f} \n O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit" 
         plt.xlabel('Days since peak (rest frame time) / days', fontweight = 'bold')
         plt.ylabel(r'Rest frame luminosity erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
         #plt.ylim((-1e41, 5e42))
         plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"', fontweight = 'bold')
-        plt.legend(loc = 'lower right', bbox_to_anchor = (1.275, 0.0), fontsize = 7.5, ncols = 2)
+        
+        leg1 = plt.legend(handles = polyfit_handles, labels = polyfit_labels, loc = 'lower right', bbox_to_anchor = (1.275, -0.142), fontsize = 6.0, ncols = 2)
+        plt.gca().add_artist(leg1) # add this legend to the plot so it doesn't get overwritten by the next legend
+
+        plt.legend(handles = raw_and_interp_handles, labels = raw_and_interp_labels, loc = 'upper right', bbox_to_anchor = (1.275, 1.105), fontsize = 6.0, ncols = 2)
+        
+        #plt.legend(loc = 'lower right', bbox_to_anchor = (1.275, -0.1), fontsize = 7.5, ncols = 3)
+        
         self.fig.subplots_adjust(top=0.92,
                                 bottom=0.11,
                                 left=0.055,
@@ -1565,7 +1588,86 @@ class polyfit_lightcurve:
                                 wspace=0.2)
         plt.grid()
         plt.savefig(savepath, dpi = 300)
-        plt.show()
+        #plt.show()
+
+
+
+
+
+
+
+    def plot_polyfit_subplot(self):
+        subplot_rows_cols = {4: (2, 2),
+                             6: (2, 3), 
+                             7: (2, 4), 
+                             8: (2, 4), 
+                             9: (3, 4),
+                             10: (3, 4),
+                             11: (3, 4), 
+                             12: (3, 4), 
+                             13: (3, 5), 
+                             14: (3, 5), 
+                             23: (4, 6)}
+        
+        no_subplots = len(self.bands)
+        nrows, ncols = subplot_rows_cols[no_subplots]
+        fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5))
+        axs = axs.ravel() # flatten the 2D array of axes into a 1D array so we can iterate through them
+
+        for i, ax in enumerate(axs):
+            if i >= no_subplots: # if we have more subplots than bands, break out of the loop and hide the axes of the remaining subplots#
+                remaining_axes = axs[i:]
+                for ax in remaining_axes: # iterate through the remaiing axes and hide them from the plot
+                    ax.axis('off')
+                break
+
+            b = self.bands[i]
+            b_colour = self.b_colour_dict[b]
+            b_marker = self.b_marker_dict[b]
+            b_df = self.b_df_dict[b]
+            b_plot_polyfit = self.plot_results.loc[b]
+            b_coverage_score = self.prepping_data.at[b, 'b_coverage_score']
+            straggler_df = self.prepping_data.at[b, 'straggler_df']
+            b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
+            b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
+
+            ax.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+                                label = 'data', c = b_colour)
+
+            ax.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
+            ax.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
+            ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
+                            linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp')
+
+            if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
+                ax.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, 
+                        label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
+                title = f"{b} \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
+            else:
+                title = b
+            #ax.legend(fontsize = 4.5)
+            ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
+            #ax.set_ylim(0.0, (b_interp_df['L_rf'].max()*1.1))
+            ax.grid(True)
+            ax.set_title(title, fontweight = 'bold', fontsize = 7)
+
+        fig.supxlabel('Days since peak (rest frame time) / days', fontweight = 'bold')
+        fig.supylabel(r'Rest frame luminosity erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
+        fig.suptitle(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"', fontweight = 'bold')
+        fig.subplots_adjust(top=0.899,
+                            bottom=0.093,
+                            left=0.06,
+                            right=0.973,
+                            hspace=0.573,
+                            wspace=0.3)
+
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit_subplot"
+        plt.savefig(savepath, dpi = 300)
+        #plt.show()
+
+
+
+
 
 
     
@@ -1592,7 +1694,10 @@ class polyfit_lightcurve:
         self.choose_interp_MJD()
         self.polynomial_fit_and_interp()
         self.calc_days_since_peak()
-        self.plot_polyfit_funciton()
+        if self.plot_polyfit == True:
+            self.plot_polyfit_funciton()
+            self.plot_polyfit_subplot()
+            plt.show()
         self.save_interpolated_df()
 
         
