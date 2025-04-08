@@ -1338,7 +1338,9 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, straggler_dist, gapsize, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, b_marker_dict, plot_polyfit = False, save_interp_df = False):
+    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, 
+                straggler_dist, gapsize, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, 
+                b_marker_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
         self.ant_z = ant_z
         self.df = df
@@ -2232,7 +2234,7 @@ class fit_SED_across_lightcurve:
 
 
     
-    def power_law_brute(self, MJD, MJD_df, A_min, A_max, gamma_min, gamma_max):
+    def power_law_brute(self, MJD, MJD_df, A_min, A_max, gamma_min, gamma_max, UVOT_guided_params = None):
         """
         fits a power law SED to the data for a given MJD. For this brute force gridding, since gamma only really needs to explore values between -5 to 0, 
         I decide to balance computational time and accuracy by increasing the number of A values that we try, and decreasing the number of gamma values
@@ -2248,10 +2250,15 @@ class fit_SED_across_lightcurve:
         gamma_min: the minimum value of gamma to test
 
         gamma_max: the maximum value of gamma to test
+
+        UVOT_guided_params: (list) if you are using a UVOT guided fitting process, this is the list of UVOT-constrained parameter space to take the model params from. 
+                            Input these guided parameters in the order: A_min, A_max, gamma_min, gamma_max 
+                            You must explore the entire parameter space still to ensure that you fully capture the delta_chi = 2.3 region in parameter space to ensure that
+                            you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
+                            the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. 
         """
         # HERE I AM EXPLORING (grid_scalefactor)^2 TIMES AS MANY VALUES OF A AS OPPOSED TO GAMMA SO THIS IS A RECTANGULAR PARAMETER GRID NOW, BECAUSE I THINK THE A IS STRUGGING TO BE CONSTRAINED MORE THAN GAMMA
         grid_scalefactor = 2
-        #A_values = np.logspace(np.log10(self.PL_A_min), np.log10(self.PL_A_max), int(np.round(self.brute_gridsize*grid_scalefactor, -1)))
         A_values = np.logspace(np.log10(A_min), np.log10(A_max), int(np.round(self.brute_gridsize*grid_scalefactor, -1)))
         sc_A_values = A_values*self.A_scalefactor
         gamma_values = np.linspace(gamma_min, gamma_max, int(np.round(self.brute_gridsize/grid_scalefactor)))
@@ -2264,15 +2271,41 @@ class fit_SED_across_lightcurve:
         
         # calculate the chi squared of the fit
         chi = np.sum((L_rfs[:, np.newaxis, np.newaxis] - PL_L_sc)**2 / L_rf_errs[:, np.newaxis, np.newaxis]**2, axis = 0) # the chi squared values for each combination of R and T
-        min_chi = np.min(chi) # the minimum chi squared value
-        row, col = np.where(chi == min_chi) # the row and column indices of the minimum chi squared value
+        
+        if UVOT_guided_params is None:
+            min_chi = np.min(chi) # the minimum chi squared value
+            row, col = np.where(chi == min_chi) # the row and column indices of the minimum chi squared value
+
+        elif UVOT_guided_params is not None:
+            UVOT_A_min, UVOT_A_max, UVOT_gamma_min, UVOT_gamma_max = UVOT_guided_params
+
+            # create masks to go over the chi grid
+            A_mask = (A_values >= UVOT_A_min) & (A_values <= UVOT_A_max)
+            gamma_mask = (gamma_values >= UVOT_gamma_min) & (gamma_values <= UVOT_gamma_max)
+
+            # apply the masks to the chi grid, A values and gamma values
+            UVOT_masked_chi = chi[np.ix_(A_mask, gamma_mask)]
+            UVOT_masked_A_values = A_values[A_mask]
+            UVOT_masked_gamma_values = gamma_values[gamma_mask]
+
+            # find the min chi in the UVOT masked chi grid
+            min_chi = np.min(UVOT_masked_chi)
+            row, col = np.where(UVOT_masked_chi == min_chi)
+        
+        
 
         if (len(row) == 1) & (len(col) == 1): 
             r = row[0]
             c = col[0]
-            brute_gamma = gamma_values[c] # the parameters which give the minimum chi squared
-            brute_A = A_values[r] 
             N_M = len(MJD_df['band']) - 2
+
+            if UVOT_guided_params is None:
+                brute_gamma = gamma_values[c] # the parameters which give the minimum chi squared
+                brute_A = A_values[r] 
+            else:
+                brute_gamma = UVOT_masked_gamma_values[c]
+                brute_A = UVOT_masked_A_values[r]
+            
 
             # getting the errors on the model parameters
             row_idx, col_idx = np.nonzero(chi <= (min_chi + self.brute_delchi)) # the row and column indices of the chi squared values which are within the error of the minimum chi squared value
@@ -2335,7 +2368,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def BB_brute(self, MJD, MJD_df, R_sc_min, R_sc_max, T_min, T_max):
+    def BB_brute(self, MJD, MJD_df, R_sc_min, R_sc_max, T_min, T_max, UVOT_guided_params = None):
         """
         INPUTS
         ---------------
@@ -2346,12 +2379,18 @@ class fit_SED_across_lightcurve:
         T_min: the min value of BB temperature to try
 
         T_max: the max value of BB temperature to try
+
+        UVOT_guided_params: (list) if you are using a UVOT guided fitting process, this is the list of UVOT-constrained parameter space to take the model params from. 
+                            Input these guided parameters in the order: R_sc_min, R_sc_max, T_min, T_max. 
+                            You must explore the entire parameter space still to ensure that you fully capture the delta_chi = 2.3 region in parameter space to ensure that
+                            you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
+                            the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. 
         """
         # creating the values of R and T that we will try
         # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
         sc_R_values = np.logspace(np.log10(R_sc_min), np.log10(R_sc_max), self.brute_gridsize)
         T_values = np.logspace(np.log10(T_min), np.log10(T_max), self.brute_gridsize)
-        R_values = sc_R_values / self.R_scalefactor # use this to return the grid of parameter values tried
+        #R_values = sc_R_values / self.R_scalefactor # use this to return the grid of parameter values tried
 
         wavelengths = MJD_df['em_cent_wl_cm'].to_numpy() # the emitted central wavelengths of the bands present at this MJD value
         L_rfs = MJD_df['L_rf_scaled'].to_numpy() # the scaled rest frame luminosities of the bands present at this MJD value
@@ -2363,15 +2402,45 @@ class fit_SED_across_lightcurve:
 
         # calculate the chi squared of the fit
         chi = np.sum((L_rfs[:, np.newaxis, np.newaxis] - BB_L_sc)**2 / L_rf_errs[:, np.newaxis, np.newaxis]**2, axis = 0) # the chi squared values for each combination of R and T
-        min_chi = np.min(chi) # the minimum chi squared value
-        row, col = np.where(chi == min_chi) # the row and column indices of the minimum chi squared value
+        
+        # FIND MIN CHI 
+        # if we are doing a UVOT guided approach, then restrict the chi grid to the regions of parameter space that the UVOT fits allow to take the model parameters from, 
+        # then calculate the model parameter uncertainties using the entire chi grid
+        if UVOT_guided_params is None: # if you're not doing UVOT guided fitting
+            min_chi = np.min(chi) # the minimum chi squared value
+            row, col = np.where(chi == min_chi) # the row and column indices of the minimum chi squared value
+
+        elif UVOT_guided_params is not None: # if you DO want UVOT-guided fitting
+            UVOT_R_sc_min, UVOT_R_sc_max, UVOT_T_min, UVOT_T_max = UVOT_guided_params
+
+            # create masks to go over the chi grid
+            sc_R_mask = (sc_R_values >= UVOT_R_sc_min) & (sc_R_values <= UVOT_R_sc_max)
+            T_mask = (T_values >= UVOT_T_min) & (T_values <= UVOT_T_max)
+
+            # masked chi, sc_R_values and T_values
+            UVOT_masked_chi = chi[np.ix_(sc_R_mask, T_mask)]
+            UVOT_masked_sc_R_values = sc_R_values[sc_R_mask]
+            UVOT_masked_T_values = T_values[T_mask]
+
+            # find the min chi within the allowable region of parameter space
+            min_chi = np.min(UVOT_masked_chi)
+            row, col = np.where(UVOT_masked_chi == min_chi)
+
+
+        
 
         if (len(row) == 1) & (len(col) == 1): 
             r = row[0]
             c = col[0]
-            brute_T = T_values[c] # the parameters which give the minimum chi squared
-            brute_R = sc_R_values[r] / self.R_scalefactor
             N_M = len(MJD_df['band']) - 2
+
+            if UVOT_guided_params is None:
+                brute_T = T_values[c] # the parameters which give the minimum chi squared
+                brute_R = sc_R_values[r] / self.R_scalefactor
+            else:
+                brute_T = UVOT_masked_T_values[c]
+                brute_R = UVOT_masked_sc_R_values[r] / self.R_scalefactor
+            
 
             if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
                 brute_red_chi = min_chi / N_M
@@ -2397,12 +2466,6 @@ class fit_SED_across_lightcurve:
         brute_T_err_lower = brute_T - np.min(delchi_T) # the lower error on the temperature parameter
         brute_R_err_upper = np.max(delchi_sc_R) / self.R_scalefactor - brute_R # the upper error on the radius parameter
         brute_R_err_lower = brute_R - np.min(delchi_sc_R) / self.R_scalefactor # the lower error on the radius parameter
-        #brute_T_err = (brute_T_err_lower, brute_T_err_upper)
-        #brute_R_err = (brute_R_err_lower, brute_R_err_upper)
-
-        #print(f'brute T err upper {brute_T_err_upper:.3e} brute T err lower {brute_T_err_lower:.3e} cf T err {cf_T_err:.3e}')
-        #print(f'brute R err upper {brute_R_err_upper:.3e} brute R err lower {brute_R_err_lower:.3e} cf R err {cf_R_err:.3e}')
-        #print()
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # add the result to the results row which will be appended to the results dataframe
@@ -2543,7 +2606,6 @@ class fit_SED_across_lightcurve:
 
             bin_by_MJD = self.interp_df.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': g['band'].isin(UVOT_filters).sum() > 0 })).reset_index()
 
-            #UVOT_interp_df = self.interp_df[self.interp_df['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])].copy()
             self.all_UVOT_MJDs = bin_by_MJD[bin_by_MJD['UVOT?'] == True]['MJD'].to_numpy() # an array of the MJDs at which we have UVOT data
             self.optical_MJDs = bin_by_MJD[bin_by_MJD['UVOT?'] == False]['MJD'].to_numpy() # used in the next function where we SED fit the non-UVOT MJDs
 
@@ -2555,17 +2617,17 @@ class fit_SED_across_lightcurve:
             if self.SED_type == 'single_BB':
                 #self.curvefit = False # set this to false to prevent any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
                 self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim'])
-                #self.BB_fit_results[['R_param_lims', 'T_param_lims']] = self.BB_fit_results[['R_param_lims', 'T_param_lims']].astype(object) # allows us to assign tuples to these column cells
+
 
             elif self.SED_type == 'double_BB':
                 #self.curvefit = True # set this to True to allow any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
                 self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim'])
-                #self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']] = self.BB_fit_results[['R1_param_lims', 'T1_param_lims', 'R2_param_lims', 'T2_param_lims']].astype(object) # allows us to assign tuples to these column cells
+
 
             elif self.SED_type == 'power_law':
                 #self.curvefit = False # set this to false to prevent any curve-fit related code starting up, since we don't specify a fitting method here as we always choose brute force over curve fit
                 self.BB_fit_results = self.BB_fit_results.reindex(columns = list(self.BB_fit_results.columns) + ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim'])
-                #self.BB_fit_results[['A_param_lims', 'gamma_param_lims']] = self.BB_fit_results[['A_param_lims', 'gamma_param_lims']].astype(object) # allows us to assign tuples to these column cells
+
 
 
             # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2717,7 +2779,8 @@ class fit_SED_across_lightcurve:
 
                     # calculate the region of parameter space to explore MJD's SED fit. Below we calculate UNSCALED R limits. 
                     MJD_R_min, MJD_R_max = self.param_limit_calculation(UVOT_M = UVOT_R, UVOT_M_err_lower = UVOT_R_lower_err, UVOT_M_err_upper = UVOT_R_upper_err, 
-                                                                                    MJD_diff = closest_MJD_diff, err_scalefactor = self.UVOT_guided_err_scalefactor, normal_lower_lim = self.BB_R_min, normal_upper_lim = self.BB_R_max)
+                                                                                    MJD_diff = closest_MJD_diff, err_scalefactor = self.UVOT_guided_err_scalefactor, 
+                                                                                    normal_lower_lim = self.BB_R_min, normal_upper_lim = self.BB_R_max)
                     MJD_R_sc_min = MJD_R_min * self.R_scalefactor # scale the R limits down
                     MJD_R_sc_max = MJD_R_max * self.R_scalefactor
 
@@ -2726,7 +2789,8 @@ class fit_SED_across_lightcurve:
                     
                     # running the BB Brute SED fitting ---
                     self.BB_fit_results.loc[opt_MJD, ['R_param_lower_lim', 'R_param_upper_lim', 'T_param_lower_lim', 'T_param_upper_lim']] = [MJD_R_min, MJD_R_max, MJD_T_min, MJD_T_max] # documenting the parameter space which we searched
-                    self.BB_brute(opt_MJD, MJD_df, R_sc_min = MJD_R_sc_min, R_sc_max = MJD_R_sc_max, T_min = MJD_T_min, T_max = MJD_T_max) 
+                    self.BB_brute(opt_MJD, MJD_df, R_sc_min = self.BB_R_min_sc, R_sc_max = self.BB_R_max_sc, T_min = self.BB_T_min, T_max = self.BB_T_max, 
+                                  UVOT_guided_params = [MJD_R_sc_min, MJD_R_sc_max, MJD_T_min, MJD_T_max]) 
 
 
 
@@ -2785,7 +2849,8 @@ class fit_SED_across_lightcurve:
                     
                     # running the PL brute SED fitting ---
                     self.BB_fit_results.loc[opt_MJD, ['A_param_lower_lim', 'A_param_upper_lim', 'gamma_param_lower_lim', 'gamma_param_upper_lim']] = [MJD_A_min, MJD_A_max, MJD_gamma_min, MJD_gamma_max] # documenting the parameter space which we searched
-                    self.power_law_brute(opt_MJD, MJD_df, A_min = MJD_A_min, A_max = MJD_A_max, gamma_min = MJD_gamma_min, gamma_max = MJD_gamma_max)
+                    self.power_law_brute(opt_MJD, MJD_df, A_min = self.PL_A_min, A_max = self.PL_A_max, gamma_min = self.PL_gamma_min, gamma_max = self.PL_gamma_max, 
+                                         UVOT_guided_params = [MJD_A_min, MJD_A_max, MJD_gamma_min, MJD_gamma_max])
 
 
 
