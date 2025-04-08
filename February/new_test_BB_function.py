@@ -64,7 +64,7 @@ SED_plots = 'usual'#'compare_SEDs'
 
 if SED_plots == 'usual':
     #for idx in range(len(transient_names)):
-    for idx in [3]:
+    for idx in [13]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -83,7 +83,7 @@ if SED_plots == 'usual':
         #SED_type = 'double_BB'
         SED_type = 'power_law'
         #SED_type = 'best_SED'
-        UVOT_guided_fitting = False # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
