@@ -47,11 +47,24 @@ SED_plots = 'usual'#'compare_SEDs'
 #===============================================================================================================================================
 #===============================================================================================================================================
 #===============================================================================================================================================
-
+# 0 = ASASSN-17jz
+# 1 = ASASSN-18jd
+# 2 = PS1-10adi
+# 3 = ZTF18aczpgwm
+# 4 = ZTF19aailpwl
+# 5 = ZTF19aamrjar
+# 6 = ZTF19aatubsj
+# 7 = ZTF20aanxcpf
+# 8 = ZTF20abgxlut
+# 9 = ZTF20abodaps
+# 10 = ZTF20abrbeie
+# 11 = ZTF20acvfraq
+# 12 = ZTF21abxowzx
+# 13 = ZTF22aadesap
 
 if SED_plots == 'usual':
-    for idx in range(11):
-    #for idx in [1]:
+    #for idx in range(len(transient_names)):
+    for idx in [3]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -68,9 +81,9 @@ if SED_plots == 'usual':
         BB_brute = True
         #SED_type = 'single_BB'
         #SED_type = 'double_BB'
-        #SED_type = 'power_law'
-        SED_type = 'best_SED'
-        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        SED_type = 'power_law'
+        #SED_type = 'best_SED'
+        UVOT_guided_fitting = False # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
@@ -78,12 +91,13 @@ if SED_plots == 'usual':
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
 
         no_indiv_SED_plots = 24 # current options are 24, 20, 12
+        individual_BB_plot_type = 'whole_lc' # 'UVOT'
 
         plot_chi_contour = False
         no_chi_contours = 3 # the number of chi contour plots you want to plot per ANT. This only works for the power law brute force fits though
 
         # SAVING PLOTS
-        save_BB_plot = False
+        save_BB_plot = True
         save_indiv_BB_plot = True
         save_param_vs_time_plot = True
 
@@ -92,7 +106,7 @@ if SED_plots == 'usual':
 
 
         BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
-                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = 'whole_lc', 
+                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = individual_BB_plot_type, 
                                             no_indiv_SED_plots = no_indiv_SED_plots, save_SED_fit_file = save_SED_fit_file,
                                             save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
                                             plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
