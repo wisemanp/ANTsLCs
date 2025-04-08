@@ -530,7 +530,7 @@ def ANT_data_mags(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_
 
 
 
-def chisq(y_m, y, yerr, M, reduced_chi = True):
+def chisq(y_m, y, yerr, M, reduced_chi = False, chi_AND_redchi = False):
     """
     Calculates the chi squared, as well as the reduced chi squared and its 1 sigma uncertainty allowance if wanted
 
@@ -545,6 +545,8 @@ def chisq(y_m, y, yerr, M, reduced_chi = True):
     M: number of model paramaters
 
     reduced_chi: if True, this function will return chi, reduced_chi and red_chi_1sig, if False (default) it will just return chi
+
+    chi_AND_redchi: if True, this function will return the chi squared, the reduced chi squared and the reduced chi squared 1 sigma error tolerance. 
 
     OUTPUTS 
     ----------------
@@ -566,7 +568,7 @@ def chisq(y_m, y, yerr, M, reduced_chi = True):
 
     chi = np.sum( ((y - y_m )**2) / (yerr**2))
     
-    if reduced_chi == True:
+    if (reduced_chi == True) or (chi_AND_redchi == True): 
         N = len(y) # the number of datapoints
         N_M = N-M # (N - M) the degrees of freedom
 
@@ -577,10 +579,15 @@ def chisq(y_m, y, yerr, M, reduced_chi = True):
             red_chi = chi / (N_M)
             red_chi_1sig = np.sqrt(2/N_M) # red_chi is a good chisq if it falls within (1 +/- red_chi_1sig)
         
-        return red_chi, red_chi_1sig
+        if (reduced_chi == True) and (chi_AND_redchi == False): # if you just want red chi and red_chi_1sig
+            return red_chi, red_chi_1sig
+        elif (reduced_chi == False) and (chi_AND_redchi == True): # if you want chi squared, red chi and red_chi_1sig
+            return chi, red_chi, red_chi_1sig
     
-    else:
+    elif (reduced_chi == False) and (chi_AND_redchi == False): # if you just want chi squared
         return chi
+    
+
     
 
 
@@ -2024,8 +2031,8 @@ class fit_SED_across_lightcurve:
         self.mjd_values = self.interp_df['MJD'].unique()
 
         if self.SED_type == 'single_BB':
-            #                 0          1             2            3          4            5            6               7              8                  9               10            11                  12                  13                 14                  15                      16                 17                   18
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
+            #                 0          1             2            3          4            5            6               7              8                  9               10            11                  12                  13                 14                  15                      16                 17                   18                19
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
             self.BB_R_min = BB_R_min
             self.BB_R_max = BB_R_max
             self.BB_T_min = BB_T_min
@@ -2036,7 +2043,7 @@ class fit_SED_across_lightcurve:
 
 
         elif self.SED_type == 'double_BB':
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig']
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi']
             self.DBB_T1_min = DBB_T1_min
             self.DBB_T1_max = DBB_T1_max
             self.DBB_T2_min = DBB_T2_min
@@ -2050,7 +2057,7 @@ class fit_SED_across_lightcurve:
 
         elif self.SED_type == 'power_law':
             #                  0          1              2        3         4           5             6             7                8                  9             10                11               12                 13              14                    15                 16
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err_lower', 'brute_A_err_upper', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist']
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err_lower', 'brute_A_err_upper', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
             self.PL_A_max = PL_A_max
             self.PL_A_min = PL_A_min
             self.PL_gamma_max = PL_gamma_max
@@ -2162,19 +2169,19 @@ class fit_SED_across_lightcurve:
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # calculate the reduced chi squared of the curve_fit result
             BB_sc_L_chi = [double_blackbody(wl_cm, sc_cf_R1, cf_T1, sc_cf_R2, cf_T2) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
-            cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 4, reduced_chi = True)
+            cf_chi, cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 4, reduced_chi = False, chi_AND_redchi = True)
             cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
 
             # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # add the result to the results row which will be appended to the results dataframe
             
-            self.BB_fit_results.loc[MJD, self.columns[3:14]] = [cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig]
+            self.BB_fit_results.loc[MJD, self.columns[3:15]] = [cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi]
 
 
         except RuntimeError:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
             self.no_failed_curvefits += 1 # counting the number of failed curve fits
-            self.BB_fit_results.loc[MJD, self.columns[3:14]] = np.nan
+            self.BB_fit_results.loc[MJD, self.columns[3:15]] = np.nan
 
 
 
@@ -2322,7 +2329,7 @@ class fit_SED_across_lightcurve:
         
         #self.BB_fit_results.at[MJD, 'brute_A'] = brute_A
         #self.BB_fit_results.at[MJD, 'brute_A_err'] = brute_A_err
-        self.BB_fit_results.loc[MJD, self.columns[10:17]] = [brute_A, A_err_lower, A_err_upper, brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist] 
+        self.BB_fit_results.loc[MJD, self.columns[10:18]] = [brute_A, A_err_lower, A_err_upper, brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist, min_chi] 
 
 
 
@@ -2399,7 +2406,7 @@ class fit_SED_across_lightcurve:
         
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # add the result to the results row which will be appended to the results dataframe
-        self.BB_fit_results.loc[MJD, self.columns[10:19]] = [red_chi_1sig,    brute_T,     brute_T_err_lower,     brute_T_err_upper,     brute_R,     brute_R_err_lower,      brute_R_err_upper,     brute_red_chi,    brute_chi_sigma_dist]
+        self.BB_fit_results.loc[MJD, self.columns[10:20]] = [red_chi_1sig,    brute_T,     brute_T_err_lower,     brute_T_err_upper,     brute_R,     brute_R_err_lower,      brute_R_err_upper,     brute_red_chi,    brute_chi_sigma_dist, min_chi]
         #                                                   'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
 
     
@@ -2930,7 +2937,8 @@ class fit_SED_across_lightcurve:
 
 
         elif self.individual_BB_plot == 'whole_lc':
-            self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
+            step = step = max(1, int(len(BB_MJDs) / self.no_indiv_SED_plots)) # make sure we don't get a step of 0
+            self.indiv_plot_MJDs = BB_MJDs[::step] # plot every 12th MJD value
             self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
             
 
@@ -2986,7 +2994,11 @@ class fit_SED_across_lightcurve:
                     title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title4 + title5
 
-                plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
+                    plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                else: 
+                    plot_wl = np.linspace(1000, (self.interp_df['em_cent_wl'].max() + 500), 500)*1e-8 # wavelength range to plot out BB at in cm
+
                 plot_BB_L = blackbody(plot_wl, self.BB_fit_results.loc[MJD, 'brute_R_cm'], self.BB_fit_results.loc[MJD, 'brute_T_K'])
                 h_BB, = ax.plot(plot_wl*1e8, plot_BB_L, c = 'k', label = title2 + title3)
                 ax.grid(True)
@@ -3022,10 +3034,10 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits_({self.individual_BB_plot}).png"
 
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
             plt.show()
 
@@ -3063,7 +3075,12 @@ class fit_SED_across_lightcurve:
                     title9 = f"R2 lims: ({self.BB_fit_results.at[MJD, 'R2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R2_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title6 + title7 + title8 + title9
                 
-                plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                
+                if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
+                    plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                else: 
+                    plot_wl = np.linspace(1000, (self.interp_df['em_cent_wl'].max() + 500), 500)*1e-8 # wavelength range to plot out BB at in cm
+
                 plot_BB_L = double_blackbody(lam = plot_wl, R1 = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], T1 = self.BB_fit_results.loc[MJD, 'cf_T1_K'], R2 = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], T2 = self.BB_fit_results.loc[MJD, 'cf_T2_K'])
                 plot_BB1_L = blackbody(lam_cm = plot_wl, R_cm = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], T_K = self.BB_fit_results.loc[MJD, 'cf_T1_K'])
                 plot_BB2_L = blackbody(lam_cm = plot_wl, R_cm = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], T_K = self.BB_fit_results.loc[MJD, 'cf_T2_K'])
@@ -3111,9 +3128,9 @@ class fit_SED_across_lightcurve:
 
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -3145,8 +3162,12 @@ class fit_SED_across_lightcurve:
                     title5 = f"gamma lims: ({self.BB_fit_results.at[MJD, 'gamma_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'gamma_param_upper_lim']:.1e})"
                     subplot_title = subplot_title + title4 + title5
 
-                plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
+                    plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
+                else: 
+                    plot_wl = np.linspace(1000, (self.interp_df['em_cent_wl'].max() + 500), 500)*1e-8 # wavelength range to plot out BB at in cm
                 plot_wl_A = plot_wl*1e8
+                
                 plot_PL_L = power_law_SED(plot_wl_A, self.BB_fit_results.loc[MJD, 'brute_A'], self.BB_fit_results.loc[MJD, 'brute_gamma'])
                 h_BB, = ax.plot(plot_wl_A, plot_PL_L, c = 'k', label = title2 + title3)
                 ax.grid(True)
@@ -3185,9 +3206,9 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits.png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -3213,7 +3234,10 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (0.0, 2e4), 
                             'ZTF20acvfraq': (None, None), 
                             'ZTF21abxowzx': (0.0, 2.5e4), 
-                            'ZTF22aadesap': (0.0, 4e4)}
+                            'ZTF22aadesap': (0.0, 4e4),
+                            'PS1-10adi': (None, None), 
+                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-18jd': (None, None)}
 
         SBB_R_plot_lims = {'ZTF18aczpgwm': (None, None), 
                             'ZTF19aailpwl': (None, None), 
@@ -3225,7 +3249,10 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (None, None), 
                             'ZTF20acvfraq': (None, None), 
                             'ZTF21abxowzx': (None, None), 
-                            'ZTF22aadesap': (0.0, 5e15)}
+                            'ZTF22aadesap': (0.0, 5e15), 
+                            'PS1-10adi': (None, None), 
+                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-18jd': (None, None)}
 
         PL = self.SED_type == 'power_law'
         SBB = self.SED_type == 'single_BB'
