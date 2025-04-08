@@ -30,7 +30,7 @@ from tqdm import tqdm
 import sys
 
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict
+from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict, ANTs_for_fitting_dict
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lightcurve
 
 
@@ -49,24 +49,6 @@ add_lc_df_list = ANT_data_L_rf(lc_df_list, transient_names, ANT_redshift_dict, A
 MJD_binsize = 1
 binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
-ANTs_for_polyfit_dict = {'ZTF18aczpgwm': True,  # ONLY BOTHER POLYFITTING AND INTERPOLATING LIGHT CURVES WITH MORE THAN ONE DECENT BAND
-                        'ZTF19aailpwl': True, 
-                        'ZTF19aamrjar': True, 
-                        'ZTF19aatubsj': True, 
-                        'ZTF20aanxcpf': True, 
-                        'ZTF20abgxlut': True, 
-                        'ZTF20abodaps': True, 
-                        'ZTF20abrbeie': True, 
-                        'ZTF20acvfraq': True, 
-                        'ZTF21abxowzx': True, 
-                        'ZTF22aadesap': True, 
-                        'ASASSN-17jz': True, 
-                        'ASASSN-18jd': True, 
-                        'CSS100217': False, 
-                        'Gaia16aaw': False, 
-                        'Gaia18cdj': False, 
-                        'PS1-10adi': True, 
-                        'PS1-13jw': False }
 
 
 max_poly_order = 14
@@ -90,7 +72,7 @@ save_README = False # this doesn't go into the class
 for idx in range(len(transient_names)):
 #for idx in [12]:
     ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
-    if ANTs_for_polyfit_dict[ANT_name] == False:
+    if ANTs_for_fitting_dict[ANT_name] == False:
         continue
         
     
