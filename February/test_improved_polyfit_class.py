@@ -30,9 +30,8 @@ from tqdm import tqdm
 import sys
 
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict, ANTs_for_fitting_dict
+from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict, ANTs_for_fitting_dict, manual_stragglers_dict
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lightcurve
-
 
 
 
@@ -59,18 +58,35 @@ gapsize = 70 # the size of a gap whete we allow NO interpolation at all over it 
 interp_at_ref_band = True
 max_interp_dist = 20
 plot_polyfit = True
-save_interp_df = False
-save_README = False # this doesn't go into the class
+save_interp_df = True
+save_README = True # this doesn't go into the class
 
 
 
+""" # DELETE AFTER USE, I AM JUST FINDING THE EXTRE STRAGGLER DATAPOINTS SO I CAN SPECIFY THEM IN THE CLASS
+aadesap = binned_df_list[10]
+aadesap_ATLAS_o = aadesap[aadesap['band'] == 'ATLAS_o']
+aadesap_ATLAS_o = aadesap_ATLAS_o[aadesap_ATLAS_o['wm_MJD'] < 59700.0]
+print()
+print()
+print(transient_names[10])
+print(aadesap_ATLAS_o) # MJD = 59674.309
+print()
+print()
+print()
 
-
+asassn17jz = binned_df_list[11]
+asassn17jz_V = asassn17jz[asassn17jz['band'] == 'V']
+asassn17jz_V = asassn17jz_V[asassn17jz_V['wm_MJD'] < 57910]
+print(transient_names[11])
+print(asassn17jz_V) # MJD = 57900.92
+print()
+print() """
 
 
 # polyfitting light curves
 for idx in range(len(transient_names)):
-#for idx in [12]:
+#for idx in [11]:
     ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
     if ANTs_for_fitting_dict[ANT_name] == False:
         continue
@@ -84,8 +100,9 @@ for idx in range(len(transient_names)):
     polyfit_MJD_range = MJDs_for_fit[ANT_name]
     bands_for_BB = [b for b in ANT_bands if (b != 'WISE_W1') and (b != 'WISE_W2')] # remove the WISE bands from the interpolation since we don't want to use this data for the BB fit anyway
 
+    print()
     print(ANT_name)
-
+    print()
     
 
     lightcurve = polyfit_lightcurve(ant_name = ANT_name, 
@@ -95,6 +112,7 @@ for idx in range(len(transient_names)):
                                     override_ref_band_dict = override_ref_band_dict,   
                                     interp_at_ref_band = interp_at_ref_band, 
                                     min_band_dps = min_band_dps, 
+                                    manual_straggler_input_dict = manual_stragglers_dict,
                                     straggler_dist = straggler_dist,
                                     gapsize = gapsize,
                                     fit_MJD_range = polyfit_MJD_range, 
