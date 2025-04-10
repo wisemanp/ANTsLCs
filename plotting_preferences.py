@@ -1,5 +1,6 @@
 from astropy.cosmology import FlatLambdaCDM # THIS IS FOR THE LUMINOSITY DISTANCE DICTIONARY
 import astropy.units as u
+import pandas as pd
 
 """
 
@@ -591,3 +592,33 @@ override_ref_band_dict = {'ZTF18aczpgwm': None,
                         'PS1-13jw': None} 
 
 
+
+
+
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+# HUMAN INPUT OF STRAGGLER DATAPOINTS      ##########################################################################################################################################
+
+aadesap_straggler = pd.DataFrame({'MJD': [59674.309], 'band': ['ATLAS_o']})
+ASASSN17jz_straggler = pd.DataFrame({'MJD': [57900.92], 'band':['V']})
+
+manual_stragglers_dict = {'ZTF18aczpgwm': None, 
+                            'ZTF19aailpwl': None, 
+                            'ZTF19aamrjar': None, 
+                            'ZTF19aatubsj': None, 
+                            'ZTF20aanxcpf': None, 
+                            'ZTF20abgxlut': None, 
+                            'ZTF20abodaps': None, 
+                            'ZTF20abrbeie': None, 
+                            'ZTF20acvfraq': None, 
+                            'ZTF21abxowzx': None, 
+                            'ZTF22aadesap': aadesap_straggler, # one here
+                            'ASASSN-17jz': ASASSN17jz_straggler, #  one here
+                            'ASASSN-18jd': None, 
+                            'CSS100217': None, 
+                            'Gaia16aaw': None, 
+                            'Gaia18cdj': None, 
+                            'PS1-10adi': None, 
+                            'PS1-13jw': None} 
