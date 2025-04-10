@@ -1338,7 +1338,7 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, 
+    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, manual_straggler_input_dict, 
                 straggler_dist, gapsize, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, 
                 b_marker_dict, plot_polyfit = False, save_interp_df = False):
         self.ant_name = ant_name
@@ -1348,6 +1348,7 @@ class polyfit_lightcurve:
         self.override_ref_band = override_ref_band_dict[ant_name]
         self.interp_at_ref_band = interp_at_ref_band
         self.min_band_dps = min_band_dps
+        self.manual_straggler_input = manual_straggler_input_dict[self.ant_name] # if not None, is a dataframe containing manually identified stragglers
         self.straggler_dist = straggler_dist
         self.gapsize = gapsize
         self.fit_MJD_range = fit_MJD_range
@@ -1393,6 +1394,18 @@ class polyfit_lightcurve:
         self.straggler_MJDs = []
         for b in self.bands:
             straggler_df, non_straggler_df = identify_straggler_datapoints(self.b_lim_df_dict[b], min_band_datapoints = self.min_band_dps, straggler_dist = self.straggler_dist)
+            
+            # check to see if there were any user defined stragglers:
+            if self.manual_straggler_input is not None:
+                manual_straggler_bands = self.manual_straggler_input['band'].unique()
+                
+                if b in manual_straggler_bands: # this assumes just one manually defined straggler per band, if you had multiple, you'd want to loop through the rows too
+                    manual_straggler_mjd = np.round(self.manual_straggler_input['MJD'].iloc[0], 1) # rounded to one decimal place (fine because we bin to 1 day)
+                    manual_straggler_row = non_straggler_df[np.round(non_straggler_df['wm_MJD'], 1) == manual_straggler_mjd] # check that the MJDs match to 1 decimal place (this is enough because we binned the data to 1 day bins)
+
+                    straggler_df = pd.concat([straggler_df, manual_straggler_row]) # add the row to the straggler df
+                    non_straggler_df = non_straggler_df.drop(manual_straggler_row.index) # remove the row from the non straggler df
+
             self.prepping_data.at[b, 'straggler_df'] = straggler_df
             self.prepping_data.at[b, 'non_straggler_df'] = non_straggler_df
             
@@ -1558,21 +1571,21 @@ class polyfit_lightcurve:
             b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
             b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
             
-
-            h1 = plt.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+            
+            h1 = plt.errorbar(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_df['wm_MJD'], z = self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                             label = b, c = b_colour)
             raw_and_interp_handles.append(h1[0])
             raw_and_interp_labels.append(b)
-
-            plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
-            plt.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
+            
+            plt.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
+            plt.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
             h2 = plt.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                             linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp {b}')
             raw_and_interp_handles.append(h2[0])
             raw_and_interp_labels.append(f'interp {b}')
 
             if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
-                h3 = plt.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
+                h3 = plt.plot(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, label = f"b cov quality = {b_coverage_score:.3f} \nfit order = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
                 polyfit_handles.append(h3[0])
                 polyfit_labels.append( f"{b}'s S = {b_coverage_score:.3f} \n O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \nred chi = {b_plot_polyfit['red_chi']:.3f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.3f}")
 
@@ -1640,16 +1653,16 @@ class polyfit_lightcurve:
             b_non_straggler_df = self.prepping_data.at[b, 'non_straggler_df']
             b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
 
-            ax.errorbar((b_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
+            ax.errorbar(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_df['wm_MJD'], z = self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
                                 label = 'data', c = b_colour)
 
-            ax.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
-            ax.scatter((straggler_df['wm_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
+            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
+            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
             ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = '^', c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                             linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp')
 
             if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
-                ax.plot((b_plot_polyfit['poly_plot_MJD'] - self.ref_band_peak_MJD)* (1 + self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, 
+                ax.plot(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, 
                         label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
                 title = f"{b} \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
             else:
@@ -1675,16 +1688,31 @@ class polyfit_lightcurve:
         #plt.show()
 
 
-
-
+    @staticmethod
+    def convert_MJD_to_restframe_DSP(peak_MJD, MJD, z):
+        return (MJD - peak_MJD) / (1 + z)
 
 
     
     def calc_days_since_peak(self):
-        ref_band_max_idx = np.argmax( self.plot_results.loc[self.ref_band]['poly_plot_L_rf'] )
-        self.ref_band_peak_MJD = self.plot_results.loc[self.ref_band]['poly_plot_MJD'][ref_band_max_idx]
+        peak_MJD_cutoff = self.lim_df['wm_MJD'].min() + ((self.lim_df['wm_MJD'].max() - self.lim_df['wm_MJD'].min()) * 0.60) # the peak MJD is not allowed to be past this point, which is 60% of the way across the light curve in MJD
+        
+        # ref band data
+        ref_band_poly_data = self.plot_results.loc[self.ref_band]
+        ref_band_poly_MJD = ref_band_poly_data['poly_plot_MJD']
+        ref_band_poly_L_rf = ref_band_poly_data['poly_plot_L_rf']
+
+        # mask over the region we don't want it to find the peak (the latter 40% of the light curve)
+        mask = ref_band_poly_MJD < peak_MJD_cutoff
+        allowed_ref_band_poly_MJD = ref_band_poly_MJD[mask]
+        allowed_ref_band_poly_L_rf = ref_band_poly_L_rf[mask]
+
+        # get the index of the peak within the allowed region
+        ref_band_max_idx = np.argmax( allowed_ref_band_poly_L_rf )
+        self.ref_band_peak_MJD = allowed_ref_band_poly_MJD[ref_band_max_idx]
         self.interp_df['peak_MJD'] = [self.ref_band_peak_MJD]*len(self.interp_df)
-        self.interp_df['d_since_peak'] = (self.interp_df['MJD'] - self.interp_df['peak_MJD']) * (1 + self.ant_z) # days since peak in the rest frame
+        self.interp_df['d_since_peak'] = self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = self.interp_df['MJD'], z = self.ant_z)#(self.interp_df['MJD'] - self.interp_df['peak_MJD']) / (1 + self.ant_z) # days since peak in the rest frame
+        
 
 
 
