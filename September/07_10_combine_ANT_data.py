@@ -256,7 +256,7 @@ host_mag_dict_18jd = {'UVOT_UVW2': 20.99,
 
 
 
-
+""" 
 path1 = file_load_dir + "ASASSN-18jd_lc_files/ASASSN-18jd_table-phot_paper.txt"
 colspecs = [(0, 9), (11, 13), (15, 16), (18, 23), (25, 29), (31, 38)]
 colnames = ['MJD', 'band_nosurvey', '3sig_mag_uplim', 'mag', 'magerr', 'survey']
@@ -374,7 +374,7 @@ save_path = file_save_dir + "ASASSN-18jd_FULL_LC.csv"
 combined_18jz.to_csv(save_path, index = False)
 print()
 print() 
-
+ """
 
 """ 
 # PLOT ATLAS DATA TO CHECK THAT IT'S ALRIGHT
@@ -481,14 +481,28 @@ paper_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other 
 
 
 # CSS100217
-""" path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/CSS100217_lc_files/CSS100217_CSSdata.xlsx"
+path1 = file_load_dir + "CSS100217_lc_files/CSS100217_CSSdata.xlsx"
+#path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/CSS100217_lc_files/CSS100217_CSSdata.xlsx"
 CSS_lc = pd.read_excel(path1, sheet_name = 0)
 CSS_lc = CSS_lc.drop(columns = ['MasterID', 'RA', 'Dec', 'Blend'], axis = 1)
 CSS_lc = CSS_lc.rename(columns ={'Mag':'mag', 'Magerr':'magerr'})
 CSS_lc = CSS_lc[CSS_lc['magerr'] < MAGERR_LIM].copy()
 CSS_lc['band'] = ['CSS_V']*len(CSS_lc['MJD'])
-CSS_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/ALL_FULL_LCs/CSS100217_FULL_LC.csv", index = False)
-print(CSS_lc)  """
+#CSS_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/ALL_FULL_LCs/CSS100217_FULL_LC.csv", index = False)
+
+# THIS IS THE LIGHT CURVE WITHOUT THE CSS V DATA FROM THE PAPER, YOU CAN ALSO GET THE CSS V DATA FROM THE PAPER THOUGH
+#path2 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/CSS100217_lc_files/CSS100217_paper_lc.csv"
+path2 = file_load_dir + "CSS100217_lc_files/CSS100217_paper_lc.csv"
+paper_lc = pd.read_csv(path2, delimiter = ',')
+paper_lc = paper_lc[paper_lc['telescope'] != 'SDSS'].copy() # this removes the archival host photometry from the dataframe
+paper_lc = paper_lc.reset_index(drop = True)
+paper_lc['tel_band'] = [paper_lc['telescope'].iloc[i] + '_' + paper_lc['band'].iloc[i] for i in paper_lc.index]
+paper_lc = paper_lc.drop(columns = ['band', 'telescope'])
+paper_lc = paper_lc.rename(columns = {'tel_band':'band'})
+print(paper_lc['band'].unique())
+
+print(paper_lc)
+#print(CSS_lc) 
 
 
 
