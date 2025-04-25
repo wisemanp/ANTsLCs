@@ -79,18 +79,18 @@ if SED_plots == 'usual':
         # FITTING METHOD
         BB_curvefit = True
         BB_brute = True
-        #SED_type = 'single_BB'
+        SED_type = 'single_BB'
         #SED_type = 'double_BB'
-        SED_type = 'power_law'
+        #SED_type = 'power_law'
         #SED_type = 'best_SED'
-        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        UVOT_guided_fitting = False # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
         brute_gridsize = 2000
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
 
-        no_indiv_SED_plots = 24 # current options are 24, 20, 12
+        no_indiv_SED_plots = 12 # current options are 24, 20, 12
         individual_BB_plot_type = 'whole_lc' # 'UVOT'
 
         plot_chi_contour = False
