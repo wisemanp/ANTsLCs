@@ -33,7 +33,7 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 # load in the interpolated data
 interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
 
-SED_plots = 'usual'#'compare_SEDs' 
+SED_plots = 'compare_SEDs'#'usual'#'compare_SEDs' 
 
 
 
@@ -162,24 +162,41 @@ if SED_plots == 'usual':
 # TESTING WHICH SED BEST FITS THE ANT
 
 if SED_plots == 'compare_SEDs':
-    for idx in range(11):
-    #for idx in [10]:
+    #for idx in range(len(transient_names)):
+    for idx in [0]:
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
         ANT_bands = list_of_bands[idx]
-        print()
+        print('=================================================================================================')
         print(ANT_name)
 
         # FITTING METHOD
         brute_gridsize = 2000
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
-        individual_BB_plot = 'None'
-        no_indiv_SED_plots = 24 # current options are 24, 20, 12
+        individual_BB_plot_type = 'whole_lc'
+        no_indiv_SED_plots = 12 # current options are 24, 20, 12
         plot_chi_contour = False
         no_chi_contours = 3 
+
+        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        UVOT_guided_err_scalefactor = 0.1 
+        UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
+        
+
+
+
         # SAVING PLOTS
-        save_BB_plot = False
-        save_indiv_BB_plot = False
+        save_BB_plot = True
+        save_indiv_BB_plot = True
+        save_param_vs_time_plot = True
+        show_plots = False
+
+        # SAVE SED FIT RESULTS TO A DATAFRAME?
+        save_SED_fit_file = True
+
+        # create a dataframe to save the comparison results to 
+        comparison_df = pd.DataFrame(columns = ['SED_model', 'phase_subset', 'median_D', 'MAD_D', 'no_fits_N_greater_M'])
+        comparison_df['SED_model'] = ['Single-BB', 'Single-BB', 'Single-BB', 'Single-BB', 'Power-law', 'Power-law', 'Power-law', 'Power-law', 'Double-BB', 'Double-BB', 'Double-BB', 'Double-BB']
 
         fig, axs = plt.subplots(2, 2, figsize = (16.5, 7.5))
         ax1, ax2, ax3, ax4 = axs.ravel()
@@ -219,11 +236,13 @@ if SED_plots == 'compare_SEDs':
                 SED_linestyle = '-'
                 M = 2
 
-        
+    
+            
             BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
-                                                brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = individual_BB_plot, 
-                                                no_indiv_SED_plots = no_indiv_SED_plots, save_indiv_BB_plot = save_indiv_BB_plot, 
-                                                plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
+                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = individual_BB_plot_type, 
+                                            no_indiv_SED_plots = no_indiv_SED_plots, show_plots = show_plots, save_SED_fit_file = save_SED_fit_file,
+                                            save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
+                                            plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
             
 
             def median_absolute_deviation(median, data): # need to maybe handle the possibility that data is empty and median is None?
@@ -233,26 +252,45 @@ if SED_plots == 'compare_SEDs':
                 return MAD
 
             # the whole lc SED fits
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+            if UVOT_guided_fitting:
+                BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict)
+            else:
+                BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
             BB_fit_results = BB_fit_results[BB_fit_results[sig_dist_colname].notna()]
             all_lc_median = BB_fit_results[sig_dist_colname].median(skipna = True)
             all_lc_MAD = median_absolute_deviation(all_lc_median, BB_fit_results[sig_dist_colname].to_numpy())
+            # save to the comparison results df
+            comparison_df.loc[(i*4 + 0), 'phase_subset'] = 'whole_lc'
+            comparison_df.loc[(i*4 + 0), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [all_lc_median, all_lc_MAD, len(BB_fit_results)]
 
-            # SED fits where N > M
-            fit_results_N_greater_M = BB_fit_results[BB_fit_results['no_bands'] > M].copy()
-            N_greater_M_median = fit_results_N_greater_M[sig_dist_colname].median(skipna = True)
-            N_greater_M_MAD = median_absolute_deviation(N_greater_M_median, fit_results_N_greater_M[sig_dist_colname].to_numpy())
+
+            # SED fits with only optical data
+            MJDs_without_UVOT = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]['MJD']
+            SEDs_without_UVOT = BB_fit_results[BB_fit_results['MJD'].isin(MJDs_without_UVOT)].copy()
+            no_UVOT_median = SEDs_without_UVOT[sig_dist_colname].median()
+            no_UVOT_MAD = median_absolute_deviation(no_UVOT_median, SEDs_without_UVOT[sig_dist_colname].to_numpy())
+            # save to the comparison results df
+            comparison_df.loc[(i*4 + 1), 'phase_subset'] = 'no_UVOT'
+            comparison_df.loc[(i*4 + 1), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [no_UVOT_median, no_UVOT_MAD, len(SEDs_without_UVOT)]
+
 
             # SED fits with UVOT data
             MJDs_with_UVOT = interp_lc[interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]['MJD']
             SEDs_with_UVOT = BB_fit_results[BB_fit_results['MJD'].isin(MJDs_with_UVOT)].copy()
             UVOT_median = SEDs_with_UVOT[sig_dist_colname].median()
             UVOT_MAD = median_absolute_deviation(UVOT_median, SEDs_with_UVOT[sig_dist_colname].to_numpy())
+            # save to the comparison results df
+            comparison_df.loc[(i*4 + 2), 'phase_subset'] = 'with_UVOT'
+            comparison_df.loc[(i*4 + 2), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [UVOT_median, UVOT_MAD, len(SEDs_with_UVOT)]
+            
 
             # SED fits on rise/near peak
             SEDs_rise_peak = BB_fit_results[BB_fit_results['d_since_peak'] <= 100].copy()
             rise_peak_median = SEDs_rise_peak[sig_dist_colname].median(skipna = True)
             rise_peak_MAD = median_absolute_deviation(rise_peak_median, SEDs_rise_peak[sig_dist_colname].to_numpy())
+            # save to the comparison results df
+            comparison_df.loc[(i*4 + 3), 'phase_subset'] = 'phase_leq_100'
+            comparison_df.loc[(i*4 + 3), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [rise_peak_median, rise_peak_MAD, len(SEDs_rise_peak)]
 
 
             # PLOTTING IT UP IN HISTOGRAMS
@@ -260,9 +298,9 @@ if SED_plots == 'compare_SEDs':
             ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, color = SED_colour, label = label1, alpha = 0.5)
             ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-            label2 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma}}$ = {N_greater_M_median:.3g} '+'\n'+fr'MAD $D_{{\sigma}}$ = {N_greater_M_MAD:.3g}'
-            ax2.hist(fit_results_N_greater_M[sig_dist_colname], bins = 50, color = SED_colour, label = label2, alpha = 0.5)
-            ax2.hist(fit_results_N_greater_M[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
+            label2 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma}}$ = {no_UVOT_median:.3g} '+'\n'+fr'MAD $D_{{\sigma}}$ = {no_UVOT_MAD:.3g}'
+            ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, color = SED_colour, label = label2, alpha = 0.5)
+            ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
             label3 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma}}$ = {rise_peak_median:.3g} '+'\n'+fr'MAD $D_{{\sigma}}$ = {rise_peak_MAD:.3g}'
             ax3.hist(SEDs_rise_peak[sig_dist_colname], bins = 50, color = SED_colour, label = label3, alpha = 0.5)
@@ -272,19 +310,20 @@ if SED_plots == 'compare_SEDs':
             ax4.hist(SEDs_with_UVOT[sig_dist_colname], bins = 50, color = SED_colour, label = label4, alpha = 0.5)
             ax4.hist(SEDs_with_UVOT[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-        ax1.set_title('SED fit results entire lightcurve', fontweight = 'bold')
-        ax2.set_title('SED fit results where N > M', fontweight = 'bold')
-        ax3.set_title('SED fit results for days since peak < 100', fontweight = 'bold')
-        ax4.set_title('SED fit results for MJDs with UVOT data', fontweight = 'bold')
+        ax1.set_title('Entire lightcurve', fontweight = 'bold')
+        ax2.set_title('Phases without UV data', fontweight = 'bold')
+        ax3.set_title(r'Phases $\mathbf{\leq100}$ days', fontweight = 'bold')
+        ax4.set_title('Phases with UV data', fontweight = 'bold')
 
         for ax in [ax1, ax2, ax3, ax4]:
             ax.legend()
             ax.grid(True)
 
         titlefontsize = 20
-        fig.supxlabel(r'(sigma distance) = $\mathbf{ D_{\sigma =} \frac{\chi_{\nu} - 1} {\sigma_{\chi_{\nu}}}  }$', fontsize = (titlefontsize - 5), fontweight = 'bold')
+        fig.supxlabel(r'Goodness-of-fit metric, $\mathbf{ D_{\sigma\chi} }$', fontsize = (titlefontsize - 5), fontweight = 'bold')
         fig.supylabel('Frequency density', fontweight = 'bold', fontsize = (titlefontsize - 5))
-        fig.suptitle(f"{ANT_name}'s SED fit results comparing a single blackbody, double blackbody and \n power law SED (MAD = median absolute deviation)", fontweight = 'bold', fontsize = titlefontsize)
+        title = f"Comparing SED Model Fit Quality Across Different Phase Subsets in \n {ANT_name}'s Light Curve"
+        fig.suptitle(title, fontweight = 'bold', fontsize = titlefontsize)
         fig.subplots_adjust(top=0.82,
                             bottom=0.11,
                             left=0.08,
@@ -293,7 +332,10 @@ if SED_plots == 'compare_SEDs':
                             wspace=0.2)
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}/{ANT_name}_compare_SED_fits.png"
         plt.savefig(savepath, dpi = 300)
-        #plt.show()
+        
+        print(comparison_df.head(12))
+        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{ANT_name}/{ANT_name}_compare_SED_models.csv"
+        comparison_df.to_csv(savepath, index = False)
 
 
 
