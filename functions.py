@@ -1658,7 +1658,7 @@ class polyfit_lightcurve:
 
             ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
             ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
-            ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], fmt = None, c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
+            ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
                             linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp')
 
             if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
