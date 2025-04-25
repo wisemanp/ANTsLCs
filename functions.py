@@ -3013,12 +3013,13 @@ class fit_SED_across_lightcurve:
         if self.individual_BB_plot == 'UVOT':
             UVOT_df = self.interp_df[self.interp_df['band'].isin(['UVOT_U', 'UVOT_B', 'UVOT_V', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2'])].copy()
             UVOT_MJDs = UVOT_df['MJD'].unique()
-            if UVOT_df.empty == True: # if we have no UVOT data, just get MJDs from the whole light curve
+            if (len(UVOT_MJDs) == 0.0): # if we have no UVOT data, just get MJDs from the whole light curve
                 self.indiv_plot_MJDs = BB_MJDs[::int(len(BB_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
                 self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
                 return
             
-            self.indiv_plot_MJDs = UVOT_MJDs[::int(len(UVOT_MJDs)/self.no_indiv_SED_plots)] # plot every 12th MJD value
+            step = max(1, int(len(UVOT_MJDs)/self.no_indiv_SED_plots)) # make sure we don't get a step of 0
+            self.indiv_plot_MJDs = UVOT_MJDs[::step] # plot every 12th MJD value
             self.indiv_plot_MJDs = self.indiv_plot_MJDs[:self.no_indiv_SED_plots] # only plot the first 12 values, in case the line above finds 13
             len_UVOT_mjd_choice = len(self.indiv_plot_MJDs)
 
@@ -3127,10 +3128,10 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
 
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
             plt.show()
 
@@ -3221,9 +3222,9 @@ class fit_SED_across_lightcurve:
 
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -3299,9 +3300,9 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits_({self.individual_BB_plot}).png"
+                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             plt.show()
@@ -3477,10 +3478,10 @@ class fit_SED_across_lightcurve:
                         fmt = 'o', label = f'N = M = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
   
-            if self.guided_UVOT_SED_fits:
-                ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [abs(BB_N_greater_M['brute_A'] - BB_N_greater_M['A_param_lower_lim']), abs(BB_N_greater_M['A_param_upper_lim'] - BB_N_greater_M['brute_A'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax2.set_ylim(((BB_N_greater_M['brute_A'].min())*0.7, (BB_N_greater_M['brute_A'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [abs(BB_N_greater_M['brute_A'] - BB_N_greater_M['A_param_lower_lim']), abs(BB_N_greater_M['A_param_upper_lim'] - BB_N_greater_M['brute_A'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax2.set_ylim(((BB_N_greater_M['brute_A'].min())*0.7, (BB_N_greater_M['brute_A'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_A'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
@@ -3504,10 +3505,10 @@ class fit_SED_across_lightcurve:
             ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_gamma'], yerr = BB_2dp['brute_gamma_err'], linestyle = 'None', c = 'white', 
                         marker = 'o', label = f'N = M = 2', mec = 'k', mew = '0.5', ecolor = 'k')
             
-            if self.guided_UVOT_SED_fits:
-                ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = [abs(BB_N_greater_M['brute_gamma'] - BB_N_greater_M['gamma_param_lower_lim']), abs(BB_N_greater_M['gamma_param_upper_lim'] - BB_N_greater_M['brute_gamma'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax4.set_ylim(((BB_N_greater_M['brute_gamma'].min())*1.3, (BB_N_greater_M['brute_gamma'].max())*0.7)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 10% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = [abs(BB_N_greater_M['brute_gamma'] - BB_N_greater_M['gamma_param_lower_lim']), abs(BB_N_greater_M['gamma_param_upper_lim'] - BB_N_greater_M['brute_gamma'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax4.set_ylim(((BB_N_greater_M['brute_gamma'].min())*1.3, (BB_N_greater_M['brute_gamma'].max())*0.7)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 10% of the most extreme A values on the plot
 
             
             sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_gamma'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
@@ -3586,10 +3587,10 @@ class fit_SED_across_lightcurve:
                         fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
             
   
-            if self.guided_UVOT_SED_fits:
-                ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = [abs(BB_N_greater_M['cf_T1_K'] - BB_N_greater_M['T1_param_lower_lim']), abs(BB_N_greater_M['T1_param_upper_lim'] - BB_N_greater_M['cf_T1_K'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax2.set_ylim(((BB_N_greater_M['cf_T1_K'].min())*0.7, (BB_N_greater_M['cf_T1_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = [abs(BB_N_greater_M['cf_T1_K'] - BB_N_greater_M['T1_param_lower_lim']), abs(BB_N_greater_M['T1_param_upper_lim'] - BB_N_greater_M['cf_T1_K'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax2.set_ylim(((BB_N_greater_M['cf_T1_K'].min())*0.7, (BB_N_greater_M['cf_T1_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T1_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
@@ -3609,10 +3610,10 @@ class fit_SED_across_lightcurve:
                         fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
             
   
-            if self.guided_UVOT_SED_fits:
-                ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = [abs(BB_N_greater_M['cf_T2_K'] - BB_N_greater_M['T2_param_lower_lim']), abs(BB_N_greater_M['T2_param_upper_lim'] - BB_N_greater_M['cf_T2_K'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax3.set_ylim(((BB_N_greater_M['cf_T2_K'].min())*0.7, (BB_N_greater_M['cf_T2_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = [abs(BB_N_greater_M['cf_T2_K'] - BB_N_greater_M['T2_param_lower_lim']), abs(BB_N_greater_M['T2_param_upper_lim'] - BB_N_greater_M['cf_T2_K'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax3.set_ylim(((BB_N_greater_M['cf_T2_K'].min())*0.7, (BB_N_greater_M['cf_T2_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
             sc = ax3.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T2_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
@@ -3637,10 +3638,10 @@ class fit_SED_across_lightcurve:
                         fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
             
   
-            if self.guided_UVOT_SED_fits:
-                ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = [abs(BB_N_greater_M['cf_R1_cm'] - BB_N_greater_M['R1_param_lower_lim']), abs(BB_N_greater_M['R1_param_upper_lim'] - BB_N_greater_M['cf_R1_cm'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax5.set_ylim(((BB_N_greater_M['cf_R1_cm'].min())*0.7, (BB_N_greater_M['cf_R1_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = [abs(BB_N_greater_M['cf_R1_cm'] - BB_N_greater_M['R1_param_lower_lim']), abs(BB_N_greater_M['R1_param_upper_lim'] - BB_N_greater_M['cf_R1_cm'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax5.set_ylim(((BB_N_greater_M['cf_R1_cm'].min())*0.7, (BB_N_greater_M['cf_R1_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
             sc = ax5.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R1_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
@@ -3660,10 +3661,10 @@ class fit_SED_across_lightcurve:
                         fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
             
   
-            if self.guided_UVOT_SED_fits:
-                ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = [abs(BB_N_greater_M['cf_R2_cm'] - BB_N_greater_M['R2_param_lower_lim']), abs(BB_N_greater_M['R2_param_upper_lim'] - BB_N_greater_M['cf_R2_cm'])], linestyle = 'None', c = 'red', 
-                            fmt = 'None', alpha = 0.3, label = 'Param space search lims')
-                ax6.set_ylim(((BB_N_greater_M['cf_R2_cm'].min())*0.7, (BB_N_greater_M['cf_R2_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
+            #if self.guided_UVOT_SED_fits:
+            #    ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = [abs(BB_N_greater_M['cf_R2_cm'] - BB_N_greater_M['R2_param_lower_lim']), abs(BB_N_greater_M['R2_param_upper_lim'] - BB_N_greater_M['cf_R2_cm'])], linestyle = 'None', c = 'red', 
+            #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
+            #    ax6.set_ylim(((BB_N_greater_M['cf_R2_cm'].min())*0.7, (BB_N_greater_M['cf_R2_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
             sc = ax6.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R2_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
