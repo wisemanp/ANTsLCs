@@ -196,7 +196,7 @@ if SED_plots == 'compare_SEDs':
 
         # create a dataframe to save the comparison results to 
         comparison_df = pd.DataFrame(columns = ['SED_model', 'phase_subset', 'median_D', 'MAD_D', 'no_fits_N_greater_M'])
-        comparison_df['SED_model'] = ['Single-BB', 'Single-BB', 'Single-BB', 'Single-BB', 'Power-law', 'Power-law', 'Power-law', 'Power-law', 'Double-BB', 'Double-BB', 'Double-BB', 'Double-BB']
+        #comparison_df['SED_model'] = ['Single-BB', 'Single-BB', 'Single-BB', 'Single-BB', 'Power-law', 'Power-law', 'Power-law', 'Power-law', 'Double-BB', 'Double-BB', 'Double-BB', 'Double-BB']
 
         fig, axs = plt.subplots(2, 2, figsize = (16.5, 7.5))
         ax1, ax2, ax3, ax4 = axs.ravel()
@@ -260,6 +260,7 @@ if SED_plots == 'compare_SEDs':
             all_lc_median = BB_fit_results[sig_dist_colname].median(skipna = True)
             all_lc_MAD = median_absolute_deviation(all_lc_median, BB_fit_results[sig_dist_colname].to_numpy())
             # save to the comparison results df
+            comparison_df.loc[(i*4 + 0), 'SED_model'] = SED_label
             comparison_df.loc[(i*4 + 0), 'phase_subset'] = 'whole_lc'
             comparison_df.loc[(i*4 + 0), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [all_lc_median, all_lc_MAD, len(BB_fit_results)]
 
@@ -270,6 +271,7 @@ if SED_plots == 'compare_SEDs':
             no_UVOT_median = SEDs_without_UVOT[sig_dist_colname].median()
             no_UVOT_MAD = median_absolute_deviation(no_UVOT_median, SEDs_without_UVOT[sig_dist_colname].to_numpy())
             # save to the comparison results df
+            comparison_df.loc[(i*4 + 1), 'SED_model'] = SED_label
             comparison_df.loc[(i*4 + 1), 'phase_subset'] = 'no_UVOT'
             comparison_df.loc[(i*4 + 1), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [no_UVOT_median, no_UVOT_MAD, len(SEDs_without_UVOT)]
 
@@ -280,6 +282,7 @@ if SED_plots == 'compare_SEDs':
             UVOT_median = SEDs_with_UVOT[sig_dist_colname].median()
             UVOT_MAD = median_absolute_deviation(UVOT_median, SEDs_with_UVOT[sig_dist_colname].to_numpy())
             # save to the comparison results df
+            comparison_df.loc[(i*4 + 2), 'SED_model'] = SED_label
             comparison_df.loc[(i*4 + 2), 'phase_subset'] = 'with_UVOT'
             comparison_df.loc[(i*4 + 2), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [UVOT_median, UVOT_MAD, len(SEDs_with_UVOT)]
             
@@ -289,6 +292,7 @@ if SED_plots == 'compare_SEDs':
             rise_peak_median = SEDs_rise_peak[sig_dist_colname].median(skipna = True)
             rise_peak_MAD = median_absolute_deviation(rise_peak_median, SEDs_rise_peak[sig_dist_colname].to_numpy())
             # save to the comparison results df
+            comparison_df.loc[(i*4 + 3), 'SED_model'] = SED_label
             comparison_df.loc[(i*4 + 3), 'phase_subset'] = 'phase_leq_100'
             comparison_df.loc[(i*4 + 3), ['median_D', 'MAD_D', 'no_fits_N_greater_M']] = [rise_peak_median, rise_peak_MAD, len(SEDs_rise_peak)]
 
