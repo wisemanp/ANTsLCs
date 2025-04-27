@@ -2801,9 +2801,11 @@ class fit_SED_across_lightcurve:
             if self.SED_type == 'single_BB':
                 # get the model parameters from the closest-by UVOT SED fit to help constrain the fit here
                 UVOT_T = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_T_K']
-                UVOT_T_lower_err, UVOT_T_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_T_err_K']
+                UVOT_T_lower_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_T_err_lower_K']
+                UVOT_T_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_T_err_upper_K']
                 UVOT_R = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_R_cm']
-                UVOT_R_lower_err, UVOT_R_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_R_err_cm']
+                UVOT_R_lower_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_R_err_lower_cm']
+                UVOT_R_upper_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'brute_R_err_upper_cm']
 
                 # calculate the region of parameter space to explore MJD's SED fit. Below we calculate UNSCALED R limits. 
                 MJD_R_min, MJD_R_max = self.param_limit_calculation(UVOT_M = UVOT_R, UVOT_M_err_lower = UVOT_R_lower_err, UVOT_M_err_upper = UVOT_R_upper_err, 
