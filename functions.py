@@ -2542,6 +2542,9 @@ class fit_SED_across_lightcurve:
 
             # for a double BB fit
             elif double_BB:
+                if MJD_no_bands < 4: # don't try fitting a DBB spectrum to <c4 datapoints, so the BB results in this row will all be nan
+                    continue
+
                 if self.curvefit:
                     self.double_BB_curvefit(MJD, MJD_df, 
                                             R1_sc_min = self.DBB_R_min_sc, R1_sc_max = self.DBB_R_max_sc, T1_min = self.DBB_T1_min, T1_max = self.DBB_T1_max, 
@@ -2683,6 +2686,9 @@ class fit_SED_across_lightcurve:
 
             # for a double BB fit
             elif self.SED_type == 'double_BB': # WE CURRENTLY DON'T HAVE A FUNCTION TO BRUTE FORCE A DOUBLE BLACKBODY SO MUST USE CURVE FIT
+                if MJD_no_bands <4: # don't fit a DBB to <4 data points since M=4
+                    continue
+
                 self.BB_fit_results.loc[UV_MJD, ['R1_param_lower_lim', 'R1_param_upper_lim', 'T1_param_lower_lim', 'T1_param_upper_lim', 'R2_param_lower_lim', 'R2_param_upper_lim', 'T2_param_lower_lim', 'T2_param_upper_lim']] = [self.DBB_R_min, self.DBB_R_max, self.DBB_T1_min, self.DBB_T1_max, self.DBB_R_min, self.DBB_R_max, self.DBB_T2_min, self.DBB_T2_max]
                 self.double_BB_curvefit(UV_MJD, MJD_df, R1_sc_min = self.DBB_R_min_sc, R1_sc_max = self.DBB_R_max_sc, T1_min = self.DBB_T1_min, T1_max = self.DBB_T1_max, R2_sc_min = self.DBB_R_min_sc, R2_sc_max = self.DBB_R_max_sc, T2_min = self.DBB_T2_min, T2_max = self.DBB_T2_max)
                 note = 'cf'
@@ -2826,6 +2832,11 @@ class fit_SED_across_lightcurve:
 
             # for a double BB fit ----------------------------------------------------------------------------------------------------------------------------
             elif self.SED_type == 'double_BB': # WE CURRENTLY DON'T HAVE A FUNCTION TO BRUTE FORCE A DOUBLE BLACKBODY SO MUST USE CURVE FIT
+                
+                if MJD_no_bands <4: # dont bother fitting to <4 datapoints since M=4
+                    continue
+
+
                 # get the model parameters from the closest-by UVOT SED fit to help constrain the fit here
                 UVOT_T1 = self.BB_fit_results.loc[closest_UVOT_MJD, 'cf_T1_K']
                 UVOT_T1_err = self.BB_fit_results.loc[closest_UVOT_MJD, 'cf_T1_err_K']
