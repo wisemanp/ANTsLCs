@@ -2528,8 +2528,8 @@ class fit_SED_across_lightcurve:
             MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
             self.BB_fit_results.loc[MJD, :] = np.nan # set all values to nan for now, then overwrite them if we have data for thsi column, so that if (e.g.) brute = False, then the brute columns would contain nan values
             self.BB_fit_results.loc[MJD, self.columns[0:3]] = [MJD, MJD_d_since_peak, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
-            self.BB_fit_results.loc[MJD, 'bands'] = list(MJD_df['band'].unique())
-            self.BB_fit_results.loc[MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
+            self.BB_fit_results.at[MJD, 'bands'] = list(MJD_df['band'].unique())
+            self.BB_fit_results.at[MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
 
             if MJD_no_bands <= 1: # don't try fitting a BB spectrum to a single datapoint, so the BB results in this row will all be nan
                 continue
@@ -2673,8 +2673,8 @@ class fit_SED_across_lightcurve:
             MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
             self.BB_fit_results.loc[UV_MJD, :] = np.nan # set all values to nan for now, then overwrite them if we have data for thsi column, so that if (e.g.) brute = False, then the brute columns would contain nan values
             self.BB_fit_results.loc[UV_MJD, self.columns[0:3]] = [UV_MJD, MJD_d_since_peak, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
-            self.BB_fit_results.loc[UV_MJD, 'bands'] = list(MJD_df['band'].unique())
-            self.BB_fit_results.loc[UV_MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
+            self.BB_fit_results.at[UV_MJD, 'bands'] = list(MJD_df['band'].unique())
+            self.BB_fit_results.at[UV_MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
 
             if MJD_no_bands <=1:
                 continue
@@ -2796,8 +2796,8 @@ class fit_SED_across_lightcurve:
             MJD_no_bands = len( MJD_df['band'].unique() ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
             self.BB_fit_results.loc[opt_MJD, :] = np.nan # set all values to nan for now, then overwrite them if we have data for thsi column, so that if (e.g.) brute = False, then the brute columns would contain nan values
             self.BB_fit_results.loc[opt_MJD, self.columns[0:3]] = [opt_MJD, MJD_d_since_peak, MJD_no_bands] # the first column in the dataframe is MJD, so set the first value in the row as the MJD
-            self.BB_fit_results.loc[opt_MJD, 'bands'] = list(MJD_df['band'].unique())
-            self.BB_fit_results.loc[opt_MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
+            self.BB_fit_results.at[opt_MJD, 'bands'] = list(MJD_df['band'].unique())
+            self.BB_fit_results.at[opt_MJD, 'em_cent_wls'] = list(MJD_df['em_cent_wl'].unique())
 
             # find the closest UVOT datapoint
             MJD_diff = abs(opt_MJD - self.UVOT_MJDs_with_good_SED_fits)
