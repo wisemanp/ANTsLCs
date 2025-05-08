@@ -2047,10 +2047,10 @@ def power_law_SED(lam, A, gamma):
 
 
 class fit_SED_across_lightcurve:
-    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
+    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
                  plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
-                BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 1e7,
-                DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 1e7, DBB_R_min = 1e13, DBB_R_max = 1e19, 
+                BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 5e5,
+                DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 5e5, DBB_R_min = 1e13, DBB_R_max = 1e19, 
                 PL_A_min = 1e42, PL_A_max = 1e51, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
         """
         INPUTS
@@ -2079,6 +2079,10 @@ class fit_SED_across_lightcurve:
 
         brute_gridsize: (int) the number of trial values of R and T that will be tried in the brute force method. The number of trial values of R and T form a 2D grid of parameters and
         each combination of R and T will be tried in the BB fit.
+
+        DBB_brute_gridsize: (int) the number of trial params to use for DBB brute force gridding. the gridsize would be DBB_brute_gridsize^4
+
+        error_sampling_size: (int) the number of parameter combinations you want to sample from the brute force region of param space for which chi <= min_chi + brute_delchi (where brute_delchi usually =2.3)
 
         ant_name: (str) the ANT's name
 
@@ -2116,6 +2120,8 @@ class fit_SED_across_lightcurve:
         self.curvefit = curvefit
         self.brute = brute
         self.brute_gridsize = brute_gridsize
+        self.DBB_brute_gridsize = DBB_brute_gridsize
+        self.error_sampling_size = error_sampling_size
         self.ant_name = ant_name
         self.brute_delchi = brute_delchi
         
@@ -2146,6 +2152,10 @@ class fit_SED_across_lightcurve:
         if self.SED_type == 'single_BB':
             #                 0          1             2            3          4            5            6               7              8                  9               10            11                  12                  13                 14                  15                      16                 17                   18                19          20
             self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T_K', 'cf_T_err_K', 'cf_R_cm', 'cf_R_err_cm', 'cf_covariance', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'bands', 'em_cent_wls']
+    
+            #                            0              1          2          3              4                       5                6              7              8              9            
+            self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_T_K', 'sampled_R_cm', 'sampled_chi'] # don't include MJD in the columns since we index with it
+            
             self.BB_R_min = BB_R_min
             self.BB_R_max = BB_R_max
             self.BB_T_min = BB_T_min
@@ -2156,8 +2166,11 @@ class fit_SED_across_lightcurve:
 
 
         elif self.SED_type == 'double_BB':  
-            #                 0             1           2            3          4              5            6            7            8            9            10              11               12                 13           14        15          16               17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31 
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi', 'bands', 'em_cent_wls', 'brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
+            #                 0             1           2            3          4              5            6            7            8            9            10              11               12                 13           14        15          16               17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31              32              33                 34                 35                 36                 37                 38                 39
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi', 'bands', 'em_cent_wls', 'brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'cf_T1_err_lower', 'cf_T1_err_upper', 'cf_R1_err_lower', 'cf_R1_err_upper', 'cf_T2_err_lower', 'cf_T2_err_upper', 'cf_R2_err_lower', 'cf_R2_err_upper']
+            
+            #                            0               1         2            3              4                     5                6              7              8               9                 10             11           
+            self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_T1_K', 'sampled_R1_cm', 'sampled_T2_K', 'sampled_R2_cm', 'sampled_chi'] # don't include MJD in the columns since we index with it
             self.DBB_T1_min = DBB_T1_min
             self.DBB_T1_max = DBB_T1_max
             self.DBB_T2_min = DBB_T2_min
@@ -2172,6 +2185,10 @@ class fit_SED_across_lightcurve:
         elif self.SED_type == 'power_law':
             #                  0          1              2        3         4           5             6             7                8                  9             10                11               12                 13              14                    15                 16
             self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_A', 'cf_A_err', 'cf_gamma', 'cf_gamma_err', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'brute_A', 'brute_A_err_lower', 'brute_A_err_upper', 'brute_gamma', 'brute_gamma_err', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'bands', 'em_cent_wls']
+            
+            #                            0              1          2           3              4                     5                  6           7             8                9              
+            self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_A', 'sampled_gamma', 'sampled_chi'] # don't include MJD in the columns since we index with it
+            
             self.PL_A_max = PL_A_max
             self.PL_A_min = PL_A_min
             self.PL_gamma_max = PL_gamma_max
@@ -2185,6 +2202,11 @@ class fit_SED_across_lightcurve:
                 self.contour_MJDs = np.random.choice(self.mjd_values, self.no_chi_contours)
 
         self.BB_fit_results = pd.DataFrame(columns = self.columns, index = self.mjd_values)
+
+        sample_index = pd.MultiIndex.from_product([self.mjd_values, range(error_sampling_size)], names = ['MJD', 'sample']) # use a multiindex so you refer to a particular row using .loc[(MJD_value, sample_number)], and refer to all samples for a particular MJD using .loc[MJD_value], allows for easy grouping
+        self.BB_fit_samples = pd.DataFrame(columns = self.sampled_columns, index = sample_index)
+        self.BB_fit_samples.loc[:, :] = np.nan # set all cells to nan to be later overwritten. We do this because when curve_fits fail for the DBB, we won't reach the brute forcing and sampling so the rows associated to the MJD with the failed curve_fit would be empty, so we want these to be filled with NaN values. 
+
 
 
         
@@ -2262,40 +2284,6 @@ class fit_SED_across_lightcurve:
 
 
 
-
-    def double_BB_curvefit(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max):
-        try:
-            popt, pcov = opt.curve_fit(double_blackbody, xdata = MJD_df['em_cent_wl_cm'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
-                                    bounds = (np.array([R1_sc_min, T1_min, R2_sc_min, T2_min]), np.array([R1_sc_max, T1_max, R2_sc_max, T2_max])))
-                                    #                  (R1_min,   T1_min,   R2_min,  T2_min)           (R1_max,   T1_max,  R2_max,  T2_max)
-            
-            sc_cf_R1, cf_T1, sc_cf_R2, cf_T2 = popt
-            sc_cf_R1_err = np.sqrt(pcov[0, 0])
-            cf_T1_err = np.sqrt(pcov[1, 1])
-            sc_cf_R2_err = np.sqrt(pcov[2, 2])
-            cf_T2_err = np.sqrt(pcov[3, 3])
-            cf_R1 = sc_cf_R1 / self.R_scalefactor
-            cf_R1_err = sc_cf_R1_err / self.R_scalefactor
-            cf_R2 = sc_cf_R2 / self.R_scalefactor
-            cf_R2_err = sc_cf_R2_err / self.R_scalefactor
-            cf_cov = pcov[1,0]  # BUT THIS IS PROBABLY THE COVARIANCE BETWEEN JUST THE T1 AND R1 PARAMETERS OR SOMETHING, NOT THE COVARIANCE BETWEEN ALL 4 PARAMETERS. 
-
-            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # calculate the reduced chi squared of the curve_fit result
-            BB_sc_L_chi = [double_blackbody(wl_cm, sc_cf_R1, cf_T1, sc_cf_R2, cf_T2) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
-            cf_chi, cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 4, reduced_chi = False, chi_AND_redchi = True)
-            cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
-
-            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # add the result to the results row which will be appended to the results dataframe
-            
-            self.BB_fit_results.loc[MJD, self.columns[3:15]] = [cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi]
-
-
-        except RuntimeError:
-            print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
-            self.no_failed_curvefits += 1 # counting the number of failed curve fits
-            self.BB_fit_results.loc[MJD, self.columns[3:15]] = np.nan
 
 
     def power_law_curvefit(self, MJD, MJD_df, A_sc_min, A_sc_max, gamma_min, gamma_max):
@@ -2416,19 +2404,6 @@ class fit_SED_across_lightcurve:
                 brute_A = UVOT_masked_A_values[r]
             
 
-            # getting the errors on the model parameters
-            row_idx, col_idx = np.nonzero(chi <= (min_chi + self.brute_delchi)) # the row and column indices of the chi squared values which are within the error of the minimum chi squared value
-            delchi_A = A_values[row_idx] # the values of A and gamma which fall within this delchi 'ellipse'
-            delchi_gamma = gamma_values[col_idx]
-
-            A_err_upper = max(delchi_A) - brute_A # getting assymetric errors since our trialed parameter grids were logarithmically spaced, so you wouldn't expect a symmetric error about the model paremeter
-            A_err_lower = brute_A - min(delchi_A)
-            
-
-            gamma_err_upper = max(delchi_gamma) - brute_gamma
-            gamma_err_lower = brute_gamma - min(delchi_gamma)
-            brute_gamma_err = (gamma_err_lower + gamma_err_upper)/2 # take the mean (this assumes that gamma's lower and upper error are quite close in value, if they aren't we should decrease the grid spacing)
-            
 
             if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
                 brute_red_chi = min_chi / N_M
@@ -2438,6 +2413,44 @@ class fit_SED_across_lightcurve:
                 brute_red_chi = np.nan
                 red_chi_1sig = np.nan
                 brute_chi_sigma_dist = np.nan
+
+
+
+            # getting the errors on the model parameters
+            threshold = min_chi + self.brute_delchi
+            mask = (chi <= threshold)
+
+            A_grid, gamma_grid = np.meshgrid(A_values, gamma_values, indexing = 'ij')
+            masked_chi = chi[mask]
+            masked_A = A_grid[mask]
+            masked_gamma = gamma_grid[mask]
+
+            gamma_err_upper = np.max(masked_gamma) - brute_gamma
+            gamma_err_lower = brute_gamma - np.min(masked_gamma)
+            brute_gamma_err = (gamma_err_lower + gamma_err_upper)/2 # take the mean (this assumes that gamma's lower and upper error are quite close in value, if they aren't we should decrease the grid spacing)
+
+            A_err_upper = np.max(masked_A) - brute_A # getting assymetric errors since our trialed parameter grids were logarithmically spaced, so you wouldn't expect a symmetric error about the model paremeter
+            A_err_lower = masked_A - np.min(masked_A)
+
+
+            # sample param values from the uncertainty region
+            if UVOT_guided_params is not None:
+                UVOT_guidance_mask = ((masked_A >= UVOT_A_min) & (masked_A <= UVOT_A_max) & (masked_gamma >= UVOT_gamma_min) & (masked_gamma <= UVOT_gamma_max))
+                masked_chi = masked_chi[UVOT_guidance_mask]
+                masked_A = masked_A[UVOT_guidance_mask]
+                masked_gamma = masked_gamma[UVOT_guidance_mask]
+
+            weights = 1/masked_chi
+            weights /= np.sum(weights)
+
+            sampled_indicies = np.random.choice(len(weights), size = self.error_sampling_size, p = weights, replace = True)
+
+            sampled_A = masked_A[sampled_indicies]
+            sampled_gamma = masked_gamma[sampled_indicies]
+            sampled_chi = masked_chi[sampled_indicies]
+
+
+
             
             # -------------------------------------------------------------------------------------------------------------------------------------------------
             # plotting a contour plot of chi squareds for randomly chosen when desired
@@ -2473,6 +2486,29 @@ class fit_SED_across_lightcurve:
         #self.BB_fit_results.at[MJD, 'brute_A_err'] = brute_A_err
         self.BB_fit_results.loc[MJD, self.columns[10:18]] = [brute_A, A_err_lower, A_err_upper, brute_gamma, brute_gamma_err, brute_red_chi, brute_chi_sigma_dist, min_chi] 
 
+        # save the sampled parameters to the dataframe
+        #                            0              1          2           3              4                     5                  6           7             8                9              
+        #self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_A', 'sampled_gamma', 'sampled_chi'] # don't include MJD in the columns since we index with it
+            
+        MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
+        MJD_bands = list(MJD_df['band'].unique())
+        MJD_no_bands = len( MJD_bands ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
+        MJD_em_cent_wls = list(MJD_df['em_cent_wl'].unique())
+
+        for i in range(self.error_sampling_size):
+            sample_row_dict = {'d_since_peak': MJD_d_since_peak, 
+                               'no_bands': MJD_no_bands, 
+                               'bands': MJD_bands, 
+                               'em_cent_wls': MJD_em_cent_wls, 
+                               'brute_red_chi': brute_red_chi, 
+                               'brute_chi_sigma_dist': brute_chi_sigma_dist, 
+                               'brute_chi': min_chi, 
+                               'sampled_A': sampled_A[i], 
+                               'sampled_gamma': sampled_gamma[i], 
+                               'sampled_chi': sampled_chi[i]}
+            
+            for key, value in sample_row_dict.items():
+                self.BB_fit_samples.at[(MJD, i), key] = value
 
 
 
@@ -2566,27 +2602,129 @@ class fit_SED_across_lightcurve:
             print(f"Chi values = {chi[row, col]} {Style.RESET_ALL}")
             print()
 
-        # calculate the error on the parameters using the brute force method
-        row_idx, col_idx = np.nonzero(chi <= (min_chi + self.brute_delchi)) # the row and column indices of the chi squared values which are within the error of the minimum chi squared value
-        delchi_T = T_values[col_idx] # the values of T which are within the error of the minimum chi squared value
-        delchi_sc_R = sc_R_values[row_idx]  # the values of R which are within the error of the minimum chi squared value
 
-        brute_T_err_upper = np.max(delchi_T) - brute_T # the upper error on the temperature parameter
-        brute_T_err_lower = brute_T - np.min(delchi_T) # the lower error on the temperature parameter
-        brute_R_err_upper = np.max(delchi_sc_R) / self.R_scalefactor - brute_R # the upper error on the radius parameter
-        brute_R_err_lower = brute_R - np.min(delchi_sc_R) / self.R_scalefactor # the lower error on the radius parameter
-        
+
+        # calculate uncertainties on model params using the brute force method
+        threshold = min_chi + self.brute_delchi
+        mask = chi <= threshold
+
+        R_sc_grid, T_grid = np.meshgrid(sc_R_values, T_values, indexing = 'ij')
+        masked_chi = chi[mask]
+        masked_R_sc = R_sc_grid[mask]
+        masked_T = T_grid[mask]
+
+        brute_R_err_upper = (np.max(masked_R_sc) / self.R_scalefactor) - brute_R
+        brute_R_err_lower = brute_R - (np.min(masked_R_sc) / self.R_scalefactor)
+        brute_T_err_upper = np.max(masked_T) - brute_T
+        brute_T_err_lower = brute_T - np.min(masked_T)
+
+        if UVOT_guided_params is not None: # if we want UVOT-guided fitting, we must only sample values from within the UVOT-guided bounds, so this prevents us from sampling from the parts of the error bars which go beyond the UVOT guided regions. 
+            UVOT_guidance_mask = ((masked_T <= UVOT_T_max) & (masked_T >= UVOT_T_min) & (masked_R_sc <= UVOT_R_sc_max) & (masked_R_sc >= UVOT_R_sc_min))
+            masked_chi = masked_chi[UVOT_guidance_mask]
+            masked_R_sc = masked_R_sc[UVOT_guidance_mask]
+            masked_T = masked_T[UVOT_guidance_mask]
+
+        # sample values from the uncertainty region
+        weights = 1/masked_chi
+        weights /= np.sum(weights)
+
+        sampled_indicies = np.random.choice(len(weights), size = self.error_sampling_size, p = weights, replace = True) # sample parameter combinations from the chi grid, where the probability is proportional to 1/chi
+
+        sampled_R = masked_R_sc[sampled_indicies] / self.R_scalefactor
+        sampled_T = masked_T[sampled_indicies]
+        sampled_chi = masked_chi[sampled_indicies]
+
+
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # add the result to the results row which will be appended to the results dataframe
         self.BB_fit_results.loc[MJD, self.columns[10:20]] = [red_chi_1sig,    brute_T,     brute_T_err_lower,     brute_T_err_upper,     brute_R,     brute_R_err_lower,      brute_R_err_upper,     brute_red_chi,    brute_chi_sigma_dist, min_chi]
         #                                                   'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
 
-    
+
+        # add the sampled params to the sampled param df
+        #                            0              1          2          3              4                       5                6              7              8              9            
+        #self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_T_K', 'sampled_R_cm', 'sampled_chi']
+        MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
+        MJD_bands = list(MJD_df['band'].unique())
+        MJD_no_bands = len( MJD_bands ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
+        MJD_em_cent_wls = list(MJD_df['em_cent_wl'].unique())
+
+        for i in range(self.error_sampling_size):
+            sample_row_dict = {'d_since_peak': MJD_d_since_peak, 
+                               'no_bands': MJD_no_bands, 
+                               'bands': MJD_bands, 
+                               'em_cent_wls': MJD_em_cent_wls, 
+                               'brute_red_chi': brute_red_chi, 
+                               'brute_chi_sigma_dist': brute_chi_sigma_dist, 
+                               'brute_chi': min_chi, 
+                               'sampled_T_K': sampled_T[i], 
+                               'sampled_R_cm': sampled_R[i], 
+                               'sampled_chi': sampled_chi[i]}
+
+            for key, value in sample_row_dict.items():
+                self.BB_fit_samples.at[(MJD, i), key] = value
+            
 
 
 
-    def double_BB_drute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, UVOT_guided_params = None):
+
+
+
+
+
+    def double_BB_curvefit(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, return_params = False):
+        try:
+            popt, pcov = opt.curve_fit(double_blackbody, xdata = MJD_df['em_cent_wl_cm'], ydata = MJD_df['L_rf_scaled'], sigma = MJD_df['L_rf_err_scaled'], absolute_sigma = True, 
+                                    bounds = (np.array([R1_sc_min, T1_min, R2_sc_min, T2_min]), np.array([R1_sc_max, T1_max, R2_sc_max, T2_max])))
+                                    #                  (R1_min,   T1_min,   R2_min,  T2_min)           (R1_max,   T1_max,  R2_max,  T2_max)
+            
+            sc_cf_R1, cf_T1, sc_cf_R2, cf_T2 = popt
+            sc_cf_R1_err = np.sqrt(pcov[0, 0])
+            cf_T1_err = np.sqrt(pcov[1, 1])
+            sc_cf_R2_err = np.sqrt(pcov[2, 2])
+            cf_T2_err = np.sqrt(pcov[3, 3])
+            cf_R1 = sc_cf_R1 / self.R_scalefactor
+            cf_R1_err = sc_cf_R1_err / self.R_scalefactor
+            cf_R2 = sc_cf_R2 / self.R_scalefactor
+            cf_R2_err = sc_cf_R2_err / self.R_scalefactor
+            cf_cov = pcov[1,0]  # BUT THIS IS PROBABLY THE COVARIANCE BETWEEN JUST THE T1 AND R1 PARAMETERS OR SOMETHING, NOT THE COVARIANCE BETWEEN ALL 4 PARAMETERS. 
+
+            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # calculate the reduced chi squared of the curve_fit result
+            BB_sc_L_chi = [double_blackbody(wl_cm, sc_cf_R1, cf_T1, sc_cf_R2, cf_T2) for wl_cm in MJD_df['em_cent_wl_cm']] # evaluating the BB model from curve_fit at the emitted central wavelengths present in our data to use for chi squared calculation
+            cf_chi, cf_red_chi, red_chi_1sig = chisq(y_m = BB_sc_L_chi, y = MJD_df['L_rf_scaled'], yerr = MJD_df['L_rf_err_scaled'], M = 4, reduced_chi = False, chi_AND_redchi = True)
+            cf_chi_sigma_dist = (cf_red_chi - 1)/red_chi_1sig
+
+            # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            # add the result to the results row which will be appended to the results dataframe
+            #                 0             1           2            3          4              5            6            7            8            9            10              11               12                 13           14        15          16               17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31 
+            #self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi', 'bands', 'em_cent_wls', 'brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
+            self.BB_fit_results.loc[MJD, self.columns[3:15]] = [cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi]
+
+            if return_params:
+                return cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi
+
+
+        except RuntimeError:
+            print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
+            self.no_failed_curvefits += 1 # counting the number of failed curve fits
+            self.BB_fit_results.loc[MJD, self.columns[3:15]] = np.nan
+
+
+
+
+
+
+
+
+
+
+
+
+    def double_BB_brute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, cf_T1, cf_R1, cf_T2, cf_R2, cf_chi, cf_chi_sigma_dist, cf_red_chi, UVOT_guided_params = None):
         """
+        This function is built to do a coarse DBB followup on a curve_fit result. It is not built to be a full brute force DBB fit, but rather to be a followup on the curve fit result to get better uncertainties on the model parameters.
+        
         INPUTS
         ---------------
         R1_sc_min, R2_sc_min: the min value of SCALED BB radius to try
@@ -2597,20 +2735,23 @@ class fit_SED_across_lightcurve:
 
         T1_max, T2_min: the max value of BB temperature to try
 
+        cf_T1, cf_R1, cf_T2, cf_R2: the values of T1, R1, T2, R2 given by curve fit. We use these to calculate the uncertainties about these parameters in the brute grid. This is to allow for assymetric uncertainties on the parameters. 
+                                    We do not take the model parameter values from the brute grid because if the curvefit uncertainty happens to be very large, then the brute grid would have very large spacing between trialled parameter values. 
+                                    This would be too coarse of a grid to take optimal paremters from (although I guess you're exploring a grid within +/- 2 sigma of the curve_fit params, so according to curve fit most fits within this region should be reaosnable). 
+
         UVOT_guided_params: (list) if you are using a UVOT guided fitting process, this is the list of UVOT-constrained parameter space to take the model params from. 
-                            Input these guided parameters in the order: R_sc_min, R_sc_max, T_min, T_max. 
-                            You must explore the entire parameter space still to ensure that you fully capture the delta_chi = 2.3 region in parameter space to ensure that
-                            you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
-                            the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. This is why you
-                            should input the default parameter search regions into the other inuputs outlined above.
+                    Input these guided parameters in the order: R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max. 
+                    You must explore the entire parameter space still to ensure that you fully capture the delta_chi = 2.3 region in parameter space to ensure that
+                    you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
+                    the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. 
         """
 
         # creating the values of R and T that we will try
         # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
-        sc_R1_values = np.logspace(np.log10(R1_sc_min), np.log10(R1_sc_max), self.brute_gridsize)
+        sc_R1_values = np.logspace(np.log10(R1_sc_min), np.log10(R1_sc_max), self.DBB_brute_gridsize)
         T1_values = np.logspace(np.log10(T1_min), np.log10(T1_max), self.brute_gridsize)
 
-        sc_R2_values = np.logspace(np.log10(R2_sc_min), np.log10(R2_sc_max), self.brute_gridsize)
+        sc_R2_values = np.logspace(np.log10(R2_sc_min), np.log10(R2_sc_max), self.DBB_brute_gridsize)
         T2_values = np.logspace(np.log10(T2_min), np.log10(T2_max), self.brute_gridsize)
 
         wavelengths = MJD_df['em_cent_wl_cm'].to_numpy() # the emitted central wavelengths of the bands present at this MJD value
@@ -2621,44 +2762,39 @@ class fit_SED_across_lightcurve:
 
         # create a 5D array of the blackbody luminosities for each combination of R and T. This is done by broadcasting the 1D arrays of wavelengths, R values and T values
         # the 5D array will have dimensions (len(wavelengths), len(R_values), len(T_values)) and will contain the blackbody luminosities for each combination of R and T for each wavelength value
-        DBB_L_sc = vectorised_double_blackbody(wavelengths, R1 = sc_R1_values, T1 = T1_values, R2 = sc_R2_values, T2 = T2_values) # the calculated value of scaled rest frame luminosity using each combination of T1, sc_R1, T2, sc_R2 for each wavelength. shape = (wavelengths, len(sc_R1_values), len(T1_values), len(sc_R2_values), len(T2_values))
+        DBB_L_sc = vectorised_double_blackbody(wavelengths, R1 = sc_R1_values, T1 = T1_values, R2 = sc_R2_values, T2 = T2_values) # the calculated value of scaled rest frame luminosity using each combination of T1, sc_R1, T2, sc_R2 for each wavelength. shape = (len(wavelengths), len(sc_R1_values), len(T1_values), len(sc_R2_values), len(T2_values))
         
         # calculate the chi squared grid
         chi = np.sum((L_rfs - DBB_L_sc)**2 / L_rf_errs**2, axis = 0) # the chi squared grid, shape = (len(sc_R1_values), len(T1_values), len(sc_R2_values), len(T2_values))
 
 
 
-        # FIND MIN CHI  
-
-
         # FIND MIN CHI 
-        # if we are doing a UVOT guided approach, then restrict the chi grid to the regions of parameter space that the UVOT fits allow to take the model parameters from, 
-        # then calculate the model parameter uncertainties using the entire chi grid
-        if UVOT_guided_params is None: # if you're not doing UVOT guided fitting
-            min_chi = np.min(chi) # the minimum chi squared value
-            min_chi_indicies = np.unravel_index(np.argmin(chi), chi.shape())
-            brute_R1 = sc_R1_values[min_chi_indicies[0]] / self.R_scalefactor # the parameters which give the minimum chi squared
-            brute_T1 = T1_values[min_chi_indicies[1]]
-            brute_R2 = sc_R2_values[min_chi_indicies[2]] / self.R_scalefactor
-            brute_T2 = T2_values[min_chi_indicies[3]]
+        # we do not use a UVOT guided fitting here because the curve_fit is gudied, then we use this brute DBB to get better uncertainties
+        #min_chi = np.min(chi) # the minimum chi squared value
+        #min_chi_indicies = np.unravel_index(np.argmin(chi), chi.shape())
+        #brute_R1 = sc_R1_values[min_chi_indicies[0]] / self.R_scalefactor # the parameters which give the minimum chi squared
+        #brute_T1 = T1_values[min_chi_indicies[1]]
+        #brute_R2 = sc_R2_values[min_chi_indicies[2]] / self.R_scalefactor
+        #brute_T2 = T2_values[min_chi_indicies[3]]
 
-        else:
-            print('ERROR - WE HAVE NOT IMPLEMENTED UVOT GUIDED FITTING FOR BRUTE FORCE DOUBLE BLACKBODY FITTING')
+
 
         # calculate the reduced chi squared
-        N_M = len(MJD_df['band']) - 4
-        if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
-            brute_red_chi = min_chi / N_M
-            red_chi_1sig = np.sqrt(2/N_M)
-            brute_chi_sigma_dist = (brute_red_chi - 1) / red_chi_1sig
-        else:
-            brute_red_chi = np.nan
-            red_chi_1sig = np.nan
-            brute_chi_sigma_dist = np.nan
+        #N_M = len(MJD_df['band']) - 4
+        #if N_M > 0: 
+        #    brute_red_chi = min_chi / N_M
+        #    red_chi_1sig = np.sqrt(2/N_M)
+        #    brute_chi_sigma_dist = (brute_red_chi - 1) / red_chi_1sig
+        #else: # this is for when we try to 'fit' a BB to 4 datapoints, since we have 4 parameters, we can't calculate a reduced chi squared 
+        #    brute_red_chi = np.nan
+        #    red_chi_1sig = np.nan
+        #    brute_chi_sigma_dist = np.nan
 
 
         # calculate uncertainties on model params using the brute force method
-        threshold = min_chi + self.brute_delchi
+        #threshold = min_chi + self.brute_delchi
+        threshold = cf_chi + self.brute_delchi
         mask = chi <= threshold
         R1_grid, T1_grid, R2_grid, T2_grid = np.meshgrid(sc_R1_values, T1_values, sc_R2_values, T2_values, indexing='ij')
         masked_chi = chi[mask]
@@ -2667,26 +2803,37 @@ class fit_SED_across_lightcurve:
         masked_R2_sc = R2_grid[mask]
         masked_T2 = T2_grid[mask]
 
-        brute_T1_err_upper = np.max(masked_T1) - brute_T1 # the upper error on the temperature parameter
-        brute_T1_err_lower = brute_T1 - np.min(masked_T1) # the lower error on the temperature parameter
+        #brute_T1_err_upper = np.max(masked_T1) - brute_T1 # the upper error on the temperature parameter
+        #brute_T1_err_lower = brute_T1 - np.min(masked_T1) # the lower error on the temperature parameter
 
-        brute_R1_err_upper = (np.max(masked_R1_sc) / self.R_scalefactor) - brute_R1 # the upper error on the radius parameter
-        brute_R1_err_lower = brute_R1 - (np.min(masked_R1_sc) / self.R_scalefactor) # the lower error on the radius parameter
+        #brute_R1_err_upper = (np.max(masked_R1_sc) / self.R_scalefactor) - brute_R1 # the upper error on the radius parameter
+        #brute_R1_err_lower = brute_R1 - (np.min(masked_R1_sc) / self.R_scalefactor) # the lower error on the radius parameter
 
-        brute_T2_err_upper = np.max(masked_T2) - brute_T2 # the upper error on the temperature parameter
-        brute_T2_err_lower = brute_T2 - np.min(masked_T2) # the lower error on the temperature parameter
+        #brute_T2_err_upper = np.max(masked_T2) - brute_T2 # the upper error on the temperature parameter
+        #brute_T2_err_lower = brute_T2 - np.min(masked_T2) # the lower error on the temperature parameter
 
-        brute_R2_err_upper = (np.max(masked_R2_sc) / self.R_scalefactor) - brute_R2 # the upper error on the radius parameter
-        brute_R2_err_lower = brute_R2 - (np.min(masked_R2_sc) / self.R_scalefactor) # the lower error on the radius parameter
+        #brute_R2_err_upper = (np.max(masked_R2_sc) / self.R_scalefactor) - brute_R2 # the upper error on the radius parameter
+        #brute_R2_err_lower = brute_R2 - (np.min(masked_R2_sc) / self.R_scalefactor) # the lower error on the radius parameter
+
+        cf_T1_err_upper = np.max(masked_T1) - cf_T1 # the upper error on the temperature parameter
+        cf_T1_err_lower = cf_T1 - np.min(masked_T1) # the lower error on the temperature parameter
+
+        cf_R1_err_upper = (np.max(masked_R1_sc) / self.R_scalefactor) - cf_R1 # the upper error on the radius parameter
+        cf_R1_err_lower = cf_R1 - (np.min(masked_R1_sc) / self.R_scalefactor) # the lower error on the radius parameter
+
+        cf_T2_err_upper = np.max(masked_T2) - cf_T2 # the upper error on the temperature parameter
+        cf_T2_err_lower = cf_T2 - np.min(masked_T2) # the lower error on the temperature parameter
+
+        cf_R2_err_upper = (np.max(masked_R2_sc) / self.R_scalefactor) - cf_R2 # the upper error on the radius parameter
+        cf_R2_err_lower = cf_R2 - (np.min(masked_R2_sc) / self.R_scalefactor) # the lower error on the radius parameter
         
 
 
-        # now take a sample of 100 parameter combinations within the region chi <= min_chi + 2.3, where the parameter combos chosen were chosen with probability proportional to 1/chi
+        # now take a sample of parameter combinations within the region chi <= min_chi + 2.3, where the parameter combos chosen were chosen with probability proportional to 1/chi
         weights = 1/masked_chi
         weights /= np.sum(weights)
 
-        sample_size = 10
-        sampled_indicies = np.random.choice(len(weights), size = sample_size, p = weights, replace = True) # sample 20 parameter combinations from the chi grid, where the probability is proportional to 1/chi
+        sampled_indicies = np.random.choice(len(weights), size = self.error_sampling_size, p = weights, replace = True) # sample parameter combinations from the chi grid, where the probability is proportional to 1/chi
         
         sampled_R1 = masked_R1_sc[sampled_indicies] / self.R_scalefactor
         sampled_T1 = masked_T1[sampled_indicies]
@@ -2697,9 +2844,101 @@ class fit_SED_across_lightcurve:
         # add the results to the results dataframe
                 #                17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31                        
         #self.columns = ['brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
-        self.BB_fit_results.loc[MJD, self.columns[18:32]] = [brute_T1, brute_T1_err_lower, brute_T1_err_upper, brute_R1, brute_R1_err_lower, brute_R1_err_upper,
-                                                              brute_T2, brute_T2_err_lower, brute_T2_err_upper, brute_R2, brute_R2_err_lower, brute_R2_err_upper,
-                                                              brute_red_chi, brute_chi_sigma_dist, min_chi]
+        #self.BB_fit_results.loc[MJD, self.columns[17:32]] = [brute_T1, brute_T1_err_lower, brute_T1_err_upper, brute_R1, brute_R1_err_lower, brute_R1_err_upper,
+        #                                                      brute_T2, brute_T2_err_lower, brute_T2_err_upper, brute_R2, brute_R2_err_lower, brute_R2_err_upper,
+        #                                                      brute_red_chi, brute_chi_sigma_dist, min_chi]
+        
+        result_dict = {'cf_T1_err_lower': cf_T1_err_lower, # here, we are adding the upper and lower errors to the curve_fit model parameters. I think we don't need to save the brute force 'optimal' params ans stuff, and I think we should sample from the chi_M +/- brute_M_err region
+                       'cf_T1_err_upper': cf_T1_err_upper, 
+                       'cf_R1_err_lower': cf_R1_err_lower, 
+                       'cf_R1_err_upper': cf_R1_err_upper, 
+                       'cf_T2_err_lower': cf_T2_err_lower, 
+                       'cf_T2_err_upper': cf_T2_err_upper, 
+                       'cf_R2_err_lower': cf_R2_err_lower, 
+                       'cf_R2_err_upper': cf_R2_err_upper}
+        
+        self.BB_fit_results.loc[MJD, result_dict.keys()] = result_dict.values()
+
+
+        # add the sampled parameters to the sampled dataframe
+        #                            0               1         2            3              4                     5                6              7              8               9                 10              11            
+        #self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_T1_K', 'sampled_R1_cm', 'sampled_T2_K', 'sampled_R2_cm', 'sampled_chi] 
+        MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
+        MJD_bands = list(MJD_df['band'].unique())
+        MJD_no_bands = len( MJD_bands ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
+        MJD_em_cent_wls = list(MJD_df['em_cent_wl'].unique())
+
+        for i in range(self.error_sampling_size):
+            sampled_row_dict = {'d_since_peak': MJD_d_since_peak, 
+                                'no_bands': MJD_no_bands, 
+                                'bands': MJD_bands, 
+                                'em_cent_wls': MJD_em_cent_wls, 
+                                'brute_red_chi': cf_red_chi, #brute_red_chi, 
+                                'brute_chi_sigma_dist': cf_chi_sigma_dist, #brute_chi_sigma_dist, 
+                                'brute_chi': cf_chi, #min_chi, 
+                                'sampled_T1_K': sampled_T1[i], 
+                                'sampled_R1_cm': sampled_R1[i], 
+                                'sampled_T2_K': sampled_T2[i], 
+                                'sampled_R2_cm': sampled_R2[i], 
+                                'sampled_chi': sampled_chi[i]}
+
+            for key, value in sampled_row_dict.items():
+                self.BB_fit_samples.at[(MJD, i), key] = value # add the sampled params to the dataframe
+
+
+
+
+
+
+
+
+    def DBB_brute_param_search_lims(cf_M, cf_M_err, M_lower_lim, M_upper_lim):
+        """
+        This function is used to set the limits for the DBB coarse brute force gridding. We try to explore within +/-2 sigma of the curve_fit model params, but
+        want to ensure that these do not go beyond the orifinal fitting limits set (the limits that were set and input for curve_fit - these would either be
+        the general parameter space limits (for UV epoch SED fits) or the UVOT-gudied param space lims (for the optical-only epoch SED fits)). 
+
+        INPUTS
+        ----------------
+        cf_M: (float) the value of the curve_fit model parameter
+
+        cf_M_err: (float) the value of the curve_fit model parameter error
+
+        M_lower_lim: (float) the overarching lower lim value on the parameter
+
+        M_upper_lim: (float) the overarching upper lim value on the parameter
+        """
+
+        cf_lower_lim = cf_M - 2*cf_M_err
+        cf_upper_lim = cf_M + 2*cf_M_err
+
+        if cf_lower_lim < M_lower_lim:
+            cf_lower_lim = M_lower_lim
+
+        if cf_upper_lim > M_upper_lim:
+            cf_upper_lim = M_upper_lim
+
+        return cf_lower_lim, cf_upper_lim
+
+
+
+
+    def double_BB_curvefit_then_brute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, UVOT_guided_params = None):
+        
+        # run the curve_fit, then we will use the results to set the bounds of the brute force fit (provided that these bounds don't go beyond the UVOT guided ones)
+
+        # when doing the UVOT guided fitting with this function, we don't need UVOT_guided_params because curve_fits bounds are just set to the UVOT guided params and it 
+        # gives out your param value bounded within your given regions, as well as its uncertainty (although a symmetric uncertainty)
+        cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi = self.double_BB_curvefit(MJD = MJD, MJD_df = MJD_df, R1_sc_min = R1_sc_min, R1_sc_max = R1_sc_max, T1_min = T1_min, T1_max = T1_max, 
+                                                                                                                                                                R2_sc_min = R2_sc_min, R2_sc_max = R2_sc_max, T2_min = T2_min, T2_max = T2_max, return_params = True)
+        
+        # set the limits for the brute force coarse grid
+        # want to search within +/-2 sigma of each param value calculated by curve_fit, provided that these search regions don't exceed the original limit
+
+        brute_T1_min, brute_T1_max = self.DBB_brute_param_search_lims(cf_M = cf_T1, cf_M_err = cf_T1_err, M_lower_lim = T1_min, M_upper_lim = T1_max)
+        brute_R1_min, brute_R1_max = self.DBB_brute_param_search_lims(cf_M = cf_R1, cf_M_err = cf_R1_err, M_lower_lim = (R1_sc_min/self.R_scalefactor), M_upper_lim = (R1_sc_max/self.R_scalefactor))
+        brute_T2_min, brute_T2_max = self.DBB_brute_param_search_lims(cf_M = cf_T2, cf_M_err = cf_T2_err, M_lower_lim = T2_min, M_upper_lim = T2_max)
+        brute_R2_min, brute_R2_max = self.DBB_brute_param_search_lims(cf_M = cf_R2, cf_M_err = cf_R2_err, M_lower_lim = (R2_sc_min/self.R_scalefactor), M_upper_lim = (R2_sc_max/self.R_scalefactor))
 
 
 
@@ -2838,9 +3077,8 @@ class fit_SED_across_lightcurve:
 
         """
         
-        UVOT_filters = ['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V']
-
-        bin_by_MJD = self.interp_df.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': g['band'].isin(UVOT_filters).sum() > 0 })).reset_index()
+        UV_wavelength_threshold = 3800 # angstrom
+        bin_by_MJD = self.interp_df.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': (g['em_cent_wl']< UV_wavelength_threshold).any() })).reset_index()
 
         self.all_UVOT_MJDs = bin_by_MJD[bin_by_MJD['UVOT?'] == True]['MJD'].to_numpy() # an array of the MJDs at which we have UVOT data
         self.optical_MJDs = bin_by_MJD[bin_by_MJD['UVOT?'] == False]['MJD'].to_numpy() # used in the next function where we SED fit the non-UVOT MJDs
@@ -3146,7 +3384,7 @@ class fit_SED_across_lightcurve:
 
         """
         self.UVOT_guided_err_scalefactor = err_scalefactor
-        if self.ant_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd']: # these are the ANTs with UVOT on the rise/peak so can use it to constrain non-UVOT SED fit parameter space
+        if self.ant_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd', 'PS1-10adi']: # these are the ANTs with UVOT on the rise/peak so can use it to constrain non-UVOT SED fit parameter space
             self.guided_UVOT_SED_fits = True # I will use this to add details to the subplots of individual SEDs like adding in our calculated explorable parameter space 
 
             if self.SED_type == 'single_BB': # setting these straight so we don't get any unexpected code trying to run
@@ -3979,6 +4217,10 @@ class fit_SED_across_lightcurve:
 
             savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_SED_fit_across_lc.csv"
             self.BB_fit_results.to_csv(savepath, index = False)
+
+            # ALSO SAVE THE SAMPLED SED PARAMETER DATAFRAME. CONTAINS PARAMETER VALUES SAMPLED FROM THE CHI SQUARED CONTOUR WHERE CHI<= MIN_CHI + 2.3
+            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_sampled_params.csv"
+            self.BB_fit_samples.to_csv()
 
 
 
