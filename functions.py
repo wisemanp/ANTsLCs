@@ -1875,6 +1875,13 @@ def blackbody(lam_cm, R_cm, T_K):
 
 
 
+
+
+
+
+
+
+
 #=================================================================================================================================================================
 #=================================================================================================================================================================
 #=================================================================================================================================================================
@@ -1908,6 +1915,79 @@ def double_blackbody(lam, R1, T1, R2, T2):
 
     return BB1 + BB2
 
+
+
+
+
+
+
+
+def vectorised_blackbody(lam_cm, R_cm, T_K):
+    """
+    Planck's blackbody formula modified to give luminosity per unit wavelength in units ergs/s/Angstrom
+
+    INPUTS
+    --------------
+    lam: (N_wl, ) the wavelength in cm
+
+    R_cm: (N_r, ) Blackbody radius in cm - a parameter to fit for
+
+    T_K: (N_t, ) Blackbody temperature in Kelvin - a parameter to fit for
+
+    RETURNS
+    --------------
+    L: (N_wl, N_r, N_t) blackbody luminosity per unit wavelength for the wavelength input. Units: ergs/s/Angstrom
+    """
+
+    c_cgs = const.c.cgs.value
+    h_cgs = const.h.cgs.value
+    k_cgs = const.k_B.cgs.value
+
+    lam_cm = lam_cm[:, np.newaxis, np.newaxis] # shape (N_wl, 1, 1)
+    R_cm, T_K = np.meshgrid(R_cm, T_K) # shape (N_r, N_t) - this is the same as R_cm[:, np.newaxis] * T_K[np.newaxis, :] but more efficient
+
+    C = 8 * (np.pi**2) * h_cgs * (c_cgs**2) * 1e-8 # the constant coefficient of the equation 
+    exponent = (h_cgs * c_cgs) / (lam_cm * k_cgs * T_K)
+    denom = np.expm1(exponent) # more efficient than using np.exp() -1
+
+    L = C * ((R_cm**2) / (lam_cm**5)) / (denom) # ergs/s/Angstrom
+
+    return L
+
+
+
+
+
+
+
+def vectorised_double_blackbody(lam, R1, T1, R2, T2):
+    """
+    A function which returns the sum of two blackbody functions.
+
+    INPUTS
+    --------------
+    lam: the wavelength in cm
+
+    R1: Blackbody radius in cm - a parameter to fit for
+
+    T1: Blackbody temperature in Kelvin - a parameter to fit for
+
+    R2: Blackbody radius in cm - a parameter to fit for
+
+    T2: Blackbody temperature in Kelvin - a parameter to fit for
+
+    RETURNS
+    --------------
+    BB1 + BB2: the sum of two blackbody functions. Units: ergs/s/Angstrom
+    """
+    BB1 = vectorised_blackbody(lam, R1, T1) # shape (N_wl, N_r1, N_t1)
+    BB2 = vectorised_blackbody(lam, R2, T2) # shape (N_wl, N_r2, N_t2)
+
+    BB1 = BB1[:, :, :, np.newaxis, np.newaxis] # shape (N_wl, N_r1, N_t1, 1, 1)
+    BB2 = BB2[:, np.newaxis, np.newaxis, :, :] # shape (N_wl, 1, 1, N_r2, N_t2)
+
+
+    return BB1 + BB2 # shape (N_wl, N_r1, N_t1, N_r2, N_t2)
 
 
 #=================================================================================================================================================================
@@ -2075,8 +2155,9 @@ class fit_SED_across_lightcurve:
             self.BB_R_max_sc = BB_R_max * self.R_scalefactor
 
 
-        elif self.SED_type == 'double_BB':
-            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi', 'bands', 'em_cent_wls']
+        elif self.SED_type == 'double_BB':  
+            #                 0             1           2            3          4              5            6            7            8            9            10              11               12                 13           14        15          16               17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31 
+            self.columns = ['MJD', 'd_since_peak', 'no_bands', 'cf_T1_K', 'cf_T1_err_K', 'cf_R1_cm', 'cf_R1_err_cm', 'cf_T2_K', 'cf_T2_err_K', 'cf_R2_cm', 'cf_R2_err_cm', 'cf_red_chi', 'cf_chi_sigma_dist', 'red_chi_1sig', 'cf_chi', 'bands', 'em_cent_wls', 'brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
             self.DBB_T1_min = DBB_T1_min
             self.DBB_T1_max = DBB_T1_max
             self.DBB_T2_min = DBB_T2_min
@@ -2215,9 +2296,6 @@ class fit_SED_across_lightcurve:
             print(f'{Fore.RED} WARNING - Curve fit failed for MJD = {MJD} {Style.RESET_ALL}')
             self.no_failed_curvefits += 1 # counting the number of failed curve fits
             self.BB_fit_results.loc[MJD, self.columns[3:15]] = np.nan
-
-
-
 
 
     def power_law_curvefit(self, MJD, MJD_df, A_sc_min, A_sc_max, gamma_min, gamma_max):
@@ -2504,6 +2582,129 @@ class fit_SED_across_lightcurve:
         #                                                   'red_chi_1sig', 'brute_T_K', 'brute_T_err_lower_K', 'brute_T_err_upper_K', 'brute_R_cm', 'brute_R_err_lower_cm', 'brute_R_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist']
 
     
+
+
+
+    def double_BB_drute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, UVOT_guided_params = None):
+        """
+        INPUTS
+        ---------------
+        R1_sc_min, R2_sc_min: the min value of SCALED BB radius to try
+
+        R1_sc_max, R2_sc_max: the max value of SCALED BB radius to try
+
+        T1_min, T2_min: the min value of BB temperature to try
+
+        T1_max, T2_min: the max value of BB temperature to try
+
+        UVOT_guided_params: (list) if you are using a UVOT guided fitting process, this is the list of UVOT-constrained parameter space to take the model params from. 
+                            Input these guided parameters in the order: R_sc_min, R_sc_max, T_min, T_max. 
+                            You must explore the entire parameter space still to ensure that you fully capture the delta_chi = 2.3 region in parameter space to ensure that
+                            you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
+                            the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. This is why you
+                            should input the default parameter search regions into the other inuputs outlined above.
+        """
+
+        # creating the values of R and T that we will try
+        # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
+        sc_R1_values = np.logspace(np.log10(R1_sc_min), np.log10(R1_sc_max), self.brute_gridsize)
+        T1_values = np.logspace(np.log10(T1_min), np.log10(T1_max), self.brute_gridsize)
+
+        sc_R2_values = np.logspace(np.log10(R2_sc_min), np.log10(R2_sc_max), self.brute_gridsize)
+        T2_values = np.logspace(np.log10(T2_min), np.log10(T2_max), self.brute_gridsize)
+
+        wavelengths = MJD_df['em_cent_wl_cm'].to_numpy() # the emitted central wavelengths of the bands present at this MJD value
+        L_rfs = MJD_df['L_rf_scaled'].to_numpy() # the scaled rest frame luminosities of the bands present at this MJD value
+        L_rfs = L_rfs[:, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+        L_rf_errs = MJD_df['L_rf_err_scaled'].to_numpy() # the scaled rest frame luminosity errors of the bands present at this MJD value
+        L_rf_errs = L_rf_errs[:, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+
+        # create a 5D array of the blackbody luminosities for each combination of R and T. This is done by broadcasting the 1D arrays of wavelengths, R values and T values
+        # the 5D array will have dimensions (len(wavelengths), len(R_values), len(T_values)) and will contain the blackbody luminosities for each combination of R and T for each wavelength value
+        DBB_L_sc = vectorised_double_blackbody(wavelengths, R1 = sc_R1_values, T1 = T1_values, R2 = sc_R2_values, T2 = T2_values) # the calculated value of scaled rest frame luminosity using each combination of T1, sc_R1, T2, sc_R2 for each wavelength. shape = (wavelengths, len(sc_R1_values), len(T1_values), len(sc_R2_values), len(T2_values))
+        
+        # calculate the chi squared grid
+        chi = np.sum((L_rfs - DBB_L_sc)**2 / L_rf_errs**2, axis = 0) # the chi squared grid, shape = (len(sc_R1_values), len(T1_values), len(sc_R2_values), len(T2_values))
+
+
+
+        # FIND MIN CHI  
+
+
+        # FIND MIN CHI 
+        # if we are doing a UVOT guided approach, then restrict the chi grid to the regions of parameter space that the UVOT fits allow to take the model parameters from, 
+        # then calculate the model parameter uncertainties using the entire chi grid
+        if UVOT_guided_params is None: # if you're not doing UVOT guided fitting
+            min_chi = np.min(chi) # the minimum chi squared value
+            min_chi_indicies = np.unravel_index(np.argmin(chi), chi.shape())
+            brute_R1 = sc_R1_values[min_chi_indicies[0]] / self.R_scalefactor # the parameters which give the minimum chi squared
+            brute_T1 = T1_values[min_chi_indicies[1]]
+            brute_R2 = sc_R2_values[min_chi_indicies[2]] / self.R_scalefactor
+            brute_T2 = T2_values[min_chi_indicies[3]]
+
+        else:
+            print('ERROR - WE HAVE NOT IMPLEMENTED UVOT GUIDED FITTING FOR BRUTE FORCE DOUBLE BLACKBODY FITTING')
+
+        # calculate the reduced chi squared
+        N_M = len(MJD_df['band']) - 4
+        if N_M > 0: # this is for when we try to 'fit' a BB to 2 datapoints, since we have 2 parameters, we can't calculate a reduced chi squared value......
+            brute_red_chi = min_chi / N_M
+            red_chi_1sig = np.sqrt(2/N_M)
+            brute_chi_sigma_dist = (brute_red_chi - 1) / red_chi_1sig
+        else:
+            brute_red_chi = np.nan
+            red_chi_1sig = np.nan
+            brute_chi_sigma_dist = np.nan
+
+
+        # calculate uncertainties on model params using the brute force method
+        threshold = min_chi + self.brute_delchi
+        mask = chi <= threshold
+        R1_grid, T1_grid, R2_grid, T2_grid = np.meshgrid(sc_R1_values, T1_values, sc_R2_values, T2_values, indexing='ij')
+        masked_chi = chi[mask]
+        masked_R1_sc = R1_grid[mask]
+        masked_T1 = T1_grid[mask]
+        masked_R2_sc = R2_grid[mask]
+        masked_T2 = T2_grid[mask]
+
+        brute_T1_err_upper = np.max(masked_T1) - brute_T1 # the upper error on the temperature parameter
+        brute_T1_err_lower = brute_T1 - np.min(masked_T1) # the lower error on the temperature parameter
+
+        brute_R1_err_upper = (np.max(masked_R1_sc) / self.R_scalefactor) - brute_R1 # the upper error on the radius parameter
+        brute_R1_err_lower = brute_R1 - (np.min(masked_R1_sc) / self.R_scalefactor) # the lower error on the radius parameter
+
+        brute_T2_err_upper = np.max(masked_T2) - brute_T2 # the upper error on the temperature parameter
+        brute_T2_err_lower = brute_T2 - np.min(masked_T2) # the lower error on the temperature parameter
+
+        brute_R2_err_upper = (np.max(masked_R2_sc) / self.R_scalefactor) - brute_R2 # the upper error on the radius parameter
+        brute_R2_err_lower = brute_R2 - (np.min(masked_R2_sc) / self.R_scalefactor) # the lower error on the radius parameter
+        
+
+
+        # now take a sample of 100 parameter combinations within the region chi <= min_chi + 2.3, where the parameter combos chosen were chosen with probability proportional to 1/chi
+        weights = 1/masked_chi
+        weights /= np.sum(weights)
+
+        sample_size = 10
+        sampled_indicies = np.random.choice(len(weights), size = sample_size, p = weights, replace = True) # sample 20 parameter combinations from the chi grid, where the probability is proportional to 1/chi
+        
+        sampled_R1 = masked_R1_sc[sampled_indicies] / self.R_scalefactor
+        sampled_T1 = masked_T1[sampled_indicies]
+        sampled_R2 = masked_R2_sc[sampled_indicies] / self.R_scalefactor
+        sampled_T2 = masked_T2[sampled_indicies]
+        sampled_chi = masked_chi[sampled_indicies]
+
+        # add the results to the results dataframe
+                #                17          18                          19                 20                    21                    22                    23               24                    25                     26                27                    28                         29                 30                   31                        
+        #self.columns = ['brute_T1_K', 'brute_T1_err_lower_K', 'brute_T1_err_upper_K', 'brute_R1_cm', 'brute_R1_err_lower_cm', 'brute_R1_err_upper_cm', 'brute_T2_K', 'brute_T2_err_lower_K', 'brute_T2_err_upper_K', 'brute_R2_cm', 'brute_R2_err_lower_cm', 'brute_R2_err_upper_cm', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi']
+        self.BB_fit_results.loc[MJD, self.columns[18:32]] = [brute_T1, brute_T1_err_lower, brute_T1_err_upper, brute_R1, brute_R1_err_lower, brute_R1_err_upper,
+                                                              brute_T2, brute_T2_err_lower, brute_T2_err_upper, brute_R2, brute_R2_err_lower, brute_R2_err_upper,
+                                                              brute_red_chi, brute_chi_sigma_dist, min_chi]
+
+
+
+
+
 
 
 
