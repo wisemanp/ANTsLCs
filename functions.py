@@ -2818,7 +2818,7 @@ class fit_SED_across_lightcurve:
                                 'sampled_R2_cm': cf_R2, 
                                 'sampled_chi': cf_chi}
             
-            self.BB_fit_samples.loc[(MJD, self.error_sampling_size), list(sampled_row_dict.keys())] = pd.Series(sampled_row_dict.values()) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+            self.BB_fit_samples.loc[(MJD, self.error_sampling_size)] = pd.Series(sampled_row_dict) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
 
 
             if len(chi_flat) == 0:
@@ -2918,7 +2918,8 @@ class fit_SED_across_lightcurve:
                                 'sampled_R2_cm': sampled_R2[i], 
                                 'sampled_chi': sampled_chi[i]}
 
-            self.BB_fit_samples.loc[(MJD, i), list(sampled_row_dict.keys())] = list(sampled_row_dict.values()) # add the sampled params to the dataframe
+            self.BB_fit_samples.loc[(MJD, i)] = pd.Series(sampled_row_dict.values()) # add the sampled params to the dataframe
+            #self.BB_fit_samples.loc[(MJD, i), list(sampled_row_dict.keys())] = list(sampled_row_dict.values()) # add the sampled params to the dataframe
 
 
 
