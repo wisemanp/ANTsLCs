@@ -2741,7 +2741,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def double_BB_brute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, cf_chi, cf_chi_sigma_dist, cf_red_chi):
+    def double_BB_brute(self, MJD, MJD_df, R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max, cf_chi, cf_chi_sigma_dist, cf_red_chi, cf_T1, cf_R1, cf_T2, cf_R2):
         """
         This function is built to do a coarse DBB followup on a curve_fit result. It is not built to be a full brute force DBB fit, but rather to be a followup on the curve fit result to get better uncertainties on the model parameters.
         
@@ -2758,9 +2758,6 @@ class fit_SED_across_lightcurve:
         cf_T1, cf_R1, cf_T2, cf_R2: the values of T1, R1, T2, R2 given by curve fit. We use these to calculate the uncertainties about these parameters in the brute grid. This is to allow for assymetric uncertainties on the parameters. 
                                     We do not take the model parameter values from the brute grid because if the curvefit uncertainty happens to be very large, then the brute grid would have very large spacing between trialled parameter values. 
                                     This would be too coarse of a grid to take optimal paremters from (although I guess you're exploring a grid within +/- 2 sigma of the curve_fit params, so according to curve fit most fits within this region should be reaosnable). 
-
-        cf_T1_lims, cf_R1_sc_lims, cf_T2_lims, cf_R2_sc_lims: (tuple) in the format (lower_bound, upper_bound). The limits put on the curve_fit param search. We will use these bounds in this search to maek sure that we don't sample parameter values from the error bars whic go beyond the bounds of our parameter search. 
-                                                        So in the case of the UV epoch SED fits, these limits owuld be the regular param lims, then for the optical-only SED fits, these bounds would be the UVOT-guided bounds, so we don't want to sample param values from beyond these bounds. 
 
         UVOT_guided_params: (list) if you are using a UVOT guided fitting process, this is the list of UVOT-constrained parameter space to take the model params from. 
                     Input these guided parameters in the order: R1_sc_min, R1_sc_max, T1_min, T1_max, R2_sc_min, R2_sc_max, T2_min, T2_max. 
@@ -2803,6 +2800,22 @@ class fit_SED_across_lightcurve:
             mask = unmasked_chi <= (cf_chi + 5.0)
             chi = unmasked_chi[mask]
             chi_flat = chi.flatten()
+            # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+            sampled_row_dict = {'d_since_peak': MJD_d_since_peak, 
+                                'no_bands': MJD_no_bands, 
+                                'bands': MJD_bands, 
+                                'em_cent_wls': MJD_em_cent_wls, 
+                                'cf_red_chi': cf_red_chi, #brute_red_chi, 
+                                'cf_chi_sigma_dist': cf_chi_sigma_dist, #brute_chi_sigma_dist, 
+                                'cf_chi': cf_chi, #min_chi, 
+                                'sampled_T1_K': cf_T1, 
+                                'sampled_R1_cm': cf_R1, 
+                                'sampled_T2_K': cf_T2, 
+                                'sampled_R2_cm': cf_R2, 
+                                'sampled_chi': cf_chi}
+            
+            self.BB_fit_samples.loc[(MJD, self.error_sampling_size), list(sampled_row_dict.keys())] = list(sampled_row_dict.values()) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+
 
             if len(chi_flat) == 0:
                 print()
@@ -2881,81 +2894,6 @@ class fit_SED_across_lightcurve:
         sampled_chi = chi_flat[sampled_indicies]
 
 
-        # calculate uncertainties on model params using the brute force method
-        #threshold = min_chi + self.brute_delchi
-        #threshold = cf_chi + self.brute_delchi
-        #mask = chi <= threshold
-        #R1_grid, T1_grid, R2_grid, T2_grid = np.meshgrid(sc_R1_values, T1_values, sc_R2_values, T2_values, indexing='ij')
-        
-        #masked_chi = chi[mask]
-        #masked_R1_sc = R1_grid[mask]
-        #masked_T1 = T1_grid[mask]
-        #masked_R2_sc = R2_grid[mask]
-        #masked_T2 = T2_grid[mask]
-
-
-        #cf_T1_err_upper = np.max(masked_T1) - cf_T1 # the upper error on the temperature parameter
-        #cf_T1_err_lower = cf_T1 - np.min(masked_T1) # the lower error on the temperature parameter
-
-        #cf_R1_err_upper = (np.max(masked_R1_sc) / self.R_scalefactor) - cf_R1 # the upper error on the radius parameter
-        #cf_R1_err_lower = cf_R1 - (np.min(masked_R1_sc) / self.R_scalefactor) # the lower error on the radius parameter
-
-        #cf_T2_err_upper = np.max(masked_T2) - cf_T2 # the upper error on the temperature parameter
-        #cf_T2_err_lower = cf_T2 - np.min(masked_T2) # the lower error on the temperature parameter
-
-        #cf_R2_err_upper = (np.max(masked_R2_sc) / self.R_scalefactor) - cf_R2 # the upper error on the radius parameter
-        #cf_R2_err_lower = cf_R2 - (np.min(masked_R2_sc) / self.R_scalefactor) # the lower error on the radius parameter
-        
-
-
-        # now take a sample of parameter combinations within the region chi <= min_chi + 2.3, where the parameter combos chosen were chosen with probability proportional to 1/chi
-        # MAKE SURE THE PARAM SPACE THAT WE SAMPLE FROM DOES NOT EXCEED THE PARAM BOUNDS FOR THE ORIGINAL CURVE_FIT
-        #cf_T1_lb, cf_T1_ub = cf_T1_lims
-        #cf_R1_sc_lb, cf_R1_sc_ub = cf_R1_sc_lims
-        #cf_T2_lb, cf_T2_ub = cf_T2_lims
-        #cf_R2_sc_lb, cf_R2_sc_ub = cf_R2_sc_lims
-        #cf_bound_mask = ((T1_grid >= cf_T1_lb) & (T1_grid <= cf_T1_ub) & (R1_grid >= cf_R1_sc_lb) & (R1_grid <= cf_R1_sc_ub) &
-        #                    (T2_grid >= cf_T2_lb) & (T2_grid <= cf_T2_ub) & (R2_grid >= cf_R2_sc_lb) & (R2_grid <= cf_R2_sc_ub))
-        
-        #masked_chi = masked_chi[cf_bound_mask]
-        #masked_T1 = masked_T1[cf_bound_mask]
-        #masked_R1_sc = masked_R1_sc[cf_bound_mask]
-        #masked_T2 = masked_T2[cf_bound_mask]
-        #masked_R2_sc = masked_R2_sc[cf_bound_mask]
-
-        #masked_chi = chi[cf_bound_mask]
-        #masked_T1 = T1_grid[cf_bound_mask]
-        #masked_R1_sc = R1_grid[cf_bound_mask]
-        #masked_T2 = T2_grid[cf_bound_mask]
-        #masked_R2_sc = R2_grid[cf_bound_mask]
-
-
-        # now using the correctly limited parameter space according to the delchi = 2.3 and the curve_fit bounds, sample parameter values
-        #weights = 1/masked_chi
-        #weights /= np.sum(weights)
-
-        #sampled_indicies = np.random.choice(len(weights), size = self.error_sampling_size, p = weights, replace = True) # sample parameter combinations from the chi grid, where the probability is proportional to 1/chi
-        
-        #sampled_R1 = masked_R1_sc[sampled_indicies] / self.R_scalefactor
-        #sampled_T1 = masked_T1[sampled_indicies]
-        #sampled_R2 = masked_R2_sc[sampled_indicies] / self.R_scalefactor
-        #sampled_T2 = masked_T2[sampled_indicies]
-        #sampled_chi = masked_chi[sampled_indicies]
-
-
-
-
-        
-        #result_dict = {'cf_T1_err_lower': cf_T1_err_lower, # here, we are adding the upper and lower errors to the curve_fit model parameters. I think we don't need to save the brute force 'optimal' params ans stuff, and I think we should sample from the chi_M +/- brute_M_err region
-        #               'cf_T1_err_upper': cf_T1_err_upper, 
-        #               'cf_R1_err_lower': cf_R1_err_lower, 
-        #               'cf_R1_err_upper': cf_R1_err_upper, 
-        #               'cf_T2_err_lower': cf_T2_err_lower, 
-        #               'cf_T2_err_upper': cf_T2_err_upper, 
-        #               'cf_R2_err_lower': cf_R2_err_lower, 
-        #               'cf_R2_err_upper': cf_R2_err_upper}
-        
-        #self.BB_fit_results.loc[MJD, result_dict.keys()] = result_dict.values()
 
 
         # add the sampled parameters to the sampled dataframe
@@ -3038,7 +2976,8 @@ class fit_SED_across_lightcurve:
 
             self.double_BB_brute(MJD = MJD, MJD_df = MJD_df, R1_sc_min = brute_R1_sc_min, R1_sc_max = brute_R1_sc_max, T1_min = brute_T1_min, T1_max = brute_T1_max,
                                     R2_sc_min = brute_R2_sc_min, R2_sc_max = brute_R2_sc_max, T2_min = brute_T2_min, T2_max = brute_T2_max, 
-                                    cf_chi = cf_chi, cf_chi_sigma_dist = cf_chi_sigma_dist, cf_red_chi = cf_red_chi) 
+                                    cf_chi = cf_chi, cf_chi_sigma_dist = cf_chi_sigma_dist, cf_red_chi = cf_red_chi, 
+                                    cf_T1 = cf_T1, cf_R1 = cf_R1, cf_T2 = cf_T2, cf_R2 = cf_R2) 
 
 
 
@@ -3176,7 +3115,7 @@ class fit_SED_across_lightcurve:
 
         """
         
-        UV_wavelength_threshold = 3800 # angstrom
+        UV_wavelength_threshold = 3000 # angstrom
         bin_by_MJD = self.interp_df.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': (g['em_cent_wl']< UV_wavelength_threshold).any() })).reset_index()
 
         self.all_UVOT_MJDs = bin_by_MJD[bin_by_MJD['UVOT?'] == True]['MJD'].to_numpy() # an array of the MJDs at which we have UVOT data
