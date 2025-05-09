@@ -2765,6 +2765,10 @@ class fit_SED_across_lightcurve:
                     you know the largest and smallest parameter values which fall within this region to get the correct model parameter uncertainties. We use
                     the UVOT guided parameters to restrict the region of parameter space that we allow the final model parameters to be chosen from. 
         """
+        MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
+        MJD_bands = list(MJD_df['band'].unique())
+        MJD_no_bands = len( MJD_bands ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
+        MJD_em_cent_wls = list(MJD_df['em_cent_wl'].unique())
 
         # creating the values of R and T that we will try
         # the number of R and T values to trial in the grid. The combinations of R and T form a 2D grid, so the number of R and T values that we try give the side lengths of the grid
@@ -2814,7 +2818,7 @@ class fit_SED_across_lightcurve:
                                 'sampled_R2_cm': cf_R2, 
                                 'sampled_chi': cf_chi}
             
-            self.BB_fit_samples.loc[(MJD, self.error_sampling_size), list(sampled_row_dict.keys())] = list(sampled_row_dict.values()) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+            self.BB_fit_samples.loc[(MJD, self.error_sampling_size), list(sampled_row_dict.keys())] = pd.Series(sampled_row_dict.values()) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
 
 
             if len(chi_flat) == 0:
@@ -2899,10 +2903,6 @@ class fit_SED_across_lightcurve:
         # add the sampled parameters to the sampled dataframe
         #                            0               1         2            3              4                     5                6              7              8               9                 10              11            
         #self.sampled_columns = ['d_since_peak', 'no_bands', 'bands', 'em_cent_wls', 'brute_red_chi', 'brute_chi_sigma_dist', 'brute_chi', 'sampled_T1_K', 'sampled_R1_cm', 'sampled_T2_K', 'sampled_R2_cm', 'sampled_chi] 
-        MJD_d_since_peak = MJD_df['d_since_peak'].iloc[0]
-        MJD_bands = list(MJD_df['band'].unique())
-        MJD_no_bands = len( MJD_bands ) # the number of bands (and therefore datapoints) we have available at this MJD for the BB fit
-        MJD_em_cent_wls = list(MJD_df['em_cent_wl'].unique())
 
         for i in range(self.error_sampling_size):
             sampled_row_dict = {'d_since_peak': MJD_d_since_peak, 
