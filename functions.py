@@ -1760,13 +1760,13 @@ class polyfit_lightcurve:
 
 
 
-def load_interp_ANT_data():
+def load_interp_ANT_data(running_on_server):
     """
     loads in the interpolated ANT data files
 
     INPUTS:
     -----------
-    None
+    sunning_on_server: (bool) If True, the function will look for files according to the path structure on the server.
 
 
     OUTPUTS:
@@ -1776,7 +1776,12 @@ def load_interp_ANT_data():
     ANT_bands: a list of lists, each inner list is a list of all of the bands which are present in the light curve
 
     """
-    directory = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs" 
+    if running_on_server:
+        base_path = ""
+
+    else:
+        base_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/"
+    directory = base_path + "data/interpolated_lcs" 
 
     dataframes = []
     names = []
@@ -2047,7 +2052,8 @@ def power_law_SED(lam, A, gamma):
 
 
 class fit_SED_across_lightcurve:
-    def __init__(self, interp_df, SED_type, curvefit, brute, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
+    def __init__(self, interp_df, running_on_server, SED_type, curvefit, brute, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, 
+                individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
                  plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 5e5,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 5e5, DBB_R_min = 1e13, DBB_R_max = 1e19, 
@@ -2067,6 +2073,8 @@ class fit_SED_across_lightcurve:
             per per band per MJD value (this is only really relevant for the reference band, though, since the interpolation function ensures either 0 or 1
             value per band per MJD value for the interpolated data, since the polynomials are single-valued for any given MJD value). 
             columns: MJD, L_rf, L_rf_err, band, em_cent_wl
+
+        running_on_server: (bool) if True, the paths where we access and store the files will for the server paths. 
 
         SED_type: (str) options: 'single_BB', 'double_BB', 'power_law' or 'best_SED'. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
         If 'power_law', the SED fit will be a power law fit like A*(wavelength)**gamma. If 'best_SED', the SED will be fit with what was chosen as the 'best' for this particular ANT. See the function 
@@ -2114,6 +2122,11 @@ class fit_SED_across_lightcurve:
 
         """
         self.interp_df = interp_df
+        if running_on_server:
+            self.base_path = "" # we don't need a base path for the server we use the relative path
+        else:
+            self.base_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/"
+        
         self.SED_type = SED_type
         if self.SED_type == 'best_SED': # if we want our 'best' SED as chosen by me
             self.SED_type = self.get_best_SED_for_ANT(ant_name)
@@ -3591,10 +3604,10 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
 
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_SBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
             
             if self.show_plots:
@@ -3690,9 +3703,9 @@ class fit_SED_across_lightcurve:
 
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_DBB_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             if self.show_plots:
@@ -3771,9 +3784,9 @@ class fit_SED_across_lightcurve:
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_GUIDED_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 else:
-                    savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
+                    savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_subplot_PL_fits_{self.no_indiv_SED_plots}_({self.individual_BB_plot}).png"
                 plt.savefig(savepath, dpi = 300) 
 
             if self.show_plots:
@@ -3911,7 +3924,7 @@ class fit_SED_across_lightcurve:
                                 hspace=0.15,
                                 wspace=0.19)
             
-            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_SBB_param_vs_DSP.png"
+            savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_SBB_param_vs_DSP.png"
 
 
 
@@ -4018,9 +4031,9 @@ class fit_SED_across_lightcurve:
                                 wspace=0.19)
             
             if self.guided_UVOT_SED_fits:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_PL_param_vs_DSP.png"
+                savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_PL_param_vs_DSP.png"
             else:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_PL_param_vs_DSP.png"
+                savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_PL_param_vs_DSP.png"
 
 
 
@@ -4178,9 +4191,9 @@ class fit_SED_across_lightcurve:
                                 wspace=0.23)
             
             if self.guided_UVOT_SED_fits:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_DBB_param_vs_DSP.png"
+                savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_DBB_param_vs_DSP.png"
             else:
-                savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_DBB_param_vs_DSP.png"
+                savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_DBB_param_vs_DSP.png"
 
 
 
@@ -4220,11 +4233,11 @@ class fit_SED_across_lightcurve:
             if guided:
                 note = 'UVOT_guided_'+note
 
-            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_SED_fit_across_lc_new.csv"
+            savepath = self.base_path + f"data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_SED_fit_across_lc_new.csv"
             self.BB_fit_results.to_csv(savepath, index = False)
 
             # ALSO SAVE THE SAMPLED SED PARAMETER DATAFRAME. CONTAINS PARAMETER VALUES SAMPLED FROM THE CHI SQUARED CONTOUR WHERE CHI<= MIN_CHI + 2.3
-            savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_sampled_params.csv"
+            savepath = self.base_path + f"data/SED_fits/{self.ant_name}/{self.ant_name}_{note}_sampled_params.csv"
             self.BB_fit_samples.to_csv()
 
 
