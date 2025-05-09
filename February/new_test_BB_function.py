@@ -31,7 +31,7 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 
 running_on_server = False 
 # load in the interpolated data
-interp_df_list, transient_names, list_of_bands = load_interp_ANT_data(running_on_server = False)
+interp_df_list, transient_names, list_of_bands = load_interp_ANT_data(running_on_server = running_on_server)
 
 SED_plots = 'usual'#'compare_SEDs' 
 
@@ -165,6 +165,11 @@ if SED_plots == 'usual':
 # TESTING WHICH SED BEST FITS THE ANT
 
 if SED_plots == 'compare_SEDs':
+    if running_on_server:
+        base_path = "" # we don't need a base path for the server we use the relative path
+    else:
+        base_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/"
+
     #for idx in range(len(transient_names)):
     for idx in [0]:
         ANT_name = transient_names[idx]
@@ -185,7 +190,8 @@ if SED_plots == 'compare_SEDs':
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
-
+        DBB_brute_gridsize = 10
+        error_sampling_size = 9 # the number of times to sample the error in the data points to get a distribution of chi squared values for each fit. This is used to calculate the reduced chi squared value and the goodness of fit metric D_sigma
 
 
         # SAVING PLOTS
@@ -245,8 +251,8 @@ if SED_plots == 'compare_SEDs':
 
     
             
-            BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
-                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = individual_BB_plot_type, 
+            BB_fitting = fit_SED_across_lightcurve(interp_lc, running_on_server = running_on_server, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
+                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, DBB_brute_gridsize = DBB_brute_gridsize, error_sampling_size = error_sampling_size, individual_BB_plot = individual_BB_plot_type, 
                                             no_indiv_SED_plots = no_indiv_SED_plots, show_plots = show_plots, save_SED_fit_file = save_SED_fit_file,
                                             save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
                                             plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
@@ -346,11 +352,11 @@ if SED_plots == 'compare_SEDs':
                             right=0.955,
                             hspace=0.2,
                             wspace=0.2)
-        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/BB fits/proper_BB_fits/{ANT_name}/{ANT_name}_compare_SED_fits.png"
+        savepath = base_path + f"plots/BB fits/proper_BB_fits/{ANT_name}/{ANT_name}_compare_SED_fits.png"
         plt.savefig(savepath, dpi = 300)
         
         print(comparison_df.head(12))
-        savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/SED_fits/{ANT_name}/{ANT_name}_compare_SED_models.csv"
+        savepath = base_path + f"data/SED_fits/{ANT_name}/{ANT_name}_compare_SED_models.csv"
         comparison_df.to_csv(savepath, index = False)
 
 
