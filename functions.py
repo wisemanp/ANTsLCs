@@ -2727,6 +2727,9 @@ class fit_SED_across_lightcurve:
             self.no_failed_curvefits += 1 # counting the number of failed curve fits
             self.BB_fit_results.loc[MJD, self.columns[3:15]] = np.nan
 
+            if return_params:
+                return False, False, False, False, False, False, False, False, False, False, False, False
+
 
 
 
@@ -2979,38 +2982,39 @@ class fit_SED_across_lightcurve:
         cf_T1, cf_T1_err, cf_R1, cf_R1_err, cf_T2, cf_T2_err, cf_R2, cf_R2_err, cf_red_chi, cf_chi_sigma_dist, red_chi_1sig, cf_chi = self.double_BB_curvefit(MJD = MJD, MJD_df = MJD_df, R1_sc_min = R1_sc_min, R1_sc_max = R1_sc_max, T1_min = T1_min, T1_max = T1_max, 
                                                                                                                                                                 R2_sc_min = R2_sc_min, R2_sc_max = R2_sc_max, T2_min = T2_min, T2_max = T2_max, return_params = True)
         
-        # set the limits for the brute force coarse grid
+        if cf_T1 is not False: # if the curve_fit was successful
+            # set the limits for the brute force coarse grid
 
 
-        # we will do a brute DBB coarse grid within +/-2 sigma of the curve fit params, exploreing ALL of this space (coarsely) so that we get accurate uncertainties, since the uncertainties on the UVOT-guided 
-        # model params are allowed to exceed the UVOT-guided parameter space, as long as the model parameter itself does not exceed the UVOT guided region.
-        # So, we do not want the calculation of the uncertainties to be limited by the curve_fit limits, we just want the actual model parameters to be within these limits
-        # Therefore, we just limit the region over which we can take our sampled parameter values (from within the delchi = 2.3 region) to ensure that we do not sample values
-        # outside of the curve_fit limits. 
+            # we will do a brute DBB coarse grid within +/-2 sigma of the curve fit params, exploreing ALL of this space (coarsely) so that we get accurate uncertainties, since the uncertainties on the UVOT-guided 
+            # model params are allowed to exceed the UVOT-guided parameter space, as long as the model parameter itself does not exceed the UVOT guided region.
+            # So, we do not want the calculation of the uncertainties to be limited by the curve_fit limits, we just want the actual model parameters to be within these limits
+            # Therefore, we just limit the region over which we can take our sampled parameter values (from within the delchi = 2.3 region) to ensure that we do not sample values
+            # outside of the curve_fit limits. 
 
-        def param_lims(param, param_err, param_lim_lower, param_lim_upper, scalefactor = 1):
-            param_min = (param - 1*param_err) * scalefactor
-            param_max = (param + 1*param_err) * scalefactor
+            def param_lims(param, param_err, param_lim_lower, param_lim_upper, scalefactor = 1):
+                param_min = (param - 1*param_err) * scalefactor
+                param_max = (param + 1*param_err) * scalefactor
 
-            if param_min < param_lim_lower:
-                param_min = param_lim_lower
+                if param_min < param_lim_lower:
+                    param_min = param_lim_lower
 
-            if param_max > param_lim_upper:
-                param_max = param_lim_upper
+                if param_max > param_lim_upper:
+                    param_max = param_lim_upper
 
-            if param_min <0:
-                param_min = 1
+                if param_min <0:
+                    param_min = 1
 
-            return param_min, param_max
+                return param_min, param_max
 
-        brute_R1_sc_min, brute_R1_sc_max = param_lims(param = cf_R1, param_err = cf_R1_err, param_lim_lower = R1_sc_min, param_lim_upper = R1_sc_max, scalefactor = self.R_scalefactor)
-        brute_T1_min, brute_T1_max = param_lims(param = cf_T1, param_err = cf_T1_err, param_lim_lower = T1_min, param_lim_upper = T1_max)
-        brute_R2_sc_min, brute_R2_sc_max = param_lims(param = cf_R2, param_err = cf_R2_err, param_lim_lower = R2_sc_min, param_lim_upper = R2_sc_max, scalefactor = self.R_scalefactor)
-        brute_T2_min, brute_T2_max = param_lims(param = cf_T2, param_err = cf_T2_err, param_lim_lower = T2_min, param_lim_upper = T2_max)
+            brute_R1_sc_min, brute_R1_sc_max = param_lims(param = cf_R1, param_err = cf_R1_err, param_lim_lower = R1_sc_min, param_lim_upper = R1_sc_max, scalefactor = self.R_scalefactor)
+            brute_T1_min, brute_T1_max = param_lims(param = cf_T1, param_err = cf_T1_err, param_lim_lower = T1_min, param_lim_upper = T1_max)
+            brute_R2_sc_min, brute_R2_sc_max = param_lims(param = cf_R2, param_err = cf_R2_err, param_lim_lower = R2_sc_min, param_lim_upper = R2_sc_max, scalefactor = self.R_scalefactor)
+            brute_T2_min, brute_T2_max = param_lims(param = cf_T2, param_err = cf_T2_err, param_lim_lower = T2_min, param_lim_upper = T2_max)
 
-        self.double_BB_brute(MJD = MJD, MJD_df = MJD_df, R1_sc_min = brute_R1_sc_min, R1_sc_max = brute_R1_sc_max, T1_min = brute_T1_min, T1_max = brute_T1_max,
-                                R2_sc_min = brute_R2_sc_min, R2_sc_max = brute_R2_sc_max, T2_min = brute_T2_min, T2_max = brute_T2_max, 
-                                cf_chi = cf_chi, cf_chi_sigma_dist = cf_chi_sigma_dist, cf_red_chi = cf_red_chi) 
+            self.double_BB_brute(MJD = MJD, MJD_df = MJD_df, R1_sc_min = brute_R1_sc_min, R1_sc_max = brute_R1_sc_max, T1_min = brute_T1_min, T1_max = brute_T1_max,
+                                    R2_sc_min = brute_R2_sc_min, R2_sc_max = brute_R2_sc_max, T2_min = brute_T2_min, T2_max = brute_T2_max, 
+                                    cf_chi = cf_chi, cf_chi_sigma_dist = cf_chi_sigma_dist, cf_red_chi = cf_red_chi) 
 
 
 
@@ -3619,14 +3623,14 @@ class fit_SED_across_lightcurve:
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                subplot_title = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $D_{\sigma_\chi}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
                 title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']:.1e}}} }}$"+'\n'
                 title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
                 
-                if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
-                    title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T_param_upper_lim']:.1e})\n"
-                    title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R_param_upper_lim']:.1e})"
-                    subplot_title = subplot_title + title4 + title5
+                #if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
+                #    title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T_param_upper_lim']:.1e})\n"
+                #    title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R_param_upper_lim']:.1e})"
+                #    subplot_title = subplot_title + title4 + title5
 
                 if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
                     plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -3648,16 +3652,10 @@ class fit_SED_across_lightcurve:
             
 
             titlefontsize = 18
-            if self.guided_UVOT_SED_fits:
-                titleline1 = f'UVOT GUIDED Brute force blackbody fits at MJD values across {self.ant_name} lightcurve \n'
-                titleline2 = f'UVOT Guided err scalefactor = {self.UVOT_guided_err_scalefactor:.2e}, max parameter limits: (R: {self.BB_R_min:.1e} - {self.BB_R_max:.1e}), (T: {self.BB_T_min:.1e} - {self.BB_T_max:.1e})'
-            else:
-                titleline1 = f'Brute force blackbody fits at MJD values across {self.ant_name} lightcurve \n'
-                titleline2 = f'Parameter limits: (R: {self.BB_R_min:.1e} - {self.BB_R_max:.1e}), (T: {self.BB_T_min:.1e} - {self.BB_T_max:.1e})'
-
+            suptitle = f"Single-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.suptitle(titleline1 + titleline2, fontweight = 'bold', fontsize = titlefontsize)
+            fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
             fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
@@ -3701,18 +3699,18 @@ class fit_SED_across_lightcurve:
 
 
                 # sort out the titles to present all of the model parameters
-                subplot_title = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $D_{\sigma_\chi}$ = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
                 title2 = r'T1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T1_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T1_err_K']:.1e} K"
                 title3 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R1_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R1_err_cm']:.1e} cm"
                 title4 = r'T2 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T2_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T2_err_K']:.1e} K"
                 title5 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R2_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']:.1e} cm"
 
-                if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
-                    title6 = f"\nT1 lims: ({self.BB_fit_results.at[MJD, 'T1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T1_param_upper_lim']:.1e})\n"
-                    title7 = f"R1 lims: ({self.BB_fit_results.at[MJD, 'R1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R1_param_upper_lim']:.1e})\n"
-                    title8 = f"T2 lims: ({self.BB_fit_results.at[MJD, 'T2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T2_param_upper_lim']:.1e})\n"
-                    title9 = f"R2 lims: ({self.BB_fit_results.at[MJD, 'R2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R2_param_upper_lim']:.1e})"
-                    subplot_title = subplot_title + title6 + title7 + title8 + title9
+                #if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
+                #    title6 = f"\nT1 lims: ({self.BB_fit_results.at[MJD, 'T1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T1_param_upper_lim']:.1e})\n"
+                #    title7 = f"R1 lims: ({self.BB_fit_results.at[MJD, 'R1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R1_param_upper_lim']:.1e})\n"
+                #    title8 = f"T2 lims: ({self.BB_fit_results.at[MJD, 'T2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T2_param_upper_lim']:.1e})\n"
+                #    title9 = f"R2 lims: ({self.BB_fit_results.at[MJD, 'R2_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R2_param_upper_lim']:.1e})"
+                #    subplot_title = subplot_title + title6 + title7 + title8 + title9
                 
                 
                 if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
@@ -3738,30 +3736,17 @@ class fit_SED_across_lightcurve:
                 ax.set_title(subplot_title, fontsize = 5.5, fontweight = 'bold')
                 ax.legend(handles = [h1, h2], labels = [title2 + '\n'+ title3, title4 + '\n'+ title5], fontsize = 4.5, prop = {'weight': 'bold', 'size': 4.5})
             
-            titlefontsize = 18
-            if self.guided_UVOT_SED_fits:
-                titleline1 = f'UVOT GUIDED Curve fit double blackbody fits at MJD values across {self.ant_name} lightcurve\n'
-                titleline2 = f'Curve fits failed = {self.no_failed_curvefits}, UVOT Guided err scalefactor = {self.UVOT_guided_err_scalefactor:.2e}\n'
-                titleline3 = f'Max parameter limits: (R: {self.DBB_R_min:.1e} - {self.DBB_R_max:.1e}), (T1: {self.DBB_T1_min:.1e} - {self.DBB_T1_max:.1e}), (T2: {self.DBB_T2_min:.1e} - {self.DBB_T2_max:.1e})'
-                plot_title = titleline1 + titleline2 + titleline3
-                hspace = 0.91
-                top = 0.780
-            else:
-                titleline1 = f'Curve fit double blackbody fits at MJD values across {self.ant_name} lightcurve'
-                titleline2 = f'\nParameter limits: (R: {self.DBB_R_min:.1e} - {self.DBB_R_max:.1e}), (T1: {self.DBB_T1_min:.1e} - {self.DBB_T1_max:.1e}), (T2: {self.DBB_T2_min:.1e} - {self.DBB_T2_max:.1e})'
-                plot_title = titleline1 + titleline2
-                hspace = 0.355
-                top = 0.82
-            
+            titlefontsize = 18 
+            suptitle = f"Double-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel(r'Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.suptitle(plot_title, fontweight = 'bold', fontsize = titlefontsize)
+            fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=top,
+            fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
                                 left=0.065,
                                 right=0.92,
-                                hspace=hspace,
+                                hspace=0.355,
                                 wspace=0.2)
             
 
@@ -3796,13 +3781,9 @@ class fit_SED_across_lightcurve:
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                subplot_title = f'DSP = {d_since_peak:.0f}'+ r'  $\chi_{\nu}$ sig dist = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $D_{\sigma_\chi}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
                 title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err_upper']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err_lower']:.1e}}} }}$"+'\n'
                 title3 = r'$\gamma = $'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
-                if self.guided_UVOT_SED_fits:
-                    title4 = f"\nA lims: ({self.BB_fit_results.at[MJD, 'A_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'A_param_upper_lim']:.1e})\n"
-                    title5 = f"gamma lims: ({self.BB_fit_results.at[MJD, 'gamma_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'gamma_param_upper_lim']:.1e})"
-                    subplot_title = subplot_title + title4 + title5
 
                 if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
                     plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -3824,26 +3805,16 @@ class fit_SED_across_lightcurve:
                 ax.set_title(subplot_title, fontsize = 6.5, fontweight = 'bold')
             
             titlefontsize = 18
-            if self.guided_UVOT_SED_fits:
-                titleline1 = f"GUIDED UVOT Brute force power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
-                titleline2 = f'UVOT Guided err scalefactor = {self.UVOT_guided_err_scalefactor:.2e}\n'+fr' Max parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
-                top=0.774
-                hspace=0.845
-            else:
-                titleline1 = f"Brute force power law SED fits at MJD values across {self.ant_name}'s lightcurve \n"
-                titleline2 = fr'Parameter limits: ($\mathbf{{\Delta \chi = }}${self.brute_delchi}), (A: {self.PL_A_min:.1e} - {self.PL_A_max:.1e}), ($\gamma$: {self.PL_gamma_min:.1e} - {self.PL_gamma_max:.1e})'
-                top = 0.82
-                hspace = 0.355
-            
+            suptitle = f"Power-law SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
             fig.supylabel('Rest frame luminosity / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.suptitle(titleline1+titleline2, fontweight = 'bold', fontsize = titlefontsize)
+            fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=top,
+            fig.subplots_adjust(top=0.82,
                                 bottom=0.094,
                                 left=0.065,
                                 right=0.92,
-                                hspace=hspace,
+                                hspace=0.355,
                                 wspace=0.2)
             
             if self.save_indiv_BB_plot == True:
