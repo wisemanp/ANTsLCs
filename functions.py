@@ -2789,7 +2789,54 @@ class fit_SED_across_lightcurve:
 
         R1_sc_grid, T1_grid, R2_sc_grid, T2_grid = np.meshgrid(sc_R1_values, T1_values, sc_R2_values, T2_values, indexing='ij') # I just renamed these
 
+        unmasked_chi = chi # save for the error print message
+        mask = chi <= (cf_chi + self.brute_delchi)
+        chi = chi[mask]
         chi_flat = chi.flatten()
+        if len(chi_flat) == 0:
+            print()
+            print(f'{Fore.RED} WARNING - No chi values within the delta_chi = 2.3 region for MJD = {MJD}. Min delchi = {np.min(unmasked_chi) - (cf_chi)} {Style.RESET_ALL}')
+            print()
+            mask = unmasked_chi <= (cf_chi + 5.0)
+            chi = unmasked_chi[mask]
+            chi_flat = chi.flatten()
+
+            if len(chi_flat) == 0:
+                print()
+                print(f'{Fore.RED} WARNING - No chi values within the delta_chi = 5 region for MJD = {MJD}. Min delchi = {np.min(unmasked_chi) - (cf_chi)} {Style.RESET_ALL}')
+                print()
+                mask = unmasked_chi <= (cf_chi + 10.0)
+                chi = unmasked_chi[mask]
+                chi_flat = chi.flatten()
+
+                if len(chi_flat) == 0:
+                    print()
+                    print(f'{Fore.RED} WARNING - No chi values within the delta_chi = 10.0 region for MJD = {MJD}. Min delchi = {np.min(unmasked_chi) - (cf_chi)} {Style.RESET_ALL}')
+                    print()
+                    mask = unmasked_chi <= (cf_chi + 20.0)
+                    chi = unmasked_chi[mask]
+                    chi_flat = chi.flatten()
+
+                    if len(chi_flat) == 0:
+                        print()
+                        print(f'{Fore.RED} WARNING - No chi values within the delta_chi = 20.0 region for MJD = {MJD}. Min delchi = {np.min(unmasked_chi) - (cf_chi)} {Style.RESET_ALL}')
+                        print()
+                        mask = unmasked_chi <= (cf_chi + 50.0)
+                        chi = unmasked_chi[mask]
+                        chi_flat = chi.flatten()
+
+
+        R1_sc_grid = R1_sc_grid[mask]
+        T1_grid = T1_grid[mask]
+        R2_sc_grid = R2_sc_grid[mask]
+        T2_grid = T2_grid[mask]
+
+
+        
+        if len(chi_flat) == 0:
+            print()
+            print(f'{Fore.RED} WARNING - No chi values within the delta_chi = 50.0 region for MJD = {MJD}. Min delchi = {np.min(unmasked_chi) - (cf_chi)} {Style.RESET_ALL}')
+            print()
         R1_sc_flat = R1_sc_grid.flatten()
         T1_flat = T1_grid.flatten()
         R2_sc_flat = R2_sc_grid.flatten()
