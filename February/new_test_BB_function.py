@@ -29,11 +29,11 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 
 
 
-
+running_on_server = False 
 # load in the interpolated data
-interp_df_list, transient_names, list_of_bands = load_interp_ANT_data()
+interp_df_list, transient_names, list_of_bands = load_interp_ANT_data(running_on_server = False)
 
-SED_plots = 'compare_SEDs'#'usual'#'compare_SEDs' 
+SED_plots = 'usual'#'compare_SEDs' 
 
 
 
@@ -79,16 +79,18 @@ if SED_plots == 'usual':
         # FITTING METHOD
         BB_curvefit = True
         BB_brute = True
-        SED_type = 'single_BB'
-        #SED_type = 'double_BB'
+        #SED_type = 'single_BB'
+        SED_type = 'double_BB'
         #SED_type = 'power_law'
         #SED_type = 'best_SED'
-        UVOT_guided_fitting = False # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
+        UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
         UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
         
         brute_gridsize = 2000
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
+        DBB_brute_gridsize = 10
+        error_sampling_size = 9 # the number of times to sample the error in the data points to get a distribution of chi squared values for each fit. This is used to calculate the reduced chi squared value and the goodness of fit metric D_sigma
 
         no_indiv_SED_plots = 12 # current options are 24, 20, 12
         individual_BB_plot_type = 'whole_lc' # 'UVOT'
@@ -103,10 +105,11 @@ if SED_plots == 'usual':
 
         # SAVE SED FIT RESULTS TO A DATAFRAME?
         save_SED_fit_file = True
+        
 
 
-        BB_fitting = fit_SED_across_lightcurve(interp_lc, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
-                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, individual_BB_plot = individual_BB_plot_type, 
+        BB_fitting = fit_SED_across_lightcurve(interp_lc, running_on_server = running_on_server, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
+                                            brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, DBB_brute_gridsize = DBB_brute_gridsize, error_sampling_size = error_sampling_size, individual_BB_plot = individual_BB_plot_type, 
                                             no_indiv_SED_plots = no_indiv_SED_plots, save_SED_fit_file = save_SED_fit_file,
                                             save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
                                             plot_chi_contour = plot_chi_contour, no_chi_contours = no_chi_contours)
