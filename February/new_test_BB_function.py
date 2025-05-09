@@ -205,6 +205,10 @@ if SED_plots == 'compare_SEDs':
         ax1, ax2, ax3, ax4 = axs.ravel()
 
         for i, SED_type in enumerate(['single_BB', 'double_BB', 'power_law']):
+            if SED_type == 'double_BB': # since we don't want to do DBB fits for the ANTs without much UVOT data, we will skip over them
+                if ANT_name not in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd', 'PS1-10adi']:
+                    continue
+                
             if SED_type == 'single_BB':
                 SED_label = 'Single-BB'
                 BB_curvefit = False
@@ -269,7 +273,13 @@ if SED_plots == 'compare_SEDs':
 
 
             # SED fits with only optical data
-            MJDs_without_UVOT = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]['MJD']
+            UV_wavelength_threshold = 3800 # angstrom
+            bin_by_MJD = interp_lc.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': (g['em_cent_wl']< UV_wavelength_threshold).any() })).reset_index()
+            MJDs_with_UVOT = bin_by_MJD[bin_by_MJD['UVOT?'] == True]['MJD'].to_numpy() # an array of the MJDs at which we have UVOT data
+            MJDs_without_UVOT = bin_by_MJD[bin_by_MJD['UVOT?'] == False]['MJD'].to_numpy() # used in the next function where we SED fit the non-UVOT MJDs
+
+
+
             SEDs_without_UVOT = BB_fit_results[BB_fit_results['MJD'].isin(MJDs_without_UVOT)].copy()
             no_UVOT_median = SEDs_without_UVOT[sig_dist_colname].median()
             no_UVOT_MAD = median_absolute_deviation(no_UVOT_median, SEDs_without_UVOT[sig_dist_colname].to_numpy())
@@ -280,7 +290,6 @@ if SED_plots == 'compare_SEDs':
 
 
             # SED fits with UVOT data
-            MJDs_with_UVOT = interp_lc[interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]['MJD']
             SEDs_with_UVOT = BB_fit_results[BB_fit_results['MJD'].isin(MJDs_with_UVOT)].copy()
             UVOT_median = SEDs_with_UVOT[sig_dist_colname].median()
             UVOT_MAD = median_absolute_deviation(UVOT_median, SEDs_with_UVOT[sig_dist_colname].to_numpy())
