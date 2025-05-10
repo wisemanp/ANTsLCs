@@ -3204,7 +3204,7 @@ class fit_SED_across_lightcurve:
             print(f'{Fore.GREEN}UVOT SED fitting complete for {self.ant_name}   ============================================================================================= {Style.RESET_ALL}')
             print()
 
-        note = 'cf' if self.SED_type == 'double_BB' else 'brute'
+        note = 'cf' if self.SED_type == 'double_BB' else 'brute' # bug fix for PS1-10adi's SBB for some reason
         UVOT_SEDs_with_good_SED_fits = self.BB_fit_results[self.BB_fit_results['MJD'].isin(self.all_UVOT_MJDs)].copy() # filter SED_fit_results for the UVOT fit results
         UVOT_SEDs_with_good_SED_fits = UVOT_SEDs_with_good_SED_fits[UVOT_SEDs_with_good_SED_fits[f'{note}_chi_sigma_dist'] <= sigma_dist_for_good_fit].copy() # find the SED results where the fit was good
 
