@@ -622,3 +622,38 @@ manual_stragglers_dict = {'ZTF18aczpgwm': None,
                             'Gaia18cdj': None, 
                             'PS1-10adi': None, 
                             'PS1-13jw': None} 
+
+
+
+
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+# MIN AND MAX WAVELENGTHS IN THEIR SPECTRA (ONLY COUNT THE WAVELENGTHS FOR BANDS THAT WE HAVE A LOT OF DATA IN) - WILL BE USED TO SET REDSHIFT LIMITS ON SED FITITNG
+
+
+
+
+# lowest wavelength of any ANT we don't fit with a DBB is ZTF19aamrjar at 2845
+
+min_max_wavelengths = {'ZTF18aczpgwm': (3382.2396526367393, 5297.121647174172), # ZTF_g - PS_i      # :)
+                    'ZTF19aailpwl': (1558.1391962725686, 5506.523005241701), # UVW2 - PS_i          # UV ANT
+                    'ZTF19aamrjar': (2845.9045374189745, 4046.11667648792), # ZTF_g - ATLAS_o       # only 1 band with wavelength < 3000 A (next is ATLAS_c at 3187 A)
+                    'ZTF19aatubsj': (3812.963840202116, 5194.394441812728), # ZTF_g, PS_w           # :)
+                    'ZTF20aanxcpf': (4459.3721144967685, 6984.081255771007), # ZTF_g - PS_i         # :)
+                    'ZTF20abgxlut': (3842.0843277645185, 5462.4184566428), # ZTF_g - ATLAS_o        # :)
+                    'ZTF20abodaps': (3005.289359054138, 4706.757934038581),  # ZTF_g - PS_i         # :)
+                    'ZTF20abrbeie': (2421.4088744046126, 3240.7871647029333), # ZTF_g - ZTF_r       # optical ANT, only 2 bands consistently so fine to say we don't have enough data to fit DBB since N < M
+                    'ZTF20acvfraq': (1698.6190476190477, 6002.984126984127), # UVW2 - PS_i          # UV ANT
+                    'ZTF21abxowzx': (3403.4531360112755, 5330.345313601128), # ZTF_g - PS_i         # :)
+                    'ZTF22aadesap': (1994.6505125815474, 7049.170549860206), # UVW2 - PS_i          # UV ANT
+                    'ASASSN-17jz': (1838.5533888841169, 6923.700712997166), # UVOT_UVW2 - I         # UV ANT
+                    'ASASSN-18jd': (1912.3123659756973, 6718.432809149393), # UVOT_UVW2 - Swope_i   # UV ANT
+                    'PS1-10adi': (3659.88, 16303.58)} # U - H - GET RID OF THE NIR DATA?
+
+
+
+# need to make sure we don't allow simulation to higher redshifts than the data allows, like for the upper redshift lim I think we should not allow the reddest observed LSST band to have been 
+# emitted at the highest available wavelength here because thsi would involve extrapolating the blue end of the SEDs which is not what we want. I think we Can probs allow simulation to closer 
+# redshifts and a bit of extrapolation there
