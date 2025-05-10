@@ -279,7 +279,7 @@ if SED_plots == 'compare_SEDs':
 
 
             # SED fits with only optical data
-            UV_wavelength_threshold = 3000 # angstrom
+            UV_wavelength_threshold = 2800 # angstrom
             bin_by_MJD = interp_lc.groupby('MJD', observed = True).apply(lambda g: pd.Series({'UVOT?': (g['em_cent_wl']< UV_wavelength_threshold).any() })).reset_index()
             MJDs_with_UVOT = bin_by_MJD[bin_by_MJD['UVOT?'] == True]['MJD'].to_numpy() # an array of the MJDs at which we have UVOT data
             MJDs_without_UVOT = bin_by_MJD[bin_by_MJD['UVOT?'] == False]['MJD'].to_numpy() # used in the next function where we SED fit the non-UVOT MJDs
