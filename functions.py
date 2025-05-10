@@ -9,6 +9,7 @@ import scipy.optimize as opt
 from matplotlib.colors import Normalize
 from colorama import Fore, Style
 from tqdm import tqdm
+from matplotlib.ticker import FuncFormatter
 
 
 
@@ -3067,7 +3068,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def run_SED_fitting_process(self, band_colour_dict):
+    def run_SED_fitting_process(self, band_colour_dict, band_marker_dict):
         """
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
         A FUNCTION WHICH YOU MIGHT DIRECTLY CALL WHEN INITIALISING THE CLASS
@@ -3081,13 +3082,13 @@ class fit_SED_across_lightcurve:
         
         # plot the individual SEDs:
         if self.SED_type == 'single_BB': # only plots if the individual_fit_MJDs is not None, so this should be find even if you dont want the individual BB fits plot
-            self.plot_individual_BB_fits(band_colour_dict)
+            self.plot_individual_BB_fits(band_colour_dict, band_marker_dict)
 
         elif self.SED_type == 'double_BB':
-            self.plot_individual_double_BB_fits(band_colour_dict)
+            self.plot_individual_double_BB_fits(band_colour_dict, band_marker_dict)
 
         elif self.SED_type == 'power_law':
-            self.plot_individual_power_law_SED_fits(band_colour_dict)
+            self.plot_individual_power_law_SED_fits(band_colour_dict, band_marker_dict)
 
         # plot the SED params vs time to make sure its behaving well
         self.plot_SED_params_vs_time(band_colour_dict=band_colour_dict)
@@ -3409,7 +3410,7 @@ class fit_SED_across_lightcurve:
 
 
     
-    def run_UVOT_guided_SED_fitting_process(self, err_scalefactor, sigma_dist_for_good_fit, band_colour_dict):
+    def run_UVOT_guided_SED_fitting_process(self, err_scalefactor, sigma_dist_for_good_fit, band_colour_dict, band_marker_dict):
         """
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
         A FUNCTION WHICH YOU MIGHT DIRECTLY CALL WHEN INITIALISING THE CLASS
@@ -3474,13 +3475,13 @@ class fit_SED_across_lightcurve:
 
         # plot the individual SEDs:
         if self.SED_type == 'single_BB': # only plots if the individual_fit_MJDs is not None, so this should be find even if you dont want the individual BB fits plot
-            self.plot_individual_BB_fits(band_colour_dict)
+            self.plot_individual_BB_fits(band_colour_dict, band_marker_dict)
 
         elif self.SED_type == 'double_BB':
-            self.plot_individual_double_BB_fits(band_colour_dict)
+            self.plot_individual_double_BB_fits(band_colour_dict, band_marker_dict)
 
         elif self.SED_type == 'power_law':
-            self.plot_individual_power_law_SED_fits(band_colour_dict)
+            self.plot_individual_power_law_SED_fits(band_colour_dict, band_marker_dict)
 
 
         # plot the SED params vs time to make sure its behaving well
@@ -3582,7 +3583,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def plot_individual_BB_fits(self, band_colour_dict):
+    def plot_individual_BB_fits(self, band_colour_dict, band_marker_dict):
         """
         Make a subplot of many of the individual single BB SEDs fit at particular MJDs.
         """
@@ -3592,12 +3593,30 @@ class fit_SED_across_lightcurve:
             fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
             axs = axs.flatten()
             legend_dict = {}
+
+            #def sci_formatter(x, pos):
+            #    return f'{x:.1e}'  
+            def standard_form_tex(x, pos):
+                if x == 0:
+                    return "0"
+                exponent = int(np.floor(np.log10(abs(x))))
+                coeff = x / (10 ** exponent)
+                return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
+            formatter = FuncFormatter(standard_form_tex)
+
+            #formatter = ScalarFormatter(useMathText=False)
+            #formatter.set_powerlimits((0, 0))  # Always show scientific notation
             for i, MJD in enumerate(self.indiv_plot_MJDs):
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $D_{\sigma_\chi}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
+                ax.yaxis.set_major_formatter(formatter)  
+                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+
+
+
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
                 title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']:.1e}}} }}$"+'\n'
                 title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
                 
@@ -3618,25 +3637,26 @@ class fit_SED_across_lightcurve:
                 for b in MJD_df['band'].unique():
                     b_df = MJD_df[MJD_df['band'] == b].copy()
                     b_colour = band_colour_dict[b]
-                    h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, label = b)
+                    b_marker = band_marker_dict[b]
+                    h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = b_marker, c = b_colour, label = b)
                     legend_dict[b] = h[0]
                 
-                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '7.5'})
-                ax.set_title(subplot_title, fontsize = 7.5, fontweight = 'bold')
+                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '9'})#, loc='lower left', bbox_to_anchor=(0.05, 0.05))
+                ax.set_title(subplot_title, fontsize = 10, fontweight = 'bold')
             
 
             titlefontsize = 18
             suptitle = f"Single-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
-            fig.supxlabel('Emitted wavelength / $\AA$', fontweight = 'bold', fontsize = (titlefontsize - 5))
-            fig.supylabel('Rest frame luminosity / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold', fontsize = (titlefontsize - 5))
+            fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel('Rest-frame luminosity / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
-            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8, bbox_to_anchor = (1.0, 0.95))
-            fig.subplots_adjust(top=0.82,
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))
+            fig.subplots_adjust(top=0.875,
                                 bottom=0.094,
-                                left=0.06,
-                                right=0.92,
+                                left=0.1,
+                                right=0.915,
                                 hspace=0.3,
-                                wspace=0.2)
+                                wspace=0.36)
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
@@ -3656,7 +3676,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def plot_individual_double_BB_fits(self, band_colour_dict): 
+    def plot_individual_double_BB_fits(self, band_colour_dict, band_marker_dict): 
         """
         Make a subplot of many of the individual double BB SEDs fit at particular MJDs.
         """
@@ -3740,7 +3760,7 @@ class fit_SED_across_lightcurve:
 
 
 
-    def plot_individual_power_law_SED_fits(self, band_colour_dict):
+    def plot_individual_power_law_SED_fits(self, band_colour_dict, band_marker_dict):
         """
         Make a subplot of many of the individual power law SEDs fit at particular MJDs.
         """
