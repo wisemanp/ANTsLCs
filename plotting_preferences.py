@@ -644,7 +644,7 @@ min_max_wavelengths = {'ZTF18aczpgwm': (3382.2396526367393, 5297.121647174172), 
                     'ZTF20aanxcpf': (4459.3721144967685, 6984.081255771007), # ZTF_g - PS_i         # :)
                     'ZTF20abgxlut': (3842.0843277645185, 5462.4184566428), # ZTF_g - ATLAS_o        # :)
                     'ZTF20abodaps': (3005.289359054138, 4706.757934038581),  # ZTF_g - PS_i         # :)
-                    'ZTF20abrbeie': (2421.4088744046126, 3240.7871647029333), # ZTF_g - ZTF_r       # optical ANT, only 2 bands consistently so fine to say we don't have enough data to fit DBB since N < M
+                    'ZTF20abrbeie': (2421.4088744046126, 3240.7871647029333), # ZTF_g - ZTF_r       # optical ANT, only 2 bands consistently so fine to say we don't have enough data to fit DBB since N < M, also have <2 bands below 3000A so all good
                     'ZTF20acvfraq': (1698.6190476190477, 6002.984126984127), # UVW2 - PS_i          # UV ANT
                     'ZTF21abxowzx': (3403.4531360112755, 5330.345313601128), # ZTF_g - PS_i         # :)
                     'ZTF22aadesap': (1994.6505125815474, 7049.170549860206), # UVW2 - PS_i          # UV ANT
@@ -657,3 +657,44 @@ min_max_wavelengths = {'ZTF18aczpgwm': (3382.2396526367393, 5297.121647174172), 
 # need to make sure we don't allow simulation to higher redshifts than the data allows, like for the upper redshift lim I think we should not allow the reddest observed LSST band to have been 
 # emitted at the highest available wavelength here because thsi would involve extrapolating the blue end of the SEDs which is not what we want. I think we Can probs allow simulation to closer 
 # redshifts and a bit of extrapolation there
+
+
+# any ANT whose bluest emitted wavelength < LSST's bluest wavelength, 3671, can be simulated to higher redshifts, since there is scope to redshift (increase wavelength of) this bluest emitted wavelength up to 3671
+#               e.g. ANT's bluest emitted wavelength = 2000 A. 
+#                    -   If ANT were at z=0, this emission wouldn't be observed by LSST
+#                    -   Push ANT back until z= z_max, so that the 2000 A is observed at 3671 A
+# 
+# any ANT whose bluest emitted wavelength > LSST's bluest wavelength, 3671, cannot be simulated to higher redshifts (this is where I get confused)
+#               e.g. ANT's bluest emitted wavelength = 4500 A. (> 3671) 
+#                       - If ANT were at z=0, this emission might be observed by LSST, but in another band
+#                       - The simulation would ask 'what's the observed emission at 3671 A?' and would look to the object's SED and extrapolate            
+#                                                                                   
+# 
+# 
+
+
+
+
+def redshift_lim_formula(observed_LSST_wavelength, emitted_wavelength):
+    z = (observed_LSST_wavelength / emitted_wavelength) - 1
+    return z
+
+
+redshift_limits = []
+ANT_names = []
+for ANT, wavelengths in min_max_wavelengths.items():
+    bluest_wl, reddest_wl = wavelengths
+    bluest_LSST = 3671
+    reddest_LSST = 9712
+    max_z = redshift_lim_formula(observed_LSST_wavelength = bluest_LSST, emitted_wavelength = bluest_wl) # bluest emitted band observed at bluest LSST band - prevents extrapolation of the blue-end of the object's SED
+    min_z = redshift_lim_formula(observed_LSST_wavelength = reddest_LSST, emitted_wavelength = reddest_wl) # reddest emitted band observed at LSST's reddest band - prevents extrapolation of the red-end of the object's SED
+
+    redshift_limits.append((min_z, max_z))
+    ANT_names.append(ANT)
+
+ANT_sim_redshift_lim_dict = dict(zip(ANT_names, redshift_limits))
+
+
+#for key, value in ANT_sim_redshift_lim_dict.items():
+#    print(key, value)
+#print(ANT_sim_redshift_lim_dict)
