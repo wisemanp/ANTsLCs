@@ -9,7 +9,7 @@ from matplotlib import cm
 from matplotlib.colors import Normalize
 from colorama import Fore, Style
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit
+from plotting_preferences import band_colour_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, band_marker_dict
 from functions import load_interp_ANT_data, blackbody, chisq, fit_SED_across_lightcurve
 
 pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all floats in the dataframe in standard form to 4 decimal places
@@ -64,7 +64,7 @@ SED_plots = 'usual'#'compare_SEDs'
 
 if SED_plots == 'usual':
     #for idx in range(len(transient_names)):
-    for idx in [0]:
+    for idx in [3]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -79,8 +79,8 @@ if SED_plots == 'usual':
         # FITTING METHOD
         BB_curvefit = True
         BB_brute = True
-        #SED_type = 'single_BB'
-        SED_type = 'double_BB'
+        SED_type = 'single_BB'
+        #SED_type = 'double_BB'
         #SED_type = 'power_law'
         #SED_type = 'best_SED'
         UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
@@ -124,30 +124,30 @@ if SED_plots == 'usual':
         #===============================================================================================================================================
         #===============================================================================================================================================
         if UVOT_guided_fitting == True:
-            BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict)
+            BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict, band_marker_dict = band_marker_dict)
         
 
 
         if (SED_type == 'best_SED') and (UVOT_guided_fitting == False): # I only require UVOT_guided_fitting == False because otherwise if it's True, then the if statement above will activate, 
                                                                         # but then another one of the ones below will run straight after since both UVOT_guided_fitting == True and SED_type will be 
                                                                         # one of 'best_SED', 'single_BB', 'double_BB', 'power_law'
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
         
 
 
         if (SED_type == 'double_BB') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
 
 
 
         if (SED_type == 'power_law') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
             pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all floats in the dataframe in standard form to 4 decimal places
 
         
         
         if (SED_type == 'single_BB') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
             BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
             
  
@@ -266,9 +266,9 @@ if SED_plots == 'compare_SEDs':
 
             # the whole lc SED fits
             if UVOT_guided_fitting:
-                BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict)
+                BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict, band_marker_dict = band_marker_dict)
             else:
-                BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict)
+                BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
             BB_fit_results = BB_fit_results[BB_fit_results[sig_dist_colname].notna()]
             all_lc_median = BB_fit_results[sig_dist_colname].median(skipna = True)
             all_lc_MAD = median_absolute_deviation(all_lc_median, BB_fit_results[sig_dist_colname].to_numpy())
