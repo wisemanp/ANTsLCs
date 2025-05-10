@@ -2817,9 +2817,15 @@ class fit_SED_across_lightcurve:
                                 'sampled_T2_K': cf_T2, 
                                 'sampled_R2_cm': cf_R2, 
                                 'sampled_chi': cf_chi}
-            
-            self.BB_fit_samples.loc[(MJD, self.error_sampling_size)] = pd.Series(sampled_row_dict) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
 
+            new_index = pd.MultiIndex.from_tuples([(MJD, self.error_sampling_size)], names = ['MJD', 'sample'])
+            new_row = pd.DataFrame(index = new_index, columns = list(sampled_row_dict.keys()))
+            new_row.loc[(MJD, self.error_sampling_size), sampled_row_dict.keys()] = pd.Series(sampled_row_dict) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+            self.BB_fit_samples = pd.concat([self.BB_fit_samples, new_row], axis = 0)
+            self.BB_fit_samples = self.BB_fit_samples.sort_index() # sort the index so that the MJD and sample columns are in order
+            
+            #self.BB_fit_samples.loc[(MJD, self.error_sampling_size)] = pd.Series(sampled_row_dict) # if we don't have any values within the delchi = 2.3, just save the actual curve_fit params and go with that
+            #self.BB_fit_samples.loc[(MJD, self.error_sampling_size), sampled_row_dict.keys()] = pd.Series(sampled_row_dict)
 
             if len(chi_flat) == 0:
                 print()
@@ -2918,7 +2924,11 @@ class fit_SED_across_lightcurve:
                                 'sampled_R2_cm': sampled_R2[i], 
                                 'sampled_chi': sampled_chi[i]}
 
-            self.BB_fit_samples.loc[(MJD, i)] = pd.Series(sampled_row_dict.values()) # add the sampled params to the dataframe
+
+            #for key, value in sampled_row_dict.items():
+            #    self.BB_fit_samples.at[(MJD, i), key] = value
+            self.BB_fit_samples.loc[(MJD, i), sampled_row_dict.keys()] = list(sampled_row_dict.values()) # add the sampled params to the dataframe
+            #self.BB_fit_samples.loc[(MJD, i)] = pd.Series(sampled_row_dict.values()) # add the sampled params to the dataframe
             #self.BB_fit_samples.loc[(MJD, i), list(sampled_row_dict.keys())] = list(sampled_row_dict.values()) # add the sampled params to the dataframe
 
 
@@ -3847,7 +3857,7 @@ class fit_SED_across_lightcurve:
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1500, 7500), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-17jz': (0, 10000), 
                             'ASASSN-18jd': (None, None)}
         
         DBB_R1_plot_lims = {'ZTF18aczpgwm': (None, None), 
@@ -3862,7 +3872,7 @@ class fit_SED_across_lightcurve:
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e15, 1.3e17), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-17jz': (0, 3.5e16), 
                             'ASASSN-18jd': (None, None)}
         
         DBB_T2_plot_lims = {'ZTF18aczpgwm': (None, None), 
@@ -3877,7 +3887,7 @@ class fit_SED_across_lightcurve:
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (9000, 35000), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-17jz': (0, 80000), 
                             'ASASSN-18jd': (None, None)}
         
         DBB_R2_plot_lims = {'ZTF18aczpgwm': (None, None), 
@@ -3892,7 +3902,7 @@ class fit_SED_across_lightcurve:
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e14, 1.6e15), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (None, None), 
+                            'ASASSN-17jz': (0, 1e15), 
                             'ASASSN-18jd': (None, None)}
 
         PL = self.SED_type == 'power_law'
