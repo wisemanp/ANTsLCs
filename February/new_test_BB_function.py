@@ -63,8 +63,8 @@ SED_plots = 'usual'#'compare_SEDs'
 # 13 = ZTF22aadesap
 
 if SED_plots == 'usual':
-    #for idx in range(len(transient_names)):
-    for idx in [13]:
+    for idx in range(len(transient_names)):
+    #for idx in [1]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
