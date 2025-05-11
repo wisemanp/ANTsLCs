@@ -3941,29 +3941,29 @@ class fit_SED_across_lightcurve:
 
 
         DBB_T1_plot_lims = {'ZTF18aczpgwm': (None, None), 
-                            'ZTF19aailpwl': (None, None), 
+                            'ZTF19aailpwl': (0, 1.5e4), 
                             'ZTF19aamrjar': (None, None), 
                             'ZTF19aatubsj': (None, None), 
                             'ZTF20aanxcpf': (None, None), 
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (None, None), 
+                            'ZTF20acvfraq': (0, 1.5e4), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1500, 7500), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (0, 10000), 
+                            'ASASSN-17jz': (0, 1e4), 
                             'ASASSN-18jd': (None, None)}
         
         DBB_R1_plot_lims = {'ZTF18aczpgwm': (None, None), 
-                            'ZTF19aailpwl': (None, None), 
+                            'ZTF19aailpwl': (0, 5.3e16), 
                             'ZTF19aamrjar': (None, None), 
                             'ZTF19aatubsj': (None, None), 
                             'ZTF20aanxcpf': (None, None), 
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (None, None), 
+                            'ZTF20acvfraq': (-1.9e17, 8e17), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e13, 1.3e17), 
                             'PS1-10adi': (None, None), 
@@ -3971,33 +3971,33 @@ class fit_SED_across_lightcurve:
                             'ASASSN-18jd': (None, None)}
         
         DBB_T2_plot_lims = {'ZTF18aczpgwm': (None, None), 
-                            'ZTF19aailpwl': (None, None), 
+                            'ZTF19aailpwl': (1e4, 4.3e4), 
                             'ZTF19aamrjar': (None, None), 
                             'ZTF19aatubsj': (None, None), 
                             'ZTF20aanxcpf': (None, None), 
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (None, None), 
+                            'ZTF20acvfraq': (-4e5, 8e5), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (9000, 35000), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (0, 80000), 
+                            'ASASSN-17jz': (0, 8e4), 
                             'ASASSN-18jd': (None, None)}
         
         DBB_R2_plot_lims = {'ZTF18aczpgwm': (None, None), 
-                            'ZTF19aailpwl': (None, None), 
+                            'ZTF19aailpwl': (0, 6e15), 
                             'ZTF19aamrjar': (None, None), 
                             'ZTF19aatubsj': (None, None), 
                             'ZTF20aanxcpf': (None, None), 
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (None, None), 
+                            'ZTF20acvfraq': (-1.3e16, 1.4e16), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e14, 1.6e15), 
                             'PS1-10adi': (None, None), 
-                            'ASASSN-17jz': (0, 1e15), 
+                            'ASASSN-17jz': (0, 8e15), 
                             'ASASSN-18jd': (None, None)}
 
         PL = self.SED_type == 'power_law'
@@ -4520,7 +4520,7 @@ class fit_SED_across_lightcurve:
             ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
             fig.suptitle(f"Double-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
             fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
-            fig.subplots_adjust(top=0.91,
+            fig.subplots_adjust(top=0.93,
                                 bottom=0.058,
                                 left=0.17,
                                 right=0.915,
