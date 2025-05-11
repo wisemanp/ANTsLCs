@@ -85,9 +85,9 @@ print() """
 
 
 # polyfitting light curves
-for idx in range(len(transient_names)):
+#for idx in range(len(transient_names)):
 #for idx in [11]:
-#for idx in [transient_names.index('ASASSN-17jz')]:
+for idx in [transient_names.index('PS1-10adi')]:
     ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
     if ANTs_for_fitting_dict[ANT_name] == False:
         continue
@@ -104,10 +104,17 @@ for idx in range(len(transient_names)):
     print()
     print(ANT_name)
     print()
+
+    if ANT_name == 'PS1-10adi': # because we have z=0 stored to calculate the L_rf since we are given abs mag not app mag
+        ant_z = 0.203
+
+    else:
+        ant_z = ANT_redshift_dict[ANT_name]
+
     
 
     lightcurve = polyfit_lightcurve(ant_name = ANT_name, 
-                                    ant_z = ANT_redshift_dict[ANT_name],
+                                    ant_z = ant_z,
                                     df = ANT_df, 
                                     bands = bands_for_BB, 
                                     override_ref_band_dict = override_ref_band_dict,   
