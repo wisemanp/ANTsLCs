@@ -4,48 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
-from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_offset_label_dict, MJD_xlims
+from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_offset_label_dict, MJD_xlims, ANT_proper_redshift_dict, peak_MJD_dict
 from functions import load_ANT_data
-
-def bin_data(bands_df, MJD_binsize):
-    """
-    Bins data for a given band 
-    """
-    bands_df = bands_df.copy() # this creates a copy rather than a view of the dataframe so that we don't modify the original dataframe
-    
-    # this rounds the min_MJD present in V_band data for the transient to the nearest 10, then goes to the bin below this to ensure that 
-    # we capture the first data point, in case this rounded the first bin up. Since we need data for both V_band and B_band within each
-    # MJD bin, it's fine to base the min MJD bin to start at on just the V_band data, since even if we had B_band data before this date, 
-    # we wouldn't be able to pair it with data from V_band to calculcte the color anyways
-    MJD_bin_min = int( round(bands_df['MJD'].min(), -1) - 10 )
-    MJD_bin_max = int( round(bands_df['MJD'].max(), -1) + 10 )
-    MJD_bins = range(MJD_bin_min, MJD_bin_max + MJD_binsize, MJD_binsize) # create the bins
-
-    # data frames for the binned band data 
-    bands_df.loc[:,'MJD_bin'] = pd.cut(bands_df['MJD'], MJD_bins)
-
-    # what we want: 
-    # mean MJD
-    # min and max MJD within this bin
-    # mean mag 
-    # standard error on mean mag
-    #   - std dev
-    #   - count of no of data points within the bin
-    #   - std err = std dev / sqrt(count)
-
-    bands_binned_df = bands_df.groupby('MJD_bin', observed = False).agg(mean_MJD = ('MJD', 'mean'), 
-                                                                        min_MJD = ('MJD', 'min'), 
-                                                                        max_MJD = ('MJD', 'max'), 
-                                                                        mean_mag = ('mag', 'mean'), 
-                                                                        std_dev_mag = ('mag', 'std'), 
-                                                                        count = ('mag', 'count'))
-    
-    bands_binned_df['mag_std_err'] = bands_binned_df['std_dev_mag'] / np.sqrt(bands_binned_df['count']) # std err of mean mag
-    bands_binned_df.rename(columns = {'mean_MJD' : 'MJD', 'mean_mag' : 'mag', 'mag_std_err':'magerr'}) # rename columns to the usual naming system
-    bands_binned_df.drop(['std_dev_mag', 'count'], axis = 1) # drop unnecessary columns
-    #print(bands_binned_df)
-
-    return bands_binned_df
 
 
 
@@ -78,33 +38,16 @@ unique_bands = np.unique(free_list_of_bands)
 #############################################################################################################################################################################################################
 #############################################################################################################################################################################################################
 want_separate_plots = False
-# PLOTTING 
-if want_separate_plots == True:
-    for i, lc_df in enumerate(lc_df_list): # loop through the light curve data frames
-        plot_name = transient_names[i]+'_lc.png'
-        ANT_name = transient_names[i]
-        plt.figure(figsize = (14, 7))
-        MJD_xlim = MJD_xlims[ANT_name] # the MJD that the transient occur over
 
-        for band in list_of_bands[i]: # looking at the list of bands that are present for this particular lightcurve
-            band_color = band_colour_dict[band]
-            band_data = lc_df[lc_df['band']==band] # filter for the lightcurve data in this specific band
-            band_data = band_data[band_data['magerr'] < 2.0] # filter out the data points with HUGE errors BINNED DATA POINTS WITH HUGE MAGERR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
-            band_offset_data = np.array(band_data['mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
-            plt.errorbar(band_data['MJD'], band_offset_data, yerr = band_data['magerr'], fmt = 'o', c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
-                        markeredgecolor = 'k', markeredgewidth = '0.5')
 
-        if transient_names[i]== 'ZTF20abodaps': # this one lightcurve needs a y lim..
-            plt.ylim((13, 24))
-        plt.title(transient_names[i], fontsize=12, fontweight='bold')
-        plt.xlabel('MJD')
-        plt.ylabel('Apparent magnitude')
-        plt.xlim(MJD_xlim)
-        plt.legend()
-        plt.grid()
-        plt.gca().invert_yaxis()
-        #plt.savefig(plot_name)
-        plt.show()
+
+
+
+
+
+
+def convert_MJD_to_restframe_DSP(peak_MJD, MJD, z):
+    return (MJD - peak_MJD) / (1 + z)
 
 
 
@@ -125,9 +68,29 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
     lc_df = lc_df_list[i]
     ANT_name = transient_names[i]
     MJD_xlim = MJD_xlims[ANT_name] # the MJD that the transient occur over
+    ANT_z = ANT_proper_redshift_dict[ANT_name]
+    ANT_peak_MJD = peak_MJD_dict[ANT_name]
+
+    if ANT_name == 'ASASSN-17jz':
+        MJD_xlim = (57800, 59200)
+
+    if MJD_xlim is not None:
+        MJD_lower_xlim, MJD_upper_xlim = MJD_xlim
+        phase_lower_xlim = convert_MJD_to_restframe_DSP(peak_MJD = ANT_peak_MJD, MJD = MJD_lower_xlim, z = ANT_z)
+        phase_upper_xlim = convert_MJD_to_restframe_DSP(peak_MJD = ANT_peak_MJD, MJD = MJD_upper_xlim, z = ANT_z)
+        phase_xlim = (phase_lower_xlim, phase_upper_xlim)
+
+    else:
+        phase_xlim = None
+
+
+
+
     print(i, ANT_name)
-    print(lc_df.head())
-    print(lc_df['band'].unique())
+    print(ANT_z)
+    print(ANT_peak_MJD)
+    #print(lc_df.head())
+    #print(lc_df['band'].unique())
     print()
 
 
@@ -146,9 +109,32 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
         else:
             xerr = [0]*len(band_data['MJD'])
 
-        band_offset_data = np.array(band_data['mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
-        h = ax.errorbar(band_data['MJD'], band_offset_data, yerr = band_data['magerr'], xerr = xerr, fmt = band_marker, c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
+        # THIS IS TO PLOT MJD
+        #if ANT_name == 'PS1-10adi':
+        #    band_offset_data = np.array(band_data['app_mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
+        #    h = ax.errorbar(band_data['MJD'], band_offset_data, yerr = band_data['app_magerr'], xerr = xerr, fmt = band_marker, c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
+        #             markeredgecolor = 'k', markeredgewidth = '0.5', markersize = 5)
+
+        #else:
+        #    band_offset_data = np.array(band_data['mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
+        #    h = ax.errorbar(band_data['MJD'], band_offset_data, yerr = band_data['magerr'], xerr = xerr, fmt = band_marker, c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
+        #                markeredgecolor = 'k', markeredgewidth = '0.5', markersize = 5)
+        #ax.set_xlim(MJD_xlim)
+
+        if ANT_name == 'PS1-10adi':
+            band_offset_data = np.array(band_data['app_mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
+            h = ax.errorbar(convert_MJD_to_restframe_DSP(peak_MJD = ANT_peak_MJD, MJD = band_data['MJD'].to_numpy(), z = ANT_z), band_offset_data, yerr = band_data['app_magerr'], xerr = xerr, fmt = band_marker, c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
                      markeredgecolor = 'k', markeredgewidth = '0.5', markersize = 5)
+
+        else:
+            band_offset_data = np.array(band_data['mag']) + band_offset_dict[band] # offsetting the band to make it easier to see on the plot
+            h = ax.errorbar(convert_MJD_to_restframe_DSP(peak_MJD = ANT_peak_MJD, MJD = band_data['MJD'].to_numpy(), z = ANT_z), band_offset_data, yerr = band_data['magerr'], xerr = xerr, fmt = band_marker, c = band_color, label = band_offset_label_dict[band], linestyle = 'None',
+                        markeredgecolor = 'k', markeredgewidth = '0.5', markersize = 5)
+            
+
+        ax.set_xlim(phase_xlim)
+
+
         handle = h[0]
         label = band_offset_label_dict[band]
         if label not in leg_labels:
@@ -161,7 +147,6 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
     ax.invert_yaxis()
     ax.grid(True)
     ax.tick_params(axis = 'both', which = 'major', labelsize = 6)
-    ax.set_xlim(MJD_xlim)
     ax.set_title(transient_names[i], fontsize = 9, fontweight = 'bold')
 
     if transient_names[i] == 'ZTF20abodaps': # this one lightcurve needs a y lim..
@@ -172,7 +157,7 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
 fig.legend(sorted_handels, sorted_labels, loc = 'lower right', bbox_to_anchor = (0.97, 0.00), ncols = 5, fontsize = 8)
 plt.suptitle('Light curves of all ANTs used in this study', fontsize=18, fontweight='bold', va = 'center', y = 0.98)
 axisfontsize = 14
-fig.supxlabel('MJD', fontweight = 'bold', va = 'center', y = 0.17, fontsize = axisfontsize)
+fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', va = 'center', y = 0.17, fontsize = axisfontsize)
 fig.supylabel('Apparent magnitude', fontweight = 'bold', va = 'center', x = 0.03, y = 0.6, fontsize = axisfontsize)
 plt.subplots_adjust(top=0.93,
     bottom=0.205,
@@ -180,7 +165,7 @@ plt.subplots_adjust(top=0.93,
     right=0.978,
     hspace=0.39,
     wspace=0.161)
-savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/FINAL_ALL_ANT_lc.png"
+savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/FINAL_ALL_ANT_lc_phase.png"
 plt.savefig(savepath, dpi=300)
 #plt.show() 
 
