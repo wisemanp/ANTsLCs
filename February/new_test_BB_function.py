@@ -79,9 +79,9 @@ if SED_plots == 'usual':
         # FITTING METHOD
         BB_curvefit = True
         BB_brute = True
-        SED_type = 'single_BB'
+        #SED_type = 'single_BB'
         #SED_type = 'double_BB'
-        #SED_type = 'power_law'
+        SED_type = 'power_law'
         #SED_type = 'best_SED'
         UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
