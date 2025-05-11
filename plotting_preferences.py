@@ -178,6 +178,22 @@ band_obs_centwl_dict = {'ATLAS_c': 5408.66,
 
 
 
+
+
+""" sorting teh bands by wavelength and printing them to see which ones should get which colours
+sorted_cent_wl_dict = dict(sorted(band_obs_centwl_dict.items(), key=lambda item: item[1]))
+
+for key, value in sorted_cent_wl_dict.items():
+    print("{:<15} {:>10}".format(key, value)) """
+
+
+
+
+
+
+
+
+
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
@@ -190,16 +206,70 @@ orange = '#fc6b03'
 yellow = '#fcc603'
 bright_green = '#73fc03'
 dark_green = '#238511'
-bright_light_blue = '#02f5dd'
-mid_blue = '#0298f5'
 deep_blue = '#020ef5'
-purple = '#8402f5'
-pink = '#f502dd'
-light_pink = '#e37bd9'
+mid_blue = '#0298f5'
+bright_light_blue = '#02f5dd'
 light_green = '#84e385'
+light_pink = '#e37bd9'
+pink = '#f502dd'
 light_purple = '#ad84e3'
+purple = '#8402f5'
 grey = '#8c8c8c'
 brown = '#5c3b2e'
+
+""" THIS IS THE NEW BAND COLOUR DICT WITH THE ORGANISED COLOURS
+band_colour_dict =  {'ATLAS_c': mid_blue, 
+                    'ATLAS_o': yellow, 
+                    'PS_i': orange, 
+                    'PS_w': yellow, 
+                    'PS_y': red, 
+                    'PS_z': red, 
+                    'UVOT_B': light_pink, # FILTER + FILTER EFFECTIVE AREA - THE FILTER DEGRADES OVER TIME 
+                    'UVOT_U': pink, # FOR ALL UVOT FILTERS. THERES A WEBSITE THAT TELLS YOU ABOUT THIS DEGRADATION
+                    'UVOT_UVM2': purple, 
+                    'UVOT_UVW2': purple, 
+                    'UVOT_V': deep_blue, 
+                    'WISE_W1': brown, 
+                    'WISE_W2': brown, 
+                    'ZTF_g': mid_blue, 
+                    'ZTF_r': yellow, 
+                    'ASAS-SN_V': deep_blue, 
+                    'ASAS-SN_g': bright_light_blue, 
+                    'B': light_pink, 
+                    'CSS_V': deep_blue, 
+                    'Gaia_G': bright_light_blue, # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
+                    'H': mid_blue, 
+                    'I': red, 
+                    'J': purple, 
+                    'LCOGT_B': light_pink, 
+                    'LCOGT_V': dark_green, 
+                    'LCOGT_g': bright_light_blue, 
+                    'LCOGT_i': orange, 
+                    'LCOGT_r': bright_green, 
+                    'R': yellow, 
+                    'SMARTS_B': bright_light_blue,
+                    'SMARTS_V': dark_green, 
+                    'Swope_B': bright_light_blue, 
+                    'Swope_V': dark_green, 
+                    'Swope_g': mid_blue, 
+                    'Swope_i': orange, 
+                    'Swope_r': bright_green, 
+                    'Swope_u': pink, 
+                    'V': dark_green, 
+                    'g': mid_blue, 
+                    'i': orange, 
+                    'r': bright_green, 
+                    'U': pink, 
+                    'UVOT_UVW1': purple, 
+                    'U (Vega)': pink,
+                    'B (Vega)': light_pink,  
+                    'V (Vega)': deep_blue, 
+                    'R (Vega)': bright_green, 
+                    'I (Vega)': red, 
+                    'J (Vega)': brown,
+                    'H (Vega)': brown} """
+
+
 
 band_colour_dict =  {'ATLAS_c': red, 
                     'ATLAS_o': orange, 
@@ -256,11 +326,83 @@ band_colour_dict =  {'ATLAS_c': red,
 
 
 
+
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 # BAND MARKER TYPES ########################################################################################################################################################################
 
+""" THIS IS THE NEW MARKER DICT FOR THE ORGANISED COLOURS
+circle = 'o'
+square = 's'
+triangle = '^'
+star = '*'
+
+band_marker_dict =  {'ATLAS_c': square, 
+                    'ATLAS_o': square, 
+                    'PS_i': star,  
+                    'PS_w': triangle, 
+                    'PS_y': square,  
+                    'PS_z': circle,  
+                    'UVOT_B': circle,  # FILTER + FILTER EFFECTIVE AREA - THE FILTER DEGRADES OVER TIME 
+                    'UVOT_U': circle,  # FOR ALL UVOT FILTERS. THERES A WEBSITE THAT TELLS YOU ABOUT THIS DEGREDATION
+                    'UVOT_UVM2': square,  
+                    'UVOT_UVW2': circle, 
+                    'UVOT_V': circle,  
+                    'WISE_W1': circle, 
+                    'WISE_W2': square, 
+                    'ZTF_g': circle, 
+                    'ZTF_r': circle,
+                    'ASAS-SN_V': triangle,
+                    'ASAS-SN_g': triangle,
+                    'B': triangle,
+                    'CSS_V': star,
+                    'Gaia_G': 's', # GAIA_G PRE RELEASE - THERE'S 2 OTHER OPTIONS
+                    'H': 's', 
+                    'I': triangle,
+                    'J': 's',
+                    'LCOGT_B': star,
+                    'LCOGT_V': circle,
+                    'LCOGT_g': star,
+                    'LCOGT_i': circle,
+                    'LCOGT_r': circle,
+                    'R': star,
+                    'SMARTS_B': circle,
+                    'SMARTS_V': square,
+                    'Swope_B': square,
+                    'Swope_V': triangle,
+                    'Swope_g': star, 
+                    'Swope_i': square,
+                    'Swope_r': square,
+                    'Swope_u': square,
+                    'V': star, 
+                    'g': triangle, 
+                    'i': triangle, 
+                    'r': triangle, 
+                    'U': triangle,  
+                    'UVOT_UVW1': triangle,
+                    'U (Vega)': star,
+                    'B (Vega)': square,  
+                    'V (Vega)': square, 
+                    'R (Vega)': star, 
+                    'I (Vega)':star, 
+                    'J (Vega)': triangle,
+                    'H (Vega)': star} """
+
+
+
+
+""" I JUST DID THIS TO CHECK THAT I DIDN'T GIVE 2 BANDS THE SAME COLOUR AND MARKER FO RTHE NEW COLOURS. 
+plot_bands_df = pd.DataFrame.from_dict(band_obs_centwl_dict, orient='index', columns=['wavelength'])
+plot_bands_df.index.name = 'band'  # optional, to name the index
+plot_bands_df.reset_index(inplace=True)  # make 'Band' a column
+plot_bands_df['color'] = plot_bands_df['band'].map(band_colour_dict)
+plot_bands_df['marker'] = plot_bands_df['band'].map(band_marker_dict)
+
+plot_bands_df.sort_values(by='wavelength', ascending=True, inplace=True)
+
+
+print(plot_bands_df.head(50)) """
 
 
 band_marker_dict =  {'ATLAS_c': 'o', 
