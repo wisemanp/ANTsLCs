@@ -4523,7 +4523,7 @@ class fit_SED_across_lightcurve:
             fig.subplots_adjust(top=0.93,
                                 bottom=0.058,
                                 left=0.17,
-                                right=0.915,
+                                right=0.91,
                                 hspace=0.15,
                                 wspace=0.19)
             
