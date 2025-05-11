@@ -5,7 +5,9 @@ import os
 import sys
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
 from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict
-from functions import restframe_luminosity # used for PS1-10adi
+#from functions import restframe_luminosity # used for PS1-10adi
+from astropy.cosmology import FlatLambdaCDM # THIS IS FOR THE LUMINOSITY DISTANCE  (for PS1-10adi)
+import astropy.units as u
 
 print()
 print()
@@ -479,7 +481,7 @@ paper_lc.to_csv("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS Data/other 
 
 
 
-
+""" 
 # CSS100217
 path1 = file_load_dir + "CSS100217_lc_files/CSS100217_CSSdata.xlsx"
 #path1 = "C:/Users/laure/OneDrive/Desktop/YoRiS/September/other ANT data/CSS100217_lc_files/CSS100217_CSSdata.xlsx"
@@ -505,7 +507,7 @@ print(paper_lc)
 #print(CSS_lc) 
 
 
-
+ """
 
 ##############################################################################################################################################################
 ##############################################################################################################################################################
@@ -696,10 +698,38 @@ plt.show() """
 ##############################################################################################################################################################
 ##############################################################################################################################################################
 
+def distance_modulus_app_mag(M, d_pc):
+    """
+    calculates the apparent magnitude WITHOUT K-CORRECTION for a given absolute magnitdue and distance. 
+    e.g.
+        if you input M in ATLAS_o band, i.e. the absolute magnitude at emitted wavelengths corresponding to ATLAS_o, you will get out the apparent magnitude for this emitted wavelength. 
+        HOWEVER!! this is NOT the apparent magnitude that would be measured by observed in the ATLAS_o filter, since emitted wavelength has redshifted while travelling towards us. So, 
+        the apparent magnitude calculated would correspond to the apparent magnitude measured by a redder band than ATLAS_o. This is because we haven't K-corrected
+    """
+
+    m = 5 * np.log10(d_pc) - 5 + M
+    return m
+
+
+
+
+
 
 
 # PS1-10adi
-""" path1 = file_load_dir + "PS1-10adi_lc_files/PS1-10adi_lc_rest_UBVRIJH"
+z = 0.203
+# ASSUMPTIONS FOR LUMINOSITY DISTANCE ARE BELOW ----------------------------------------------
+H0 = 70 #km/s/Mpc
+om_M = 0.3 # non relativistic matter density fraction
+fcdm = FlatLambdaCDM(H0 = H0, Om0 = om_M)
+# ASSUMPTIONS FOR LUMINOSITY DISTANCE ARE ABOVE ----------------------------------------------
+d = fcdm.luminosity_distance(z).to(u.pc).value # this gives the luminosity distance in pc
+
+
+
+
+
+path1 = file_load_dir + "PS1-10adi_lc_files/PS1-10adi_lc_rest_UBVRIJH"
 colnames = ['Days_since_peak', 'U_mag', 'U_magerr', 'B_mag', 'B_magerr', 'V_mag', 'V_magerr', 'R_mag', 'R_magerr', 'I_mag', 'I_magerr', 'J_mag', 'J_magerr', 'H_mag', 'H_magerr']
 paper_lc = pd.read_csv(path1, delim_whitespace = True, header = None, names = colnames)
 
@@ -732,12 +762,21 @@ combined_paper_lc = pd.DataFrame(combined_paper_lc)
 combined_paper_lc = combined_paper_lc[combined_paper_lc['mag']<= 0.0].copy()
 combined_paper_lc = combined_paper_lc[combined_paper_lc['magerr'] > MIN_MAGERR].copy()
 combined_paper_lc['MJD'] = combined_paper_lc['days_since_peak'] + 2455443 - 2400000.5
+
+
+
+# CALCULATE THE UN-K-CORRECTED APPARENT MAGNITUDE
+combined_paper_lc['app_mag'] = distance_modulus_app_mag(combined_paper_lc['mag'], d_pc = d)
+combined_paper_lc['app_magerr'] = combined_paper_lc['magerr']
 print(combined_paper_lc)
 
 savepath = file_save_dir + "PS1-10adi_FULL_LC.csv"
 combined_paper_lc.to_csv(savepath, index = False)
 
 
+
+
+""" 
 # ALSO MAKE A DATAFRAME WHICH CONTAINS THE DATA IN AB MAGS AND CALCULATES REST FRAME LUMINOSITY
 # (copied from above)
 # my plan:
