@@ -3965,7 +3965,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (None, None), 
                             'ZTF20acvfraq': (None, None), 
                             'ZTF21abxowzx': (None, None), 
-                            'ZTF22aadesap': (1e15, 1.3e17), 
+                            'ZTF22aadesap': (1e13, 1.3e17), 
                             'PS1-10adi': (None, None), 
                             'ASASSN-17jz': (0, 3.5e16), 
                             'ASASSN-18jd': (None, None)}
@@ -4048,16 +4048,16 @@ class fit_SED_across_lightcurve:
 
             # ax2 middle: blackbody radius vs MJD
             ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_R_cm'], yerr = [BB_N_greater_M['brute_R_err_lower_cm'], BB_N_greater_M['brute_R_err_upper_cm']], linestyle = 'None', c = 'k', 
-                        label = r'N > M and $D_{\sigma_\chi} > 3.0$', fmt = 'o', mec = 'k', mew = '0.5')
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0$', fmt = 'o', mec = 'k', mew = '0.5', zorder = 3)
             
 
             # first plot all fits (good and bad) in grey
             ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], yerr = [BB_2dp['brute_R_err_lower_cm'], BB_2dp['brute_R_err_upper_cm']], linestyle = 'None', c = '#696868', 
-                        fmt = 'o', label = r'N = M and $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
             
             # the plot the good fits over the top in white
             ax2.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_R_cm'], yerr = [BB_2dp_good_fit['brute_R_err_lower_cm'], BB_2dp_good_fit['brute_R_err_upper_cm']], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = r'N = M and $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
             
 
             
@@ -4065,7 +4065,7 @@ class fit_SED_across_lightcurve:
             #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
             
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0$', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0$', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 4)
             
 
             ####################################################################################################################################################
@@ -4091,21 +4091,21 @@ class fit_SED_across_lightcurve:
 
             # ax4 bottom: blackbody temperature vs MJD
             ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_T_K'], yerr = [BB_N_greater_M['brute_T_err_lower_K'], BB_N_greater_M['brute_T_err_upper_K']], linestyle = 'None', c = 'k', 
-                        label = r'N > M and $D_{\sigma_\chi} > 3.0$', marker = 'o')
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0$', marker = 'o', zorder = 3)
             
 
             # first plot all fits (good and bad) in grey
             ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], yerr = [BB_2dp['brute_T_err_lower_K'], BB_2dp['brute_T_err_upper_K']], linestyle = 'None', c = '#696868', 
-                        marker = 'o', label = r'N = M and $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k')
+                        marker = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
             
             # the plot the good fits over the top in white
             ax4.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_T_K'], yerr = [BB_2dp_good_fit['brute_T_err_lower_K'], BB_2dp_good_fit['brute_T_err_upper_K']], linestyle = 'None', c = 'white', 
-                        marker = 'o', label = r'N = M and $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k')
+                        marker = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
             
 
             
             sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                        label = r'N > M and $D_{\sigma_\chi} \leq 3.0$', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
+                        label = r'N > M and $D_{\sigma_\chi} \leq 3.0$', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 4)
             
 
             divider4 = make_axes_locatable(ax4)
@@ -4189,19 +4189,19 @@ class fit_SED_across_lightcurve:
 
             # ax2 top right: A vs DSP
             ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_A'], yerr = [BB_N_greater_M['brute_A_err_lower'], BB_N_greater_M['brute_A_err_upper']], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
             
 
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_A'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)   
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)   
 
             # first plot all fits (good and bad) in grey
             ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_A'], yerr = [BB_2dp['brute_A_err_lower'], BB_2dp['brute_A_err_upper']], linestyle = 'None', c = '#696868', 
-                        fmt = 'o', label = r'N = M and $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)       
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)       
 
             # the plot the good fits over the top in white
             ax2.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_A'], yerr = [BB_2dp_good_fit['brute_A_err_lower'], BB_2dp_good_fit['brute_A_err_upper']], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = r'N = M and $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)   
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)   
 
   
             #if self.guided_UVOT_SED_fits:
@@ -4225,19 +4225,19 @@ class fit_SED_across_lightcurve:
 
             # ax4 bottom right: gamma vs DSP
             ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = BB_N_greater_M['brute_gamma_err'], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', marker = 'o', capsize = 5, zorder = 3)
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', marker = 'o', capsize = 5, zorder = 3)
             
 
             sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_gamma'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                        label = fr'N > M and $\chi_{{\nu}} \leq$  {colour_cutoff}', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 4)
+                        label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 4)
 
             # first plot all fits (good and bad) in grey
             ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_gamma'], yerr = BB_2dp['brute_gamma_err'], linestyle = 'None', c = '#696868', 
-                        marker = 'o', label = r'N = M and $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
+                        marker = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
             
             # the plot the good fits over the top in white
             ax4.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_gamma'], yerr = BB_2dp_good_fit['brute_gamma_err'], linestyle = 'None', c = 'white', 
-                        marker = 'o', label = r'N = M and $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+                        marker = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
 
             #if self.guided_UVOT_SED_fits:
             #    ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_gamma'], yerr = [abs(BB_N_greater_M['brute_gamma'] - BB_N_greater_M['gamma_param_lower_lim']), abs(BB_N_greater_M['gamma_param_upper_lim'] - BB_N_greater_M['brute_gamma'])], linestyle = 'None', c = 'red', 
@@ -4302,24 +4302,25 @@ class fit_SED_across_lightcurve:
 
 
         if DBB:
-            fig, axs = plt.subplots(2, 3, sharex=True, figsize = (16, 7.2))
-            ax1, ax2, ax3 = axs[0]
-            ax4, ax5, ax6 = axs[1]
+            fig, axs = plt.subplots(5, 1, sharex=True, figsize = (8.2, 17.4))
+            ax1, ax2, ax3, ax5, ax6 = axs
 
             # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
-            colour_cutoff = 5.0
+            colour_cutoff = 3.0
+            chi_cutoff = 0.1
 
             M_params = 4
             BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == M_params].copy() # since this woudl mean N = M, so we aren't fitting, but solving
+            BB_2dp_good_fit = BB_2dp[BB_2dp['cf_chi'] <= chi_cutoff].copy()
             BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > M_params].copy()
 
             # top left = light curve
             for b in self.interp_df['band'].unique():
                 b_df = self.interp_df[self.interp_df['band'] == b].copy()
+                b_em_cent_wl = b_df['em_cent_wl'].iloc[0]
                 b_colour = band_colour_dict[b]
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
-                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-            ax1.set_ylabel(r'Spectral luminosity density (rest-frame) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = fr"{b_em_cent_wl:.0f} $\AA$")
             #ax1.legend()
             
 
@@ -4332,11 +4333,19 @@ class fit_SED_across_lightcurve:
 
             # ax2 top middle: T1 vs DSP
             ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = BB_N_greater_M['cf_T1_err_K'], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
             
-            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T1_K'], yerr = BB_2dp['cf_T1_err_K'], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
-            
+            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T1_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)
+
+            # first plot all fits (good and bad) in grey
+            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T1_K'], yerr = BB_2dp['cf_T1_err_K'], linestyle = 'None', c = '#696868', 
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
+
+            # the plot the good fits over the top in white
+            ax2.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['cf_T1_K'], yerr = BB_2dp_good_fit['cf_T1_err_K'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+
   
             #if self.guided_UVOT_SED_fits:
             #    ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T1_K'], yerr = [abs(BB_N_greater_M['cf_T1_K'] - BB_N_greater_M['T1_param_lower_lim']), abs(BB_N_greater_M['T1_param_upper_lim'] - BB_N_greater_M['cf_T1_K'])], linestyle = 'None', c = 'red', 
@@ -4344,51 +4353,75 @@ class fit_SED_across_lightcurve:
             #    ax2.set_ylim(((BB_N_greater_M['cf_T1_K'].min())*0.7, (BB_N_greater_M['cf_T1_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
-            sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T1_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
-                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
             ax2.set_ylim(DBB_T1_plot_lims[self.ant_name])
-            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax2)
-            cbar.set_label(label = cbar_label)
+
+
+            divider2 = make_axes_locatable(ax2)
+            cax2 = divider2.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax2) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+
+
+            #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            #cbar = plt.colorbar(sc, ax = ax2)
+            #cbar.set_label(label = cbar_label)
 
 
 
             # ax3 top right: T2 vs DSP
-            ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = BB_N_greater_M['cf_T2_err_K'], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = BB_N_greater_M['cf_T2_err_K'], linestyle = 'None', c = 'k', 
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
             
-            ax3.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T2_K'], yerr = BB_2dp['cf_T2_err_K'], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            # first plot all fits (good and bad) in grey
+            ax5.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_T2_K'], yerr = BB_2dp['cf_T2_err_K'], linestyle = 'None', c = '#696868', 
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
             
+            # the plot the good fits over the top in white
+            ax5.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['cf_T2_K'], yerr = BB_2dp_good_fit['cf_T2_err_K'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+
+
+            sc = ax5.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T2_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)
   
             #if self.guided_UVOT_SED_fits:
             #    ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_T2_K'], yerr = [abs(BB_N_greater_M['cf_T2_K'] - BB_N_greater_M['T2_param_lower_lim']), abs(BB_N_greater_M['T2_param_upper_lim'] - BB_N_greater_M['cf_T2_K'])], linestyle = 'None', c = 'red', 
             #                fmt = 'None', alpha = 0.3, label = 'Param space search lims')
             #    ax3.set_ylim(((BB_N_greater_M['cf_T2_K'].min())*0.7, (BB_N_greater_M['cf_T2_K'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
-            
-            sc = ax3.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_T2_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
-                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+            ax5.set_ylim(DBB_T2_plot_lims[self.ant_name])
 
-            ax3.set_ylim(DBB_T2_plot_lims[self.ant_name])
-            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax3)
-            cbar.set_label(label = cbar_label)
+            divider5 = make_axes_locatable(ax5)
+            cax5 = divider5.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax5) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
 
+            #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            #cbar = plt.colorbar(sc, ax = ax3)
+            #cbar.set_label(label = cbar_label)
 
-
-            # ax4 bottom left: reduced chi squared sigma distance vs MJD
-            ax4.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_chi_sigma_dist'], marker = 'o', edgecolors = 'k', linewidths = 0.5)
 
 
 
             # ax5 bottom middle: R1 vs DSP
-            ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = BB_N_greater_M['cf_R1_err_cm'], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+            ax3.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = BB_N_greater_M['cf_R1_err_cm'], linestyle = 'None', c = 'k', 
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
+
+            sc = ax3.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R1_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)
             
-            ax5.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R1_cm'], yerr = BB_2dp['cf_R1_err_cm'], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
+            # first plot all fits (good and bad) in grey
+            ax3.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R1_cm'], yerr = BB_2dp['cf_R1_err_cm'], linestyle = 'None', c = '#696868', 
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
             
+            # the plot the good fits over the top in white
+            ax3.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['cf_R1_cm'], yerr = BB_2dp_good_fit['cf_R1_err_cm'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+            
+
   
             #if self.guided_UVOT_SED_fits:
             #    ax5.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R1_cm'], yerr = [abs(BB_N_greater_M['cf_R1_cm'] - BB_N_greater_M['R1_param_lower_lim']), abs(BB_N_greater_M['R1_param_upper_lim'] - BB_N_greater_M['cf_R1_cm'])], linestyle = 'None', c = 'red', 
@@ -4396,23 +4429,36 @@ class fit_SED_across_lightcurve:
             #    ax5.set_ylim(((BB_N_greater_M['cf_R1_cm'].min())*0.7, (BB_N_greater_M['cf_R1_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
-            sc = ax5.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R1_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
-                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
-            ax5.set_ylim(DBB_R1_plot_lims[self.ant_name])
 
-            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax5)
-            cbar.set_label(label = cbar_label)
+            
+            ax3.set_ylim(DBB_R1_plot_lims[self.ant_name])
+
+            divider3 = make_axes_locatable(ax3)
+            cax3 = divider3.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax3) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+
+            #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            #cbar = plt.colorbar(sc, ax = ax5)
+            #cbar.set_label(label = cbar_label)
 
 
 
             # ax6 bottom right: R2 vs DSP
             ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = BB_N_greater_M['cf_R2_err_cm'], linestyle = 'None', c = 'k', 
-                        label = fr'N > M and $\chi_{{\nu}}$ > {colour_cutoff}', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5)
+                        label = r'N > M and $D_{\sigma_\chi} > 3.0 $', fmt = 'o', mec = 'k', mew = '0.5', capsize = 5, zorder = 3)
             
-            ax6.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R2_cm'], yerr = BB_2dp['cf_R2_err_cm'], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'N = M = 4', mec = 'k', mew = '0.5', ecolor = 'k')
-            
+            sc = ax6.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R2_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
+                            label = r'N > M and $D_{\sigma_\chi} \leq 3.0 $', marker = 'o', zorder = 4, edgecolors = 'k', linewidths = 0.5)
+
+            # first plot all fits (good and bad) in grey
+            ax6.errorbar(BB_2dp['d_since_peak'], BB_2dp['cf_R2_cm'], yerr = BB_2dp['cf_R2_err_cm'], linestyle = 'None', c = '#696868', 
+                        fmt = 'o', label = r'N = M and $\chi^2 > 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
+
+            # the plot the good fits over the top in white
+            ax6.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['cf_R2_cm'], yerr = BB_2dp_good_fit['cf_R2_err_cm'], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = r'N = M and $\chi^2 \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
   
             #if self.guided_UVOT_SED_fits:
             #    ax6.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['cf_R2_cm'], yerr = [abs(BB_N_greater_M['cf_R2_cm'] - BB_N_greater_M['R2_param_lower_lim']), abs(BB_N_greater_M['R2_param_upper_lim'] - BB_N_greater_M['cf_R2_cm'])], linestyle = 'None', c = 'red', 
@@ -4420,42 +4466,66 @@ class fit_SED_across_lightcurve:
             #    ax6.set_ylim(((BB_N_greater_M['cf_R2_cm'].min())*0.7, (BB_N_greater_M['cf_R2_cm'].max())*1.3)) # since the allowed parameter space to explore can span orders of magnitude, limit the y lim to be within 30% of the most extreme A values on the plot
 
             
-            sc = ax6.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['cf_R2_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_cf_chi_sig_dist'].to_numpy(), 
-                            label = fr'N > M and $\chi_{{\nu}} \leq$ {colour_cutoff}', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+
+            
             ax6.set_ylim(DBB_R2_plot_lims[self.ant_name])
 
-            cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax6)
-            cbar.set_label(label = cbar_label)
+            divider6 = make_axes_locatable(ax6)
+            cax6 = divider6.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax6) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+
+
+            #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
+            #cbar = plt.colorbar(sc, ax = ax6)
+            #cbar.set_label(label = cbar_label)
 
 
 
 
-            for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
+            for ax in [ax1, ax2, ax3, ax5, ax6]:
                 ax.grid(True)
-                ax.legend(fontsize = 8)
+                ax.yaxis.set_major_formatter(formatter)  
+                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
 
-            if self.guided_UVOT_SED_fits:
-                title = f"UVOT GUIDED curve_fit double blackbody SED fit results across {self.ant_name}'s light curve (UVOT guided err scalefactor = {self.UVOT_guided_err_scalefactor})"
+            #if self.guided_UVOT_SED_fits:
+            #    title = f"UVOT GUIDED curve_fit double blackbody SED fit results across {self.ant_name}'s light curve (UVOT guided err scalefactor = {self.UVOT_guided_err_scalefactor})"
+            #else:
+            #    title = f"Curve_fit double blackbody SED fit results across {self.ant_name}'s light curve"
 
+
+            titlefontsize = 17
+            axisfontsize = 14
+            subaxis_fontsize = 12
+
+            if self.ant_name == 'ASASSN-18jd': # it has too many bands lol
+                legend_ncols = 2
             else:
-                title = f"Curve_fit double blackbody SED fit results across {self.ant_name}'s light curve"
+                legend_ncols = 1
+
+            ax1.legend(ncols = legend_ncols)
+            ax2.legend()
+            ax3.legend()
+            ax5.legend()
+            ax6.legend()
 
 
-            ax2.set_ylabel('T1 / K', fontweight = 'bold')
-            ax3.set_ylabel('T2 / K', fontweight = 'bold')
-            ax4.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
-            ax5.set_ylabel('R1 / cm', fontweight = 'bold')
-            ax6.set_ylabel('R2 / cm', fontweight = 'bold')
-            fig.suptitle(title, fontweight = 'bold')
-            fig.supxlabel('Days since peak (rest frame time)', fontweight = 'bold')
-            fig.subplots_adjust(top=0.92,
-                                bottom=0.085,
-                                left=0.055,
-                                right=0.97,
+            ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel(r'$\mathbf{T_{\text{BB, }1}}$ / K', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax5.set_ylabel(r'$\mathbf{T_{\text{BB, }2}}$ / K', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax3.set_ylabel(r'$\mathbf{R_{\text{BB, }1}}$ / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
+            fig.suptitle(f"Double-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
+            fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+            fig.subplots_adjust(top=0.91,
+                                bottom=0.058,
+                                left=0.17,
+                                right=0.915,
                                 hspace=0.15,
-                                wspace=0.23)
+                                wspace=0.19)
             
             if self.guided_UVOT_SED_fits:
                 savepath = self.base_path + f"plots/BB fits/proper_BB_fits/{self.ant_name}/{self.ant_name}_GUIDED_DBB_param_vs_DSP.png"
