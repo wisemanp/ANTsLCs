@@ -10,6 +10,7 @@ from matplotlib.colors import Normalize
 from colorama import Fore, Style
 from tqdm import tqdm
 from matplotlib.ticker import FuncFormatter
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 
@@ -4003,88 +4004,153 @@ class fit_SED_across_lightcurve:
         SBB = self.SED_type == 'single_BB'
         DBB = self.SED_type == 'double_BB'
 
+        def standard_form_tex(x, pos):
+            if x == 0:
+                return "0"
+            exponent = int(np.floor(np.log10(abs(x))))
+            coeff = x / (10 ** exponent)
+            return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
+        formatter = FuncFormatter(standard_form_tex)
+
+
         if SBB:
-            fig, axs = plt.subplots(2, 2, sharex=True, figsize = (16, 7.2))
-            ax1, ax2 = axs[0]
-            ax3, ax4 = axs[1]
+            fig, axs = plt.subplots(3, 1, sharex=True, figsize = (8.2, 11.6))
+            ax1, ax2, ax4 = axs
 
             # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
-            colour_cutoff = 5.0
+            colour_cutoff = 3.0
+            chi_cutoff = 0.1
             #norm = Normalize(vmin = 0.0, vmax = colour_cutoff)
 
             BB_2dp = self.BB_fit_results[self.BB_fit_results['no_bands'] == 2].copy() # since this woudl mean N = M, so we aren't fitting, but solving
+            BB_2dp_good_fit = BB_2dp[BB_2dp['brute_chi'] <= chi_cutoff].copy()
             BB_N_greater_M = self.BB_fit_results[self.BB_fit_results['no_bands'] > 2].copy()
+
+
 
             # top left = light curve
             for b in self.interp_df['band'].unique():
                 b_df = self.interp_df[self.interp_df['band'] == b].copy()
+                b_em_cent_wl = b_df['em_cent_wl'].iloc[0]
                 b_colour = band_colour_dict[b]
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
-                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-            ax1.set_ylabel(r'Spectral luminosity density (rest-frame) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
-            ax1.legend()
+                            linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = fr"{b_em_cent_wl:.0f} $\AA$")
             
 
-            # top right = BB T
+            
+
+
             # separating the BB fit results into high and low chi sigma distance so we can plot the ones wiht low chi sigma distance in a colour map, and the high sigma distance in one colour
             BB_low_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) <= colour_cutoff].copy() # taking the absolute values since we allow the sigma distance to be nagetive now, but a value of -0.5 is just as good as 0.5 (I think)
             BB_high_chi_dist = BB_N_greater_M[abs(BB_N_greater_M['brute_chi_sigma_dist']) > colour_cutoff].copy()
             BB_low_chi_dist['abs_brute_chi_sig_dist'] = abs(BB_low_chi_dist['brute_chi_sigma_dist'])
 
 
-            # ax2 top right: blackbody radius vs MJD
+            # ax2 middle: blackbody radius vs MJD
             ax2.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_R_cm'], yerr = [BB_N_greater_M['brute_R_err_lower_cm'], BB_N_greater_M['brute_R_err_upper_cm']], linestyle = 'None', c = 'k', 
-                        label = 'brute force gridding results', fmt = 'o', mec = 'k', mew = '0.5')
+                        label = r'N > M & $D_{\sigma_\chi} > 3.0$', fmt = 'o', mec = 'k', mew = '0.5')
             
-            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], yerr = [BB_2dp['brute_R_err_lower_cm'], BB_2dp['brute_R_err_upper_cm']], linestyle = 'None', c = 'white', 
-                        fmt = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5', ecolor = 'k')
+
+            # first plot all fits (good and bad) in grey
+            ax2.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_R_cm'], yerr = [BB_2dp['brute_R_err_lower_cm'], BB_2dp['brute_R_err_upper_cm']], linestyle = 'None', c = '#696868', 
+                        fmt = 'o', label = r'N = M & $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 1)
+            
+            # the plot the good fits over the top in white
+            ax2.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_R_cm'], yerr = [BB_2dp_good_fit['brute_R_err_lower_cm'], BB_2dp_good_fit['brute_R_err_upper_cm']], linestyle = 'None', c = 'white', 
+                        fmt = 'o', label = r'N = M & $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k', zorder = 2)
+            
+
             
             #ax2.errorbar(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], yerr = [BB_low_chi_dist['brute_R_err_lower_cm'], BB_low_chi_dist['brute_R_err_upper_cm']],  c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
             #            label = 'Brute force gridding results', fmt = 'o', zorder = 3, mec = 'k', mew = '0.5')
             
             sc = ax2.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_R_cm'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                            label = 'Brute force gridding results', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
+                            label = r'N > M & $D_{\sigma_\chi} \leq 3.0$', marker = 'o', zorder = 3, edgecolors = 'k', linewidths = 0.5)
             
-            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax2)
-            cbar.set_label(label = cbar_label)
+
+            ####################################################################################################################################################
+            ####################################################################################################################################################
+            ####################################################################################################################################################
+            ####################################################################################################################################################
+             #
+
+            divider2 = make_axes_locatable(ax2)
+            cax2 = divider2.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax2) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+
+            #cbar_label = r'Goodness-of-fit metric, $D_{\sigma_\chi}$'
+            #cbar = plt.colorbar(sc, ax = ax2)
+            #cbar.set_label(label = cbar_label)
+
             ax2.set_ylim(SBB_R_plot_lims[self.ant_name])
             
 
 
-            # ax3 bottom left: reduced chi squared sigma distance vs MJD
-            ax3.scatter(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_chi_sigma_dist'], marker = '^', label = 'Brute force gridding results', edgecolors = 'k', linewidths = 0.5)
 
-
-
-            # ax4 bottom right: blackbody temperature vs MJD
+            # ax4 bottom: blackbody temperature vs MJD
             ax4.errorbar(BB_N_greater_M['d_since_peak'], BB_N_greater_M['brute_T_K'], yerr = [BB_N_greater_M['brute_T_err_lower_K'], BB_N_greater_M['brute_T_err_upper_K']], linestyle = 'None', c = 'k', 
-                        label = 'Brute force gridding results', marker = 'o')
+                        label = r'N > M & $D_{\sigma_\chi} > 3.0$', marker = 'o')
             
-            ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], yerr = [BB_2dp['brute_T_err_lower_K'], BB_2dp['brute_T_err_upper_K']], linestyle = 'None', c = 'white', 
-                        marker = 'o', label = f'brute no bands = 2', mec = 'k', mew = '0.5', ecolor = 'k')
+
+            # first plot all fits (good and bad) in grey
+            ax4.errorbar(BB_2dp['d_since_peak'], BB_2dp['brute_T_K'], yerr = [BB_2dp['brute_T_err_lower_K'], BB_2dp['brute_T_err_upper_K']], linestyle = 'None', c = '#696868', 
+                        marker = 'o', label = r'N = M & $\chi \geq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+            # the plot the good fits over the top in white
+            ax4.errorbar(BB_2dp_good_fit['d_since_peak'], BB_2dp_good_fit['brute_T_K'], yerr = [BB_2dp_good_fit['brute_T_err_lower_K'], BB_2dp_good_fit['brute_T_err_upper_K']], linestyle = 'None', c = 'white', 
+                        marker = 'o', label = r'N = M & $\chi \leq 0.1$', mec = 'k', mew = '0.5', ecolor = 'k')
+            
+
             
             sc = ax4.scatter(BB_low_chi_dist['d_since_peak'], BB_low_chi_dist['brute_T_K'], cmap = 'viridis', c = BB_low_chi_dist['abs_brute_chi_sig_dist'].to_numpy(), 
-                        label = 'Brute fit results', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
+                        label = r'N > M & $D_{\sigma_\chi} \leq 3.0$', marker = 'o', edgecolors = 'k', linewidths = 0.5, zorder = 3)
             
             #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
-            cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
-            cbar = plt.colorbar(sc, ax = ax4)
-            cbar.set_label(label = cbar_label)
+            divider4 = make_axes_locatable(ax4)
+            cax4 = divider4.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
+            cbar = plt.colorbar(sc, cax = cax4) 
+            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+
+            #cbar_label = r'Goodness-of-fit metric, $D_{\sigma_\chi}$'
+            #cbar = plt.colorbar(sc, ax = ax4)
+            #cbar.set_label(label = cbar_label)
+
             ax4.set_ylim(SBB_T_plot_lims[self.ant_name])
 
-            for ax in [ax1, ax2, ax3, ax4]:
+            for ax in [ax1, ax2, ax4]:
                 ax.grid(True)
+                ax.yaxis.set_major_formatter(formatter)  
+                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                
+
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
-            ax2.set_ylabel('Blackbody radius / cm', fontweight = 'bold')
-            ax3.set_ylabel('Reduced chi squared sigma distance \n (<=2-3 = Good fit)', fontweight = 'bold')
-            ax4.set_ylabel('Blackbody temperature / K', fontweight = 'bold')
-            fig.suptitle(f"Blackbody fit results across {self.ant_name}'s light curve", fontweight = 'bold')
-            fig.supxlabel('days since peak (rest frame time)', fontweight = 'bold')
-            fig.subplots_adjust(top=0.92,
-                                bottom=0.085,
-                                left=0.055,
-                                right=0.97,
+
+            titlefontsize = 17
+            axisfontsize = 14
+            subaxis_fontsize = 12
+
+            if self.ant_name == 'ASASSN-18jd': # it has too many bands lol
+                legend_ncols = 2
+            else:
+                legend_ncols = 1
+
+            ax1.legend(ncols = legend_ncols)
+            ax2.legend()
+            ax4.legend()
+
+            ax1.set_ylabel('Spectral luminosity density \n(rest-frame) '+r'/ erg s$\mathbf{^{-1}}$$\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel('Blackbody radius / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax4.set_ylabel('Blackbody temperature / K', fontweight = 'bold', fontsize = subaxis_fontsize)
+            fig.align_ylabels()
+            fig.suptitle(f"Single-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
+            fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+            fig.subplots_adjust(top=0.91,
+                                bottom=0.058,
+                                left=0.17,
+                                right=0.915,
                                 hspace=0.15,
                                 wspace=0.19)
             
