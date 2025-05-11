@@ -1566,6 +1566,7 @@ class polyfit_lightcurve:
             b_colour = self.b_colour_dict[b]
             b_marker = self.b_marker_dict[b]
             b_df = self.b_df_dict[b]
+            b_em_cent_wl = b_df['em_cent_wl'].iloc[0]
             b_plot_polyfit = self.plot_results.loc[b]
             b_coverage_score = self.prepping_data.at[b, 'b_coverage_score']
             straggler_df = self.prepping_data.at[b, 'straggler_df']
@@ -1592,7 +1593,7 @@ class polyfit_lightcurve:
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit" 
         plt.xlabel('Days since peak (rest frame time) / days', fontweight = 'bold')
-        plt.ylabel(r'Rest frame luminosity erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
+        plt.ylabel(r'Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
         #plt.ylim((-1e41, 5e42))
         plt.title(f'{self.ant_name} polyfit, reference band = {self.ref_band}. Black circle = "straggler"', fontweight = 'bold')
         
@@ -1637,17 +1638,29 @@ class polyfit_lightcurve:
         fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5))
         axs = axs.ravel() # flatten the 2D array of axes into a 1D array so we can iterate through them
 
+        def standard_form_tex(x, pos):
+                if x == 0:
+                    return "0"
+                exponent = int(np.floor(np.log10(abs(x))))
+                coeff = x / (10 ** exponent)
+                return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
+        formatter = FuncFormatter(standard_form_tex)
+
         for i, ax in enumerate(axs):
             if i >= no_subplots: # if we have more subplots than bands, break out of the loop and hide the axes of the remaining subplots#
                 remaining_axes = axs[i:]
                 for ax in remaining_axes: # iterate through the remaiing axes and hide them from the plot
                     ax.axis('off')
                 break
+            
+            ax.yaxis.set_major_formatter(formatter)  
+            ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
 
             b = self.bands[i]
             b_colour = self.b_colour_dict[b]
             b_marker = self.b_marker_dict[b]
             b_df = self.b_df_dict[b]
+            b_em_cent_wl = b_df['em_cent_wl'].iloc[0]
             b_plot_polyfit = self.plot_results.loc[b]
             b_coverage_score = self.prepping_data.at[b, 'b_coverage_score']
             straggler_df = self.prepping_data.at[b, 'straggler_df']
@@ -1655,34 +1668,66 @@ class polyfit_lightcurve:
             b_interp_df = self.interp_df[self.interp_df['band'] == b].copy()
 
             ax.errorbar(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_df['wm_MJD'], z = self.ant_z), b_df['wm_L_rf'], yerr = b_df['wm_L_rf_err'], fmt = b_marker, markeredgecolor = 'k', markeredgewidth = '1.0', linestyle = 'None', 
-                                label = 'data', c = b_colour)
+                                label = 'data', c = b_colour, zorder = 3)
 
-            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 3)
-            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 4)
-            ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], c = b_colour, markeredgecolor = 'k', markeredgewidth = '1.0', 
-                            linestyle = 'None', alpha = 0.5,  capsize = 5, capthick = 5, label = f'interp')
+            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 4)
+            ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 5)
+            ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], c = 'k', markeredgecolor = 'k', markeredgewidth = '1.0', 
+                            linestyle = 'None', alpha = 0.2,  capsize = 5, capthick = 5, label = f'interp')
 
             if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
-                ax.plot(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z), b_plot_polyfit['poly_plot_L_rf'], c = b_colour, 
-                        label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
-                title = f"{b} \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
+                plot_poly_phase = self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z)
+                ax.plot(plot_poly_phase, b_plot_polyfit['poly_plot_L_rf'], c = 'k')#, c = b_colour)#, 
+                        #label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
+                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"+f" \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
+                ax.set_xlim((np.min(plot_poly_phase) - 30), (np.max(plot_poly_phase) + 30))
             else:
-                title = b
+                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"
+                ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
             #ax.legend(fontsize = 4.5)
-            ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
+            #ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
+            
             #ax.set_ylim(0.0, (b_interp_df['L_rf'].max()*1.1))
             ax.grid(True)
-            ax.set_title(title, fontweight = 'bold', fontsize = 9)
+            if self.ant_name == 'ASASSN-18jd':
+                subplot_titlefontsize = 8
+                fig.subplots_adjust(top=0.849,
+                                    bottom=0.093,
+                                    left=0.115,
+                                    right=0.948,
+                                    hspace=0.728,
+                                    wspace= 0.655)
 
-        fig.supxlabel('Phase (rest frame time) / days', fontweight = 'bold')
-        fig.supylabel(r'Luminosity spectral density (rest-frame wavelength) erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold')
-        fig.suptitle(f"{self.ant_name}'s polynomial fits, reference band = {self.ref_band}. Black circle = 'straggler'", fontweight = 'bold')
-        fig.subplots_adjust(top=0.899,
-                            bottom=0.093,
-                            left=0.06,
-                            right=0.973,
-                            hspace=0.573,
-                            wspace=0.3)
+            elif self.ant_name == 'ASASSN-17jz':
+                subplot_titlefontsize = 10
+                fig.subplots_adjust(top=0.849,
+                                    bottom=0.093,
+                                    left=0.115,
+                                    right=0.968,
+                                    hspace=0.573,
+                                    wspace=0.49)
+
+            else: 
+                subplot_titlefontsize = 11
+                fig.subplots_adjust(top=0.849,
+                                    bottom=0.093,
+                                    left=0.115,
+                                    right=0.968,
+                                    hspace=0.573,
+                                    wspace=0.36)
+                
+
+
+
+            ax.set_title(title, fontweight = 'bold', fontsize = subplot_titlefontsize)
+
+        axisfontsize = 13
+        titlefontsize = 18
+        fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+        #fig.supylabel(r'Luminosity spectral density'+"\n"+r' (rest-frame wavelength) \ erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
+        fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
+        fig.suptitle(f"Polynomial fits to the bands of {self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
+
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit_subplot"
         plt.savefig(savepath, dpi = 300)
@@ -3648,7 +3693,7 @@ class fit_SED_across_lightcurve:
             titlefontsize = 18
             suptitle = f"Single-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel('Rest-frame luminosity / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel('Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))
             fig.subplots_adjust(top=0.875,
@@ -3746,7 +3791,7 @@ class fit_SED_across_lightcurve:
             titlefontsize = 18 
             suptitle = f"Double-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel(r'Rest-frame luminosity / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))
             fig.subplots_adjust(top=0.875,
@@ -3830,7 +3875,7 @@ class fit_SED_across_lightcurve:
             titlefontsize = 18
             suptitle = f"Power-law SED fits at different epochs of {self.ant_name}'s lightcurve"
             fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel(r'Rest-frame luminosity / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))       
             fig.subplots_adjust(top=0.875,
@@ -3976,7 +4021,7 @@ class fit_SED_across_lightcurve:
                 b_colour = band_colour_dict[b]
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                             linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax1.set_ylabel(r'Spectral luminosity density (rest-frame) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
             ax1.legend()
             
 
@@ -4065,7 +4110,7 @@ class fit_SED_across_lightcurve:
                 b_colour = band_colour_dict[b]
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                             linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax1.set_ylabel(r'Spectral luminosity density (rest-frame) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
             #ax1.legend()
             
 
@@ -4174,7 +4219,7 @@ class fit_SED_across_lightcurve:
                 b_colour = band_colour_dict[b]
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                             linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = b)
-            ax1.set_ylabel(r'Rest frame luminosity erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
+            ax1.set_ylabel(r'Spectral luminosity density (rest-frame) / erg s$^{-1}$ $\AA^{-1}$', fontweight = 'bold')
             #ax1.legend()
             
 
