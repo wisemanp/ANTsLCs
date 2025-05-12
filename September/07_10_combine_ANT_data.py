@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
+import extinction
+#from astroquery.irsa_dust import IrsaDust
+from astroquery.ipac.irsa.irsa_dust import IrsaDust
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
 from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_ZP_dict, band_obs_centwl_dict
 #from functions import restframe_luminosity # used for PS1-10adi
@@ -282,6 +287,7 @@ paper_lc_for_host_correction = paper_lc[~paper_lc['band'].isin(['ASAS-SN_V', 'AS
 paper_lc_for_host_correction = host_subtraction_of_mags(host_mag_dict = host_mag_dict_18jd, band_ZP_dict = band_ZP_dict, lc_df = paper_lc_for_host_correction) # SUBTRACT HOST EMISSION
 paper_lc = pd.concat([paper_lc_NOT_for_host_correction, paper_lc_for_host_correction], ignore_index = True).copy() # append the ASASSN and the host corrected light curve data
 
+
 print()
 print()
 print('PAPER LC AFTER HOST SUBTRACTION')
@@ -333,6 +339,7 @@ print('No of magerr values which were changed after host subtraction (should be 
 
 
 
+
 path2 = file_load_dir + "ASASSN-18jd_lc_files/ASASSN-18jd_ATLAS.txt"
 ATLAS_lc = pd.read_csv(path2, delim_whitespace = True)
 
@@ -367,10 +374,65 @@ combined_18jz = pd.concat([ATLAS_lc[columns_to_append], paper_lc[columns_to_appe
 #print(combined_18jz[combined_18jz['3sig_mag_uplim'].notna()].head(50)) # in this case, the upper limits are indicates with a > in the 3sig_mag_uplim ccolumn, with the mag of this upper limit in the mag column, so we can calculate the upper limit on the flux using the function above without doing anything separate for the upper limit values
 combined_18jz = fix_ANT_bandnames(combined_18jz).copy() # this changes the band names to match the others that i have, e.g. 'Swift_U' --> 'UVOT_U'
 print()
-print('COMBINED LIGHT CURVE')
-print(combined_18jz.tail(60))
+#print('COMBINED LIGHT CURVE')
+#print(combined_18jz.tail(60))
 print()
 print()
+
+
+
+
+
+
+
+# NOW CORRECT FOR GALACTIC EXTINCTION OF 18JD
+combined_18jz['obs_cent_wl'] = combined_18jz['band'].map(band_obs_centwl_dict)
+obs_cent_wls = list(combined_18jz['obs_cent_wl'].unique())
+
+
+
+ra = 340.928629043 #ra of object in decimal degrees
+dec = -16.9856920389 #dec of object in decimal degrees
+extinction_table = IrsaDust.get_query_table(SkyCoord(ra*u.deg,dec*u.deg),section='ebv').to_pandas()
+
+
+for i, obs_cent_wl in enumerate(obs_cent_wls):
+    band_paper_lc = combined_18jz[combined_18jz['obs_cent_wl'] == obs_cent_wl].copy()
+    a_lambda = extinction.fitzpatrick99(np.array([obs_cent_wl]), 3.1*extinction_table['ext SandF mean'])[0] #where lambda_mean is your filter mean wavelength
+    
+    band_paper_lc['gal_ext_corr_mag'] = band_paper_lc['mag'] - a_lambda #we are subtracting from the magnitude because the true magnitude is brighter than the one we observed.
+ 
+    #print()
+    #print(band_paper_lc.head(10))
+    if i==0:
+        new_paper_lc = band_paper_lc
+
+    else:
+        new_paper_lc = pd.concat([new_paper_lc, band_paper_lc], ignore_index = True)
+
+
+print()
+print()
+print('GAL EXT LIGHT CURVE')
+print(new_paper_lc.head(40))
+
+print('len = ', len(new_paper_lc))
+print()
+
+
+combined_18jz = new_paper_lc.copy()
+combined_18jz = combined_18jz.drop(columns = ['obs_cent_wl', 'mag'])
+combined_18jz = combined_18jz.rename(columns = {'gal_ext_corr_mag': 'mag'})
+
+
+
+print('final light curve')
+print(combined_18jz.head(30))
+
+
+
+
+
 
 save_path = file_save_dir + "ASASSN-18jd_FULL_LC.csv"
 combined_18jz.to_csv(save_path, index = False)
@@ -715,7 +777,7 @@ def distance_modulus_app_mag(M, d_pc):
 
 
 
-
+""" 
 # PS1-10adi
 z = 0.203
 # ASSUMPTIONS FOR LUMINOSITY DISTANCE ARE BELOW ----------------------------------------------
@@ -773,7 +835,7 @@ print(combined_paper_lc)
 savepath = file_save_dir + "PS1-10adi_FULL_LC.csv"
 combined_paper_lc.to_csv(savepath, index = False)
 
-
+ """
 
 
 """ 
