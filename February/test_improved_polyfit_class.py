@@ -85,9 +85,9 @@ print() """
 
 
 # polyfitting light curves
-#for idx in range(len(transient_names)):
+for idx in range(len(transient_names)):
 #for idx in [11]:
-for idx in [transient_names.index('ASASSN-18jd')]:
+#for idx in [transient_names.index('ASASSN-18jd')]:
     ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
     if ANTs_for_fitting_dict[ANT_name] == False:
         continue
