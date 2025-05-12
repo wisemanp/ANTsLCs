@@ -1674,17 +1674,17 @@ class polyfit_lightcurve:
             ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = 'k', marker = 'o', s = 70, zorder = 4)
             ax.scatter(self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = straggler_df['wm_MJD'], z = self.ant_z), straggler_df['wm_L_rf'], c = b_colour, marker = 'x', s = 20, zorder = 5)
             ax.errorbar(b_interp_df['d_since_peak'], b_interp_df['L_rf'], yerr = b_interp_df['L_rf_err'], c = 'k', markeredgecolor = 'k', markeredgewidth = '1.0', 
-                            linestyle = 'None', alpha = 0.2,  capsize = 5, capthick = 5, label = f'interp')
+                            linestyle = 'None', alpha = 0.35,  capsize = 5, capthick = 5, label = f'interp')
 
             if b_non_straggler_df.empty == False: # plot the polynomial fit if we had enough non-straggler datapoints to fit it
                 plot_poly_phase = self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z)
                 ax.plot(plot_poly_phase, b_plot_polyfit['poly_plot_L_rf'], c = 'k')#, c = b_colour)#, 
                         #label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
                 title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"+f" \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
-                ax.set_xlim((np.min(plot_poly_phase) - 30), (np.max(plot_poly_phase) + 30))
+                ax.set_xlim((np.min(plot_poly_phase) - 40), (np.max(plot_poly_phase) + 40))
             else:
                 title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"
-                ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
+                ax.set_xlim((b_interp_df['d_since_peak'].min() - 20), (b_interp_df['d_since_peak'].max() + 20))
             #ax.legend(fontsize = 4.5)
             #ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
             
