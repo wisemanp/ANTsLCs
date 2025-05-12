@@ -1,6 +1,7 @@
 from astropy.cosmology import FlatLambdaCDM # THIS IS FOR THE LUMINOSITY DISTANCE DICTIONARY
 import astropy.units as u
 import pandas as pd
+import numpy as np
 
 """
 
@@ -845,6 +846,25 @@ min_max_wavelengths = {'ZTF18aczpgwm': (3382.2396526367393, 5297.121647174172), 
 
 
 
+min_wavelengths = {'ZTF18aczpgwm': 3382.2396526367393, # ZTF_g - PS_i      # :)
+                'ZTF19aailpwl': 1558.1391962725686, # UVW2 - PS_i          # UV ANT
+                'ZTF19aamrjar': 2845.9045374189745,  # ZTF_g - ATLAS_o       # only 1 band with wavelength < 3000 A (next is ATLAS_c at 3187 A)
+                'ZTF19aatubsj': 3812.963840202116,  # ZTF_g, PS_w           # :)
+                'ZTF20aanxcpf': 4459.3721144967685, # ZTF_g - PS_i         # :)
+                'ZTF20abgxlut': 3842.0843277645185, # ZTF_g - ATLAS_o        # :)
+                'ZTF20abodaps': 3005.289359054138,  # ZTF_g - PS_i         # :)
+                'ZTF20abrbeie': 2421.4088744046126,  # ZTF_g - ZTF_r       # optical ANT, only 2 bands consistently so fine to say we don't have enough data to fit DBB since N < M, also have <2 bands below 3000A so all good
+                'ZTF20acvfraq': 1698.6190476190477,  # UVW2 - PS_i          # UV ANT
+                'ZTF21abxowzx': 3403.4531360112755,  # ZTF_g - PS_i         # :)
+                'ZTF22aadesap': 1994.6505125815474, # UVW2 - PS_i          # UV ANT
+                'ASASSN-17jz': 1838.5533888841169,  # UVOT_UVW2 - I         # UV ANT
+                'ASASSN-18jd': 1912.3123659756973, # UVOT_UVW2 - Swope_i   # UV ANT
+                'PS1-10adi': 3659.88} # U - H - GET RID OF THE NIR DATA?
+
+
+
+
+
 # need to make sure we don't allow simulation to higher redshifts than the data allows, like for the upper redshift lim I think we should not allow the reddest observed LSST band to have been 
 # emitted at the highest available wavelength here because thsi would involve extrapolating the blue end of the SEDs which is not what we want. I think we Can probs allow simulation to closer 
 # redshifts and a bit of extrapolation there
@@ -878,14 +898,24 @@ for ANT, wavelengths in min_max_wavelengths.items():
     bluest_LSST = 3671
     reddest_LSST = 9712
     max_z = redshift_lim_formula(observed_LSST_wavelength = bluest_LSST, emitted_wavelength = bluest_wl) # bluest emitted band observed at bluest LSST band - prevents extrapolation of the blue-end of the object's SED
-    min_z = redshift_lim_formula(observed_LSST_wavelength = reddest_LSST, emitted_wavelength = reddest_wl) # reddest emitted band observed at LSST's reddest band - prevents extrapolation of the red-end of the object's SED
+    #print(ANT, max_z, ANT_proper_redshift_dict[ANT])
 
-    redshift_limits.append((min_z, max_z))
+    max_z = np.max([max_z, ANT_proper_redshift_dict[ANT]])
+    min_z = 0
+
+    redshift_limits.append(max_z)
     ANT_names.append(ANT)
 
-ANT_sim_redshift_lim_dict = dict(zip(ANT_names, redshift_limits))
+ANT_sim_redshift_upper_lim_dict = dict(zip(ANT_names, redshift_limits))
 
 
-#for key, value in ANT_sim_redshift_lim_dict.items():
+
+
+
+
+#print()
+#print()
+
+#for key, value in ANT_sim_redshift_upper_lim_dict.items():
 #    print(key, value)
-#print(ANT_sim_redshift_lim_dict)
+#print(ANT_sim_redshift_upper_lim_dict)
