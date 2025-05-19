@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+from matplotlib.ticker import MaxNLocator
+
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to access the plotting_preferences.py file 
 from plotting_preferences import band_colour_dict, band_marker_dict, band_offset_dict, band_offset_label_dict, MJD_xlims, ANT_proper_redshift_dict, peak_MJD_dict
 from functions import load_ANT_data
@@ -144,27 +146,40 @@ for i, ax in enumerate(axs): # loop through the light curve data frames
         sorted_handles_and_labels = sorted(zip(leg_handles, leg_labels), key = lambda tp: tp[0].get_marker())
         sorted_handels, sorted_labels = zip(*sorted_handles_and_labels)
 
+    
+
     ax.invert_yaxis()
     ax.grid(True)
     ax.tick_params(axis = 'both', which = 'major', labelsize = 6)
-    ax.set_title(transient_names[i], fontsize = 9, fontweight = 'bold')
+    ax.set_title(transient_names[i], fontsize = 10.5, fontweight = 'bold')
+    ax.tick_params(axis='both', labelsize=9.5)
+    #ax.locator_params(axis='x', nbins=5)
+    #ax.locator_params(axis='y', nbins=5)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
 
     if transient_names[i] == 'ZTF20abodaps': # this one lightcurve needs a y lim..
         ax.set_ylim((24, 13))
+        ax.set_xlim((-100, None))
+    if transient_names[i] == 'ZTF20aanxcpf':
+        ax.set_xlim((-150, None))
+    if transient_names[i] == 'ZTF20acvfraq':
+        ax.set_xlim((-200, None))
 
+    
 
 #fig.legend(leg_handles, leg_labels, loc = 'lower right', bbox_to_anchor = (0.97, 0.00), ncols = 4, fontsize = 8)
-fig.legend(sorted_handels, sorted_labels, loc = 'lower right', bbox_to_anchor = (0.97, 0.00), ncols = 5, fontsize = 8)
+fig.legend(sorted_handels, sorted_labels, loc = 'lower right', bbox_to_anchor = (1.01, 0.00), ncols = 5, fontsize = 9)
 plt.suptitle('Light curves of all ANTs used in this study', fontsize=18, fontweight='bold', va = 'center', y = 0.98)
 axisfontsize = 14
 fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', va = 'center', y = 0.17, fontsize = axisfontsize)
 fig.supylabel('Apparent magnitude', fontweight = 'bold', va = 'center', x = 0.03, y = 0.6, fontsize = axisfontsize)
 plt.subplots_adjust(top=0.93,
-    bottom=0.205,
-    left=0.1,
+    bottom=0.215,
+    left=0.12,
     right=0.978,
-    hspace=0.39,
-    wspace=0.161)
+    hspace=0.47,
+    wspace=0.3)
 savepath = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/light curves/FINAL_ALL_ANT_lc_phase.png"
 plt.savefig(savepath, dpi=300)
 #plt.show() 
