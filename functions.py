@@ -3919,7 +3919,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (0.0, 2e4), 
                             'ZTF20acvfraq': (None, None), 
                             'ZTF21abxowzx': (0.0, 2.5e4), 
-                            'ZTF22aadesap': (0.0, 4e4),
+                            'ZTF22aadesap': (0.0, 2e4),
                             'PS1-10adi': (None, None), 
                             'ASASSN-17jz': (None, None), 
                             'ASASSN-18jd': (None, None)}
@@ -3965,7 +3965,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (None, None), 
                             'ZTF20acvfraq': (-1.9e17, 8e17), 
                             'ZTF21abxowzx': (None, None), 
-                            'ZTF22aadesap': (1e13, 1.3e17), 
+                            'ZTF22aadesap': (1e5, 1.2e17), 
                             'PS1-10adi': (None, None), 
                             'ASASSN-17jz': (0, 3.5e16), 
                             'ASASSN-18jd': (None, None)}
@@ -3980,7 +3980,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (None, None), 
                             'ZTF20acvfraq': (-4e5, 8e5), 
                             'ZTF21abxowzx': (None, None), 
-                            'ZTF22aadesap': (9000, 35000), 
+                            'ZTF22aadesap': (9000, 30000), 
                             'PS1-10adi': (None, None), 
                             'ASASSN-17jz': (0, 8e4), 
                             'ASASSN-18jd': (None, None)}
@@ -3995,7 +3995,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abrbeie': (None, None), 
                             'ZTF20acvfraq': (-1.3e16, 1.4e16), 
                             'ZTF21abxowzx': (None, None), 
-                            'ZTF22aadesap': (1e14, 1.6e15), 
+                            'ZTF22aadesap': (1e14, 1.4e15), 
                             'PS1-10adi': (None, None), 
                             'ASASSN-17jz': (0, 8e15), 
                             'ASASSN-18jd': (None, None)}
