@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import os
 from astropy import constants as const
 import astropy.units as u
@@ -1626,7 +1627,7 @@ class polyfit_lightcurve:
                              6: (2, 3), 
                              7: (2, 4), 
                              8: (2, 4), 
-                             9: (3, 4),
+                             9: (3, 3),
                              10: (3, 4),
                              11: (3, 4), 
                              12: (3, 4), 
@@ -1634,9 +1635,27 @@ class polyfit_lightcurve:
                              14: (3, 5), 
                              23: (4, 6)}
         
+        subplot_rows_cols = {4: (2, 2),
+                             6: (2, 3), 
+                             7: (4, 2), 
+                             8: (4, 2), 
+                             9: (3, 3),
+                             10: (4, 3),
+                             11: (4, 3), 
+                             12: (4, 3), 
+                             13: (5, 3), 
+                             14: (5, 3), 
+                             23: (6, 4)}
+        
         no_subplots = len(self.bands)
         nrows, ncols = subplot_rows_cols[no_subplots]
-        fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5))
+        if no_subplots <= 6:
+            figsize = (16, 7.5)
+            figsize = (8.2, 5.8)
+        else:
+            figsize = (8.2, 11.6)
+
+        fig, axs = plt.subplots(nrows, ncols, figsize = figsize)
         axs = axs.ravel() # flatten the 2D array of axes into a 1D array so we can iterate through them
 
         def standard_form_tex(x, pos):
@@ -1656,6 +1675,9 @@ class polyfit_lightcurve:
             
             ax.yaxis.set_major_formatter(formatter)  
             ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+            ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+            ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
+            ax.tick_params(axis='both', labelsize=9.5)
 
             b = self.bands[i]
             b_colour = self.b_colour_dict[b]
@@ -1680,10 +1702,10 @@ class polyfit_lightcurve:
                 plot_poly_phase = self.convert_MJD_to_restframe_DSP(peak_MJD = self.ref_band_peak_MJD, MJD = b_plot_polyfit['poly_plot_MJD'], z = self.ant_z)
                 ax.plot(plot_poly_phase, b_plot_polyfit['poly_plot_L_rf'], c = 'k')#, c = b_colour)#, 
                         #label = f"S = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)} \n "+r"$\chi_{\nu}^{2}$ "+f" = {b_plot_polyfit['red_chi']:.1f}  \n +/- {b_plot_polyfit['red_chi_1sig']:.1f}")
-                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"+f" \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
+                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ ({b})"+f" \nS = {b_coverage_score:.1f}, O = {(len(b_plot_polyfit['poly_coeffs'])-1)}"
                 ax.set_xlim((np.min(plot_poly_phase) - 40), (np.max(plot_poly_phase) + 40))
             else:
-                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ (observed in {b})"
+                title = fr"{b_em_cent_wl:.0f} $\mathbf{{\AA}}$ ({b})"
                 ax.set_xlim((b_interp_df['d_since_peak'].min() - 20), (b_interp_df['d_since_peak'].max() + 20))
             #ax.legend(fontsize = 4.5)
             #ax.set_xlim((b_interp_df['d_since_peak'].min() - 30), (b_interp_df['d_since_peak'].max() + 30))
@@ -1692,42 +1714,62 @@ class polyfit_lightcurve:
             ax.grid(True)
             if self.ant_name == 'ASASSN-18jd':
                 subplot_titlefontsize = 8
-                fig.subplots_adjust(top=0.849,
-                                    bottom=0.093,
-                                    left=0.115,
+                fig.subplots_adjust(top=0.875,
+                                    bottom=0.08,
+                                    left=0.16,
                                     right=0.948,
                                     hspace=0.728,
-                                    wspace= 0.655)
+                                    wspace= 0.85)
 
             elif self.ant_name == 'ASASSN-17jz':
                 subplot_titlefontsize = 10
-                fig.subplots_adjust(top=0.849,
+                fig.subplots_adjust(top=0.875,
                                     bottom=0.093,
-                                    left=0.115,
+                                    left=0.16,
                                     right=0.968,
                                     hspace=0.573,
                                     wspace=0.49)
 
-            else: 
-                subplot_titlefontsize = 11
-                fig.subplots_adjust(top=0.849,
-                                    bottom=0.093,
-                                    left=0.115,
-                                    right=0.968,
-                                    hspace=0.573,
-                                    wspace=0.36)
-                
 
+
+            else: 
+                
+                if no_subplots <= 6:
+                    subplot_titlefontsize = 11
+                    fig.subplots_adjust(top=0.78,
+                                        bottom=0.093,
+                                        left=0.18,
+                                        right=0.968,
+                                        hspace=0.5,
+                                        wspace=0.55)
+                    
+                else: 
+                    subplot_titlefontsize = 10.5
+                    fig.subplots_adjust(top=0.875,
+                                        bottom=0.08,
+                                        left=0.16,
+                                        right=0.98,
+                                        hspace=0.5,
+                                        wspace=0.6)                
 
 
             ax.set_title(title, fontweight = 'bold', fontsize = subplot_titlefontsize)
+        
+        if no_subplots <= 6:
+            suptitle = f"Polynomial fits to the bands of {self.ant_name}'s\nlight curve"
+            ylabel = f'Spectral luminosity density \n'+r'(rest-frame) [erg s$\, \mathbf{^{-1} \, \AA^{-1}}$]'
 
-        axisfontsize = 13
+        else:
+            suptitle = f"Polynomial fits to the bands of {self.ant_name}'s\nlight curve"
+            ylabel = r'Spectral luminosity density (rest-frame) [erg s$\, \mathbf{^{-1} \, \AA^{-1}}$]'
+
+
+        axisfontsize = 14
         titlefontsize = 18
         fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
         #fig.supylabel(r'Luminosity spectral density'+"\n"+r' (rest-frame wavelength) \ erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
-        fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
-        fig.suptitle(f"Polynomial fits to the bands of {self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
+        fig.supylabel(ylabel, fontweight = 'bold', fontsize = axisfontsize)
+        fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
 
 
         savepath = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/plots/polyfits/{self.ant_name}_polyfit_subplot"
