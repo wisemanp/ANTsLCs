@@ -33,7 +33,7 @@ running_on_server = False
 # load in the interpolated data
 interp_df_list, transient_names, list_of_bands = load_interp_ANT_data(running_on_server = running_on_server)
 
-SED_plots = 'compare_SEDs' #'usual'#'compare_SEDs' 
+SED_plots = 'usual'#'compare_SEDs' #'usual'#'compare_SEDs' 
 
 
 
@@ -63,8 +63,8 @@ SED_plots = 'compare_SEDs' #'usual'#'compare_SEDs'
 # 13 = ZTF22aadesap
 
 if SED_plots == 'usual':
-    for idx in range(len(transient_names)):
-    #for idx in [1]:
+    #for idx in range(len(transient_names)):
+    for idx in [13]:
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -79,8 +79,8 @@ if SED_plots == 'usual':
         # FITTING METHOD
         BB_curvefit = True
         BB_brute = True
-        #SED_type = 'single_BB'
-        SED_type = 'double_BB'
+        SED_type = 'single_BB'
+        #SED_type = 'double_BB'
         #SED_type = 'power_law'
         #SED_type = 'best_SED'
         UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
