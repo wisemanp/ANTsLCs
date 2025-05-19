@@ -3663,10 +3663,60 @@ class fit_SED_across_lightcurve:
             nrows, ncols = (4, 5)
 
         elif no_SEDs == 12:
-            nrows, ncols = (3, 4)
+            nrows, ncols = (4, 3)
 
         return nrows, ncols
 
+
+    @staticmethod
+    def format_sci_with_uncertainty(value, upper, lower):
+        """
+        Formats a number in scientific notation with asymmetric uncertainties,
+        factoring the exponent out of the uncertainties.
+
+        Parameters:
+        - value: float, central value
+        - upper: float, +uncertainty (same units as value)
+        - lower: float, -uncertainty (same units as value)
+
+        Returns:
+        - A LaTeX-formatted string like '(4.1^{+0.05}_{-0.02} × 10^{4})'
+        """
+        if value == 0:
+            raise ValueError("Cannot determine exponent for value 0.")
+
+        exp = int(np.floor(np.log10(abs(value))))
+        base = value / 10**exp
+        upper_scaled = upper / 10**exp
+        lower_scaled = lower / 10**exp
+
+        return rf"$\mathbf{{{base:.2g}^{{+{upper_scaled:.2g}}}_{{-{lower_scaled:.2g}}} \times 10^{{{exp}}}}}$"
+
+
+    @staticmethod
+    def format_sci_with_uncertainty_symmetric(value, error):
+        """
+        Formats a number in scientific notation with asymmetric uncertainties,
+        factoring the exponent out of the uncertainties.
+
+        Parameters:
+        - value: float, central value
+        - upper: float, +uncertainty (same units as value)
+        - lower: float, -uncertainty (same units as value)
+
+        Returns:
+        - A LaTeX-formatted string like '(4.1^{+0.05}_{-0.02} × 10^{4})'
+        """
+        if value == 0:
+            raise ValueError("Cannot determine exponent for value 0.")
+
+        exp = int(np.floor(np.log10(abs(value))))
+        base = value / 10**exp
+        error_scaled = error / 10**exp
+        #label = rf"$\mathbf{{{base:.2g}^{{+{upper_scaled:.2g}}}_{{-{lower_scaled:.2g}}} \times 10^{{{exp}}}}}$"
+        label = rf"$\mathbf{{{base:.2g} \, \pm \, {error_scaled:.2g} \times 10^{{{exp}}}}}$"
+
+        return label
 
 
 
@@ -3678,8 +3728,7 @@ class fit_SED_across_lightcurve:
         nrows, ncols = self.get_indiv_SED_plot_rows_cols(no_SEDs = self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
 
         if self.indiv_plot_MJDs is not None:
-            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
-            axs = axs.flatten()
+            fig, axs = plt.subplots(nrows, ncols, figsize = (8.2, 11.6), sharex = True)
             legend_dict = {}
 
             #def sci_formatter(x, pos):
@@ -3692,6 +3741,20 @@ class fit_SED_across_lightcurve:
                 return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
             formatter = FuncFormatter(standard_form_tex)
 
+            # Set y-sharing per row
+            for row in range(nrows):
+                for col in range(ncols):
+                    ax = axs[row, col]
+                    if col > 0:
+                        ax.sharey(axs[row, 0])  # share y-axis with the first plot in that row
+                        #ax.set_yticklabels([]) # remoce the tick labels 
+                        ax.tick_params(labelleft=False)
+                    ax.yaxis.set_major_formatter(formatter)  
+                    ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds
+                    ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
+
+
+            axs = axs.flatten()
             #formatter = ScalarFormatter(useMathText=False)
             #formatter.set_powerlimits((0, 0))  # Always show scientific notation
             for i, MJD in enumerate(self.indiv_plot_MJDs):
@@ -3699,15 +3762,18 @@ class fit_SED_across_lightcurve:
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                ax.yaxis.set_major_formatter(formatter)  
-                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                #ax.yaxis.set_major_formatter(formatter)  
+                 
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+                ax.tick_params(axis='both', labelsize=9.5)
 
 
 
-                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
-                title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']:.1e}}} }}$"+'\n'
-                title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
-                
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.1f}'
+                #title2 = fr"$ \mathbf{{ T = {self.BB_fit_results.loc[MJD, 'brute_T_K']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']:.1e}}} }}$"+'\n'
+                #title3 = fr"$ \mathbf{{ R = {self.BB_fit_results.loc[MJD, 'brute_R_cm']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']:.1e}}} }}$"+'\n'
+                title3 = 'R = ' + self.format_sci_with_uncertainty(value = self.BB_fit_results.loc[MJD, 'brute_R_cm'], upper = self.BB_fit_results.loc[MJD, 'brute_R_err_upper_cm'], lower = self.BB_fit_results.loc[MJD, 'brute_R_err_lower_cm']) + ' cm'
+                title2 = 'T = ' + self.format_sci_with_uncertainty(value = self.BB_fit_results.loc[MJD, 'brute_T_K'], upper = self.BB_fit_results.loc[MJD, 'brute_T_err_upper_K'], lower = self.BB_fit_results.loc[MJD, 'brute_T_err_lower_K']) + ' K\n'
                 #if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
                 #    title4 = f"\nT lims: ({self.BB_fit_results.at[MJD, 'T_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T_param_upper_lim']:.1e})\n"
                 #    title5 = f"R lims: ({self.BB_fit_results.at[MJD, 'R_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'R_param_upper_lim']:.1e})"
@@ -3729,22 +3795,23 @@ class fit_SED_across_lightcurve:
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = b_marker, c = b_colour, label = b)
                     legend_dict[b] = h[0]
                 
-                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '9'})#, loc='lower left', bbox_to_anchor=(0.05, 0.05))
-                ax.set_title(subplot_title, fontsize = 10, fontweight = 'bold')
+                leg = ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '7'})#, loc='lower left', bbox_to_anchor=(0.05, 0.05))
+                leg.get_frame().set_alpha(0.6)
+                ax.set_title(subplot_title, fontsize = 9.5, fontweight = 'bold')
             
 
             titlefontsize = 18
-            suptitle = f"Single-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
+            suptitle = f"Single-blackbody SED fits at different epochs of \n{self.ant_name}'s lightcurve"
             fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel('Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
-            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))
             fig.subplots_adjust(top=0.875,
-                                bottom=0.094,
-                                left=0.1,
-                                right=0.91,
+                                bottom=0.07,
+                                left=0.18,
+                                right=0.83,
                                 hspace=0.3,
-                                wspace=0.36)
+                                wspace=0.24)
             
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
@@ -3771,8 +3838,7 @@ class fit_SED_across_lightcurve:
         nrows, ncols = self.get_indiv_SED_plot_rows_cols(self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
 
         if self.indiv_plot_MJDs is not None:
-            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
-            axs = axs.flatten()
+            fig, axs = plt.subplots(nrows, ncols, figsize = (8.2, 11.6), sharex = True)
 
             def standard_form_tex(x, pos):
                 if x == 0:
@@ -3782,22 +3848,42 @@ class fit_SED_across_lightcurve:
                 return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
             formatter = FuncFormatter(standard_form_tex)
 
+            # Set y-sharing per row
+            for row in range(nrows):
+                for col in range(ncols):
+                    ax = axs[row, col]
+                    if col > 0:
+                        ax.sharey(axs[row, 0])  # share y-axis with the first plot in that row
+                        #ax.set_yticklabels([]) # remoce the tick labels 
+                        ax.tick_params(labelleft=False)
+                    ax.yaxis.set_major_formatter(formatter)  
+                    ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds
+                    ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
 
+
+            axs = axs.flatten()
             legend_dict = {}
             for i, MJD in enumerate(self.indiv_plot_MJDs):
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                ax.yaxis.set_major_formatter(formatter)  
-                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+                ax.tick_params(axis='both', labelsize=9.5)
+                #ax.yaxis.set_major_formatter(formatter)  
+                #ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
 
                 # sort out the titles to present all of the model parameters
-                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.2f}'
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "cf_chi_sigma_dist"]:.1f}'
                 title2 = r'T1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T1_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T1_err_K']:.1e} K"
+                #title2 = 'T1 = ' + self.format_sci_with_uncertainty_symmetric(value = self.BB_fit_results.loc[MJD, 'cf_T1_K'], error = self.BB_fit_results.loc[MJD, 'cf_T1_err_K']) + ' K'
                 title3 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R1_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R1_err_cm']:.1e} cm"
+                #title3 = 'R1 = ' + self.format_sci_with_uncertainty_symmetric(value = self.BB_fit_results.loc[MJD, 'cf_R1_cm'], error = self.BB_fit_results.loc[MJD, 'cf_R1_err_cm']) + ' cm'
                 title4 = r'T2 = '+f"{self.BB_fit_results.loc[MJD, 'cf_T2_K']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_T2_err_K']:.1e} K"
+                #title4 = 'T2 = ' + self.format_sci_with_uncertainty_symmetric(value = self.BB_fit_results.loc[MJD, 'cf_T2_K'], error = self.BB_fit_results.loc[MJD, 'cf_T2_err_K']) + ' K'
                 title5 = r'R1 = '+f"{self.BB_fit_results.loc[MJD, 'cf_R2_cm']:.1e} +/- {self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']:.1e} cm"
+                #title5 = 'R2 = ' + self.format_sci_with_uncertainty_symmetric(value = self.BB_fit_results.loc[MJD, 'cf_R2_cm'], error = self.BB_fit_results.loc[MJD, 'cf_R2_err_cm']) + ' cm'
 
                 #if self.guided_UVOT_SED_fits: # add the UVOT guided parameter space limits info to the title
                 #    title6 = f"\nT1 lims: ({self.BB_fit_results.at[MJD, 'T1_param_lower_lim']:.1e} - {self.BB_fit_results.at[MJD, 'T1_param_upper_lim']:.1e})\n"
@@ -3828,21 +3914,23 @@ class fit_SED_across_lightcurve:
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = b_marker, c = b_colour, label = b)
                     legend_dict[b] = h[0]
 
-                ax.set_title(subplot_title, fontsize = 10, fontweight = 'bold')
-                ax.legend(handles = [h1, h2], labels = [title2 + '\n'+ title3, title4 + '\n'+ title5], fontsize = 7, prop = {'weight': 'bold', 'size': 7})
+                ax.set_title(subplot_title, fontsize = 9.5, fontweight = 'bold')
+                leg = ax.legend(handles = [h1, h2], labels = [title2 + '\n'+ title3, title4 + '\n'+ title5], fontsize = 5.5, prop = {'weight': 'bold', 'size': 5.5})
+                leg.get_frame().set_alpha(0.6)
+
             
             titlefontsize = 18 
-            suptitle = f"Double-blackbody SED fits at different epochs of {self.ant_name}'s lightcurve"
+            suptitle = f"Double-blackbody SED fits at different epochs of \n{self.ant_name}'s lightcurve"
             fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$\mathbf{^{-1}}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
-            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))
             fig.subplots_adjust(top=0.875,
-                                bottom=0.094,
-                                left=0.1,
-                                right=0.9,
+                                bottom=0.07,
+                                left=0.18,
+                                right=0.83,
                                 hspace=0.3,
-                                wspace=0.36)
+                                wspace=0.24)
             
 
 
@@ -3869,8 +3957,8 @@ class fit_SED_across_lightcurve:
         nrows, ncols = self.get_indiv_SED_plot_rows_cols(no_SEDs = self.no_indiv_SED_plots) # calculate the number of rows and columns needed given the number of individual SEDs we want to plot
 
         if self.indiv_plot_MJDs is not None:
-            fig, axs = plt.subplots(nrows, ncols, figsize = (16, 7.5), sharex = True)
-            axs = axs.flatten()
+            fig, axs = plt.subplots(nrows, ncols, figsize = (8.2, 11.6), sharex = True)
+            
 
 
             def standard_form_tex(x, pos):
@@ -3881,19 +3969,36 @@ class fit_SED_across_lightcurve:
                 return rf"${coeff:.1f} \times 10^{{{exponent}}}$"
             formatter = FuncFormatter(standard_form_tex)
 
+            # Set y-sharing per row
+            for row in range(nrows):
+                for col in range(ncols):
+                    ax = axs[row, col]
+                    if col > 0:
+                        ax.sharey(axs[row, 0])  # share y-axis with the first plot in that row
+                        #ax.set_yticklabels([]) # remoce the tick labels 
+                        ax.tick_params(labelleft=False)
+                    ax.yaxis.set_major_formatter(formatter)  
+                    ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds
+                    ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
 
+
+            axs = axs.flatten()
             legend_dict = {}
             for i, MJD in enumerate(self.indiv_plot_MJDs):
                 ax = axs[i]
                 MJD_df = self.interp_df[self.interp_df['MJD'] == MJD].copy()
                 d_since_peak = MJD_df['d_since_peak'].iloc[0]
 
-                ax.yaxis.set_major_formatter(formatter)  
-                ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                #ax.yaxis.set_major_formatter(formatter)  
+                #ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                ax.tick_params(axis='both', labelsize=9.5)
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
 
-                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.2f}'
-                title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err_upper']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err_lower']:.1e}}} }}$"+'\n'
-                title3 = r'$\mathbf{\gamma = }$'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e} +/- {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
+                subplot_title = f'Phase = {d_since_peak:.0f}'+ r'  $\mathbf{D_{\sigma_\chi}}$ = '+f'{self.BB_fit_results.loc[MJD, "brute_chi_sigma_dist"]:.1f}'
+                #title2 = fr"$ \mathbf{{ A = {self.BB_fit_results.loc[MJD, 'brute_A']:.1e}^{{+{self.BB_fit_results.loc[MJD, 'brute_A_err_upper']:.1e}}}_{{-{self.BB_fit_results.loc[MJD, 'brute_A_err_lower']:.1e}}} }}$"+'\n'
+                title2 = 'A = ' + self.format_sci_with_uncertainty(value = self.BB_fit_results.loc[MJD, 'brute_A'], upper = self.BB_fit_results.loc[MJD, 'brute_A_err_upper'], lower = self.BB_fit_results.loc[MJD, 'brute_A_err_lower']) + '\n'
+                title3 = r'$\mathbf{\gamma = }$'+f"{self.BB_fit_results.loc[MJD, 'brute_gamma']:.1e}" + r"$\mathbf{\pm}$"+ f" {self.BB_fit_results.loc[MJD, 'brute_gamma_err']:.1e}"
+                #title3 = r'$\mathbf{\gamma = }$ ' + self.format_sci_with_uncertainty_symmetric(value = self.BB_fit_results.loc[MJD, 'brute_gamma'], error = self.BB_fit_results.loc[MJD, 'brute_gamma_err'])
 
                 if self.interp_df['em_cent_wl'].max() < 8000: # make sure that the wavelength range we're plotting covers all of the bands, some ANTs have a few in the low IR
                     plot_wl = np.linspace(1000, 8000, 300)*1e-8 # wavelength range to plot out BB at in cm
@@ -3912,21 +4017,22 @@ class fit_SED_across_lightcurve:
                     h = ax.errorbar(b_df['em_cent_wl'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = b_marker, c = b_colour, label = b)
                     legend_dict[b] = h[0]
                 
-                ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '9'})
-                ax.set_title(subplot_title, fontsize = 10, fontweight = 'bold')
+                leg = ax.legend(handles = [h_BB], labels = [title2 + title3], prop = {'weight': 'bold', 'size': '7'})
+                leg.get_frame().set_alpha(0.6)
+                ax.set_title(subplot_title, fontsize = 9.5, fontweight = 'bold')
             
             titlefontsize = 18
-            suptitle = f"Power-law SED fits at different epochs of {self.ant_name}'s lightcurve"
+            suptitle = f"Power-law SED fits at different epochs of \n{self.ant_name}'s lightcurve"
             fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
-            fig.supylabel(r'Spectral luminosity density (rest-frame) / erg s$ ^\mathbf{-1}$ $\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
-            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 10, bbox_to_anchor = (1.0, 0.95))       
+            fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))       
             fig.subplots_adjust(top=0.875,
-                                bottom=0.094,
-                                left=0.1,
-                                right=0.91,
+                                bottom=0.07,
+                                left=0.18,
+                                right=0.83,
                                 hspace=0.3,
-                                wspace=0.36)
+                                wspace=0.24)
 
             if self.save_indiv_BB_plot == True:
                 if self.guided_UVOT_SED_fits:
