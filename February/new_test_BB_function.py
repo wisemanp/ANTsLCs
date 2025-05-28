@@ -319,19 +319,19 @@ if SED_plots == 'compare_SEDs':
 
 
                 # PLOTTING IT UP IN HISTOGRAMS
-                label1 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {all_lc_median:.3g}'+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {all_lc_MAD:.3g}'
+                label1 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {all_lc_median:.2f}'+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {all_lc_MAD:.2f}'
                 ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, color = SED_colour, label = label1, alpha = 0.5)
                 ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-                label2 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {no_UVOT_median:.3g} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {no_UVOT_MAD:.3g}'
+                label2 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {no_UVOT_median:.2f} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {no_UVOT_MAD:.2f}'
                 ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, color = SED_colour, label = label2, alpha = 0.5)
                 ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-                label3 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {rise_peak_median:.3g} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {rise_peak_MAD:.3g}'
+                label3 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {rise_peak_median:.2f} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {rise_peak_MAD:.2f}'
                 ax3.hist(SEDs_rise_peak[sig_dist_colname], bins = 50, color = SED_colour, label = label3, alpha = 0.5)
                 ax3.hist(SEDs_rise_peak[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour,  alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-                label4 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {UVOT_median:.3g} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {UVOT_MAD:.3g}'
+                label4 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {UVOT_median:.2f} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {UVOT_MAD:.2f}'
                 ax4.hist(SEDs_with_UVOT[sig_dist_colname], bins = 50, color = SED_colour, label = label4, alpha = 0.5)
                 ax4.hist(SEDs_with_UVOT[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
@@ -446,7 +446,7 @@ if SED_plots == 'compare_SEDs':
 
 
                 # PLOTTING IT UP IN HISTOGRAMS
-                label1 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {all_lc_median:.3g}'+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {all_lc_MAD:.3g}'
+                label1 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {all_lc_median:.2f}'+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {all_lc_MAD:.2f}'
                 ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, color = SED_colour, label = label1, alpha = 0.5)
                 ax1.hist(BB_fit_results[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
@@ -454,7 +454,7 @@ if SED_plots == 'compare_SEDs':
                 #ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, color = SED_colour, label = label2, alpha = 0.5)
                 #ax2.hist(SEDs_without_UVOT[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour, alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
-                label3 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {rise_peak_median:.3g} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {rise_peak_MAD:.3g}'
+                label3 = fr'$\mathbf{{{SED_label}}}$ '+'\n'+fr'Median $D_{{\sigma_\chi}}$ = {rise_peak_median:.2f} '+'\n'+fr'MAD $D_{{\sigma_\chi}}$ = {rise_peak_MAD:.2f}'
                 ax3.hist(SEDs_rise_peak[sig_dist_colname], bins = 50, color = SED_colour, label = label3, alpha = 0.5)
                 ax3.hist(SEDs_rise_peak[sig_dist_colname], bins = 50, edgecolor = SED_ecolour, color = SED_colour,  alpha = 0.75, histtype='step', linewidth = 1.5, linestyle = SED_linestyle)#, hatch = SED_hatch)
 
