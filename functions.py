@@ -1766,7 +1766,7 @@ class polyfit_lightcurve:
 
         axisfontsize = 14
         titlefontsize = 18
-        fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+        fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
         #fig.supylabel(r'Luminosity spectral density'+"\n"+r' (rest-frame wavelength) \ erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
         fig.supylabel(ylabel, fontweight = 'bold', fontsize = axisfontsize)
         fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
@@ -3802,7 +3802,7 @@ class fit_SED_across_lightcurve:
 
             titlefontsize = 18
             suptitle = f"Single-blackbody SED fits at different epochs of \n{self.ant_name}'s lightcurve"
-            fig.supxlabel('Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supxlabel(r'Emitted wavelength [$\mathbf{\AA}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))
@@ -3921,7 +3921,7 @@ class fit_SED_across_lightcurve:
             
             titlefontsize = 18 
             suptitle = f"Double-blackbody SED fits at different epochs of \n{self.ant_name}'s lightcurve"
-            fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supxlabel(r'Emitted wavelength [$\mathbf{\AA}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))
@@ -4023,7 +4023,7 @@ class fit_SED_across_lightcurve:
             
             titlefontsize = 18
             suptitle = f"Power-law SED fits at different epochs of \n{self.ant_name}'s lightcurve"
-            fig.supxlabel(r'Emitted wavelength / $\mathbf{\AA}$', fontweight = 'bold', fontsize = (titlefontsize - 4))
+            fig.supxlabel(r'Emitted wavelength [$\mathbf{\AA}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.supylabel(r'Spectral luminosity density (rest-frame) [erg s$\mathbf{^{-1} \, \AA^{-1}}$]', fontweight = 'bold', fontsize = (titlefontsize - 4))
             fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
             fig.legend(legend_dict.values(), legend_dict.keys(), loc = 'upper right', fontsize = 8.5, bbox_to_anchor = (1.005, 0.95))       
@@ -4096,7 +4096,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (0, 1.5e4), 
+                            'ZTF20acvfraq': (0, 1.1e4), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1500, 7500), 
                             'PS1-10adi': (None, None), 
@@ -4126,7 +4126,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (-4e5, 8e5), 
+                            'ZTF20acvfraq': (-2e5, 6e5), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (9000, 30000), 
                             'PS1-10adi': (None, None), 
@@ -4141,7 +4141,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (-1.3e16, 1.4e16), 
+                            'ZTF20acvfraq': (-2.5e15, 5e15), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e14, 1.4e15), 
                             'PS1-10adi': (None, None), 
@@ -4161,8 +4161,12 @@ class fit_SED_across_lightcurve:
         formatter = FuncFormatter(standard_form_tex)
 
 
+        legfontsize = 10.5
+        tickfontsize = 13
+
+
         if SBB:
-            fig, axs = plt.subplots(3, 1, sharex=True, figsize = (8.2, 11.6))
+            fig, axs = plt.subplots(3, 1, sharex=True, figsize = (6.5, 13)) # (8.2, 11.6)
             ax1, ax2, ax4 = axs
 
             # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
@@ -4225,8 +4229,8 @@ class fit_SED_across_lightcurve:
             divider2 = make_axes_locatable(ax2)
             cax2 = divider2.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax2) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
             #cbar_label = r'Goodness-of-fit metric, $D_{\sigma_\chi}$'
             #cbar = plt.colorbar(sc, ax = ax2)
@@ -4259,8 +4263,8 @@ class fit_SED_across_lightcurve:
             divider4 = make_axes_locatable(ax4)
             cax4 = divider4.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax4) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
 
             ax4.set_ylim(SBB_T_plot_lims[self.ant_name])
@@ -4269,32 +4273,36 @@ class fit_SED_across_lightcurve:
                 ax.grid(True)
                 ax.yaxis.set_major_formatter(formatter)  
                 ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+                ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+                ax.tick_params(axis='both', labelsize= tickfontsize)
                 
 
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
 
             titlefontsize = 17
             axisfontsize = 14
-            subaxis_fontsize = 12
+            subaxis_fontsize = 13.5
 
             if self.ant_name == 'ASASSN-18jd': # it has too many bands lol
                 legend_ncols = 2
             else:
                 legend_ncols = 1
 
-            ax1.legend(ncols = legend_ncols)
-            ax2.legend()
-            ax4.legend()
+            
+            ax1.legend(ncols = legend_ncols, fontsize = legfontsize, loc = 'upper right')
+            ax2.legend(fontsize = legfontsize)
+            ax4.legend(fontsize = legfontsize)
 
-            ax1.set_ylabel('Spectral luminosity density \n(rest-frame) '+r'/ erg s$\mathbf{^{-1}}$$\mathbf{\AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax2.set_ylabel('Blackbody radius / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax4.set_ylabel('Blackbody temperature / K', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax1.set_ylabel('Spectral luminosity density \n(rest-frame) '+r' [erg s$\mathbf{^{-1}}$$\mathbf{\AA^{-1}}$]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel('Blackbody radius [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax4.set_ylabel('Blackbody temperature [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
             fig.align_ylabels()
             fig.suptitle(f"Single-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
-            fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+            fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
             fig.subplots_adjust(top=0.91,
                                 bottom=0.058,
-                                left=0.17,
+                                left=0.24,
                                 right=0.915,
                                 hspace=0.15,
                                 wspace=0.19)
@@ -4305,7 +4313,7 @@ class fit_SED_across_lightcurve:
 
 
         if PL:
-            fig, axs = plt.subplots(3, 1, sharex=True, figsize = (8.2, 11.6))
+            fig, axs = plt.subplots(3, 1, sharex=True, figsize = (6.5, 13))
             ax1, ax2, ax4 = axs
 
             # getting the colour scale for plotting the params vs MJD coloured by chi sigma distance
@@ -4364,8 +4372,8 @@ class fit_SED_across_lightcurve:
             divider2 = make_axes_locatable(ax2)
             cax2 = divider2.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax2) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
             ax2.set_yscale('log')
 
@@ -4398,8 +4406,8 @@ class fit_SED_across_lightcurve:
             divider4 = make_axes_locatable(ax4)
             cax4 = divider4.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax4) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
             
             #plt.colorbar(sc, ax = ax4, label = 'Chi sigma distance')
             #cbar_label = r'Brute goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -4408,6 +4416,9 @@ class fit_SED_across_lightcurve:
 
             for ax in [ax1, ax2, ax4]:
                 ax.grid(True)
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+                ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+                ax.tick_params(axis='both', labelsize= tickfontsize)
                 #ax.legend(fontsize = 8)
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
 
@@ -4419,25 +4430,26 @@ class fit_SED_across_lightcurve:
 
             titlefontsize = 17
             axisfontsize = 14
-            subaxis_fontsize = 12
+            subaxis_fontsize = 13.5
 
             if self.ant_name == 'ASASSN-18jd': # it has too many bands lol
                 legend_ncols = 2
             else:
                 legend_ncols = 1
 
-            ax1.legend(ncols = legend_ncols)
-            ax2.legend()
-            ax4.legend()
+            
+            ax1.legend(ncols = legend_ncols, fontsize = legfontsize, loc = 'upper right')
+            ax2.legend(fontsize = legfontsize)
+            ax4.legend(fontsize = legfontsize)
 
-            ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax2.set_ylabel(r'Power-law amplitude (A) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax4.set_ylabel(r'Power-law $\mathbf{\gamma}$ / no units', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) [erg s$\mathbf{^{-1} \AA^{-1}}$]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel(r'Power-law amplitude (A) [erg s$\mathbf{^{-1} \AA^{-1}}$]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax4.set_ylabel(r'Power-law $\mathbf{\gamma}$ [no units]', fontweight = 'bold', fontsize = subaxis_fontsize)
             fig.suptitle(f"Power-law fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
-            fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+            fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
             fig.subplots_adjust(top=0.91,
                                 bottom=0.058,
-                                left=0.17,
+                                left=0.24,
                                 right=0.915,
                                 hspace=0.15,
                                 wspace=0.19)
@@ -4508,8 +4520,8 @@ class fit_SED_across_lightcurve:
             divider2 = make_axes_locatable(ax2)
             cax2 = divider2.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax2) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
 
             #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -4544,8 +4556,8 @@ class fit_SED_across_lightcurve:
             divider5 = make_axes_locatable(ax5)
             cax5 = divider5.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax5) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
             #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
             #cbar = plt.colorbar(sc, ax = ax3)
@@ -4584,8 +4596,8 @@ class fit_SED_across_lightcurve:
             divider3 = make_axes_locatable(ax3)
             cax3 = divider3.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax3) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
             #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
             #cbar = plt.colorbar(sc, ax = ax5)
@@ -4621,8 +4633,8 @@ class fit_SED_across_lightcurve:
             divider6 = make_axes_locatable(ax6)
             cax6 = divider6.append_axes("right", size="2%", pad=0.15)  # Adjust position with `pad`
             cbar = plt.colorbar(sc, cax = cax6) 
-            cbar_label = r'Goodness-of-fit metric, $\mathbf{D_{\sigma_\chi}}$'
-            cbar.set_label(label = cbar_label, fontsize = 10, fontweight = 'bold')
+            cbar_label = r'Goodness-of-fit, $\mathbf{D_{\sigma_\chi}}$'
+            cbar.set_label(label = cbar_label, fontsize = 12, fontweight = 'bold')
 
 
             #cbar_label = r'Curve_fit goodness of BB fit ($\chi_{\nu}$ sig dist)'
@@ -4636,6 +4648,9 @@ class fit_SED_across_lightcurve:
                 ax.grid(True)
                 ax.yaxis.set_major_formatter(formatter)  
                 ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+                ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+                ax.tick_params(axis='both', labelsize= tickfontsize)
                 
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
 
@@ -4647,30 +4662,31 @@ class fit_SED_across_lightcurve:
 
             titlefontsize = 17
             axisfontsize = 14
-            subaxis_fontsize = 12
+            subaxis_fontsize = 13.5
 
             if self.ant_name == 'ASASSN-18jd': # it has too many bands lol
                 legend_ncols = 2
             else:
                 legend_ncols = 1
 
-            ax1.legend(ncols = legend_ncols)
-            ax2.legend()
-            ax3.legend()
-            ax5.legend()
-            ax6.legend()
+            
+            ax1.legend(ncols = legend_ncols, fontsize = legfontsize, loc = 'upper right')
+            ax2.legend(fontsize = legfontsize)
+            ax3.legend(fontsize = legfontsize)
+            ax5.legend(fontsize = legfontsize)
+            ax6.legend(fontsize = legfontsize)
 
 
-            ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) / erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax2.set_ylabel(r'$\mathbf{T_{\text{BB, }1}}$ / K', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax5.set_ylabel(r'$\mathbf{T_{\text{BB, }2}}$ / K', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax3.set_ylabel(r'$\mathbf{R_{\text{BB, }1}}$ / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ / cm', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) [erg s$\mathbf{^{-1} \AA^{-1}}$]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel(r'$\mathbf{T_{\text{BB, }1}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax5.set_ylabel(r'$\mathbf{T_{\text{BB, }2}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax3.set_ylabel(r'$\mathbf{R_{\text{BB, }1}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
             fig.suptitle(f"Double-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
-            fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
+            fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
             fig.subplots_adjust(top=0.93,
                                 bottom=0.058,
-                                left=0.17,
+                                left=0.24,
                                 right=0.91,
                                 hspace=0.15,
                                 wspace=0.19)
