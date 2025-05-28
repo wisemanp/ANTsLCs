@@ -1766,7 +1766,7 @@ class polyfit_lightcurve:
 
         axisfontsize = 14
         titlefontsize = 18
-        fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
+        fig.supxlabel('Phase (rest-frame) / days', fontweight = 'bold', fontsize = axisfontsize)
         #fig.supylabel(r'Luminosity spectral density'+"\n"+r' (rest-frame wavelength) \ erg s$\mathbf{^{-1} \AA^{-1}}$', fontweight = 'bold', fontsize = axisfontsize)
         fig.supylabel(ylabel, fontweight = 'bold', fontsize = axisfontsize)
         fig.suptitle(suptitle, fontweight = 'bold', fontsize = titlefontsize)
@@ -4096,7 +4096,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (0, 1.1e4), 
+                            'ZTF20acvfraq': (0, 1.5e4), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1500, 7500), 
                             'PS1-10adi': (None, None), 
@@ -4126,7 +4126,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (-2e5, 6e5), 
+                            'ZTF20acvfraq': (-4e5, 8e5), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (9000, 30000), 
                             'PS1-10adi': (None, None), 
@@ -4141,7 +4141,7 @@ class fit_SED_across_lightcurve:
                             'ZTF20abgxlut': (None, None), 
                             'ZTF20abodaps': (None, None), 
                             'ZTF20abrbeie': (None, None), 
-                            'ZTF20acvfraq': (-2.5e15, 5e15), 
+                            'ZTF20acvfraq': (-1.3e16, 1.4e16), 
                             'ZTF21abxowzx': (None, None), 
                             'ZTF22aadesap': (1e14, 1.4e15), 
                             'PS1-10adi': (None, None), 
@@ -4188,6 +4188,8 @@ class fit_SED_across_lightcurve:
                 ax1.errorbar(b_df['d_since_peak'], b_df['L_rf'], yerr = b_df['L_rf_err'], fmt = 'o', c = b_colour, 
                             linestyle = 'None', markeredgecolor = 'k', markeredgewidth = '0.5', label = fr"{b_em_cent_wl:.0f} $\AA$")
             
+            if self.ant_name == 'ZTF20abodaps':
+                ax1.set_yscale('log')
 
             
 
@@ -4274,8 +4276,12 @@ class fit_SED_across_lightcurve:
                 ax.yaxis.set_major_formatter(formatter)  
                 ax.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
                 ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
-                ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
                 ax.tick_params(axis='both', labelsize= tickfontsize)
+                if self.ant_name == 'ZTF20abodaps':
+                    if ax == ax1:
+                        continue
+                ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+
                 
 
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
@@ -4303,7 +4309,7 @@ class fit_SED_across_lightcurve:
             fig.subplots_adjust(top=0.91,
                                 bottom=0.058,
                                 left=0.24,
-                                right=0.915,
+                                right=0.9,
                                 hspace=0.15,
                                 wspace=0.19)
             
@@ -4334,6 +4340,8 @@ class fit_SED_across_lightcurve:
             #ax1.legend()
             ax1.yaxis.set_major_formatter(formatter)  
             ax1.get_yaxis().get_offset_text().set_visible(False) # Hide the offset that matplotlib adds 
+            if self.ant_name == 'ZTF20abodaps':
+                ax1.set_yscale('log')
             
 
             
@@ -4417,8 +4425,12 @@ class fit_SED_across_lightcurve:
             for ax in [ax1, ax2, ax4]:
                 ax.grid(True)
                 ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
-                ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
                 ax.tick_params(axis='both', labelsize= tickfontsize)
+                if self.ant_name == 'ZTF20abodaps':
+                    if ax == ax1:
+                        continue
+                if ax != ax2:
+                    ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
                 #ax.legend(fontsize = 8)
                 #ax.set_xlim(MJDs_for_fit[ANT_name])
 
@@ -4450,7 +4462,7 @@ class fit_SED_across_lightcurve:
             fig.subplots_adjust(top=0.91,
                                 bottom=0.058,
                                 left=0.24,
-                                right=0.915,
+                                right=0.9,
                                 hspace=0.15,
                                 wspace=0.19)
             
@@ -4462,6 +4474,8 @@ class fit_SED_across_lightcurve:
 
 
         if DBB:
+            legfontsize = 12
+            tickfontsize = 15
             fig, axs = plt.subplots(5, 1, sharex=True, figsize = (8.2, 17.4))
             ax1, ax2, ax3, ax5, ax6 = axs
 
@@ -4678,10 +4692,14 @@ class fit_SED_across_lightcurve:
 
 
             ax1.set_ylabel('Spectral luminosity density \n'+r'(rest-frame) [erg s$\mathbf{^{-1} \AA^{-1}}$]', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax2.set_ylabel(r'$\mathbf{T_{\text{BB, }1}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax5.set_ylabel(r'$\mathbf{T_{\text{BB, }2}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax3.set_ylabel(r'$\mathbf{R_{\text{BB, }1}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
-            ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            #ax2.set_ylabel(r'$\mathbf{T_{\text{BB, }1}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax2.set_ylabel('BB1 Temperature [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            #ax5.set_ylabel(r'$\mathbf{T_{\text{BB, }2}}$ [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax5.set_ylabel('BB2 Temperature [K]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            #ax3.set_ylabel(r'$\mathbf{R_{\text{BB, }1}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax3.set_ylabel('BB1 Radius [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            #ax6.set_ylabel(r'$\mathbf{R_{\text{BB, }2}}$ [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
+            ax6.set_ylabel('BB2 Radius [cm]', fontweight = 'bold', fontsize = subaxis_fontsize)
             fig.suptitle(f"Double-Blackbody fit results across \n{self.ant_name}'s light curve", fontweight = 'bold', fontsize = titlefontsize)
             fig.supxlabel('Phase (rest-frame) [days]', fontweight = 'bold', fontsize = axisfontsize)
             fig.subplots_adjust(top=0.93,
