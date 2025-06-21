@@ -21,6 +21,23 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 #===============================================================================================================================================
 #===============================================================================================================================================
 #===============================================================================================================================================
+# This code loads in the interpolated ANT data, and the runs SED fitting on each ANT    
+#     - Loads in the interpolated ANT light curves 
+#     - Runs SED fitting on each ANT
+
+# A few things to note:
+#     - If fitting_process == 'usual', fits one chosen SED model to each ANT
+
+#     - If fitting_process == 'compare_SEDs', fits all SED models to each ANT and compares the goodness-of-fit metric across different phase 
+#       categories using a histogram
+
+#     - If UVOT_guided_fitting == True, will use the SED fit results to epochs with UV data to constrain the paramater space which nearby optical-only
+#       epochs are fitted in. HOWEVER, this will only be used for the ANTs: 'ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd'
+#       since these were the only ANTs in our sample which had more than 10 epochs of interpolated data in at least 2 bands which were emitted below
+#       3000 Angstroms (which I referred to as the 'UV-rich ANTs' in my dissertation)
+
+#     - If UVOT_guided_fitting == False, each SED fit will be run independently of the next
+#===============================================================================================================================================
 #===============================================================================================================================================
 #===============================================================================================================================================
 #===============================================================================================================================================
@@ -29,11 +46,15 @@ pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all f
 
 
 
-running_on_server = False 
+running_on_server = False  # This just changes the base path when finding/saving files
 # load in the interpolated data
 interp_df_list, transient_names, list_of_bands = load_interp_ANT_data(running_on_server = running_on_server)
 
-SED_plots = 'usual'#'compare_SEDs' #'usual'#'compare_SEDs' 
+# 
+# For fitting_process: If 'usual', the code will run a single SED model fit (chosen by the user)
+# if 'compare_SEDs', the code will run all SED models and compare them across different phase categories, producing a histogram of the 
+# goodness-of-fit metic for each epoch's SED fit
+fitting_process = 'usual'# 'compare_SEDs' 
 
 
 
@@ -62,9 +83,9 @@ SED_plots = 'usual'#'compare_SEDs' #'usual'#'compare_SEDs'
 # 12 = ZTF21abxowzx
 # 13 = ZTF22aadesap
 
-if SED_plots == 'usual':
-    #for idx in range(len(transient_names)):
-    for idx in [13]:
+if fitting_process == 'usual':
+    #for idx in range(len(transient_names)): # this for loop runs the code for all transients 
+    for idx in [13]: # this for loop runs the code for only one transient
 
         ANT_name = transient_names[idx]
         interp_lc= interp_df_list[idx]
@@ -72,22 +93,16 @@ if SED_plots == 'usual':
         print()
         print(ANT_name)
         
-        #if idx == 10:
-        #    interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
-        #interp_lc = interp_lc[~interp_lc['band'].isin(['UVOT_B', 'UVOT_U', 'UVOT_UVM2', 'UVOT_UVW1', 'UVOT_UVW2', 'UVOT_V'])]
 
         # FITTING METHOD
-        BB_curvefit = True
-        BB_brute = True
-        SED_type = 'single_BB'
+        SED_type = 'single_BB' 
         #SED_type = 'double_BB'
         #SED_type = 'power_law'
-        #SED_type = 'best_SED'
         UVOT_guided_fitting = True # if True, will call run_UVOT_guided_SED_fitting_process() instead of run_SED_fitting process(). When an ANT has UVOT on the rise/peak, will use the UVOT SED fit results to constrain the parameter space to search for the nearby non-UVOT SED fits
         UVOT_guided_err_scalefactor = 0.1 
-        UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance that we will accept that the model is a good fit to the data
+        UVOT_guided_sigma_dist_for_good_fit = 3.0 # the max reduced chi squared sigma distance corresponding to a good fit to the data
         
-        brute_gridsize = 2000
+        brute_gridsize = 2000 # the number of paramater values to try in brute gridding
         brute_delchi = 2.3 # = 2.3 to consider parameters jointly for a 1 sigma error. good if you want to quote their value but if you're going to propagate the errors I think u need to use = 1, which considers them 'one at a time'
         DBB_brute_gridsize = 10
         error_sampling_size = 9 # the number of times to sample the error in the data points to get a distribution of chi squared values for each fit. This is used to calculate the reduced chi squared value and the goodness of fit metric D_sigma
@@ -108,7 +123,7 @@ if SED_plots == 'usual':
         
 
 
-        BB_fitting = fit_SED_across_lightcurve(interp_lc, running_on_server = running_on_server, SED_type = SED_type, curvefit = BB_curvefit, brute = BB_brute, ant_name = ANT_name, 
+        BB_fitting = fit_SED_across_lightcurve(interp_lc, running_on_server = running_on_server, SED_type = SED_type, ant_name = ANT_name, 
                                             brute_delchi = brute_delchi,  brute_gridsize = brute_gridsize, DBB_brute_gridsize = DBB_brute_gridsize, error_sampling_size = error_sampling_size, individual_BB_plot = individual_BB_plot_type, 
                                             no_indiv_SED_plots = no_indiv_SED_plots, save_SED_fit_file = save_SED_fit_file,
                                             save_indiv_BB_plot = save_indiv_BB_plot, save_param_vs_time_plot = save_param_vs_time_plot,
@@ -126,29 +141,26 @@ if SED_plots == 'usual':
         if UVOT_guided_fitting == True:
             BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process(err_scalefactor = UVOT_guided_err_scalefactor, sigma_dist_for_good_fit = UVOT_guided_sigma_dist_for_good_fit, band_colour_dict = band_colour_dict, band_marker_dict = band_marker_dict)
         
+        
+        elif UVOT_guided_fitting == False:
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
 
-
-        if (SED_type == 'best_SED') and (UVOT_guided_fitting == False): # I only require UVOT_guided_fitting == False because otherwise if it's True, then the if statement above will activate, 
+"""        
+         if (SED_type == 'double_BB') and (UVOT_guided_fitting == False):# I only require UVOT_guided_fitting == False because otherwise if it's True, then the if statement above will activate, 
                                                                         # but then another one of the ones below will run straight after since both UVOT_guided_fitting == True and SED_type will be 
                                                                         # one of 'best_SED', 'single_BB', 'double_BB', 'power_law'
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
-        
-
-
-        if (SED_type == 'double_BB') and (UVOT_guided_fitting == False):
             BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
 
 
 
         if (SED_type == 'power_law') and (UVOT_guided_fitting == False):
             BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
-            pd.options.display.float_format = '{:.4e}'.format # from chatGPT - formats all floats in the dataframe in standard form to 4 decimal places
 
         
         
         if (SED_type == 'single_BB') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
-            BB_2dp = BB_fit_results[BB_fit_results['no_bands'] == 2] # the BB fits for the MJDs which only had 2 bands, so we aren't really fitting, more solving for the BB R and T which perfectly pass through the data points
+            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict) """
+
             
  
 
@@ -164,7 +176,7 @@ if SED_plots == 'usual':
 #################################################################################################################################################
 # TESTING WHICH SED BEST FITS THE ANT
 
-if SED_plots == 'compare_SEDs':
+if fitting_process == 'compare_SEDs':
     if running_on_server:
         base_path = "" # we don't need a base path for the server we use the relative path
     else:
