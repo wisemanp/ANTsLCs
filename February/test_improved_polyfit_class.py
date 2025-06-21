@@ -4,13 +4,13 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# THIS CODE IS USED TO GET THE INTERPOLATED DFS FROM THE MODIFIED PHIL'S LIGHTCURVE FILES 
-#   - LOADS MODIFIED PHIL'S LIGHTCURVES
-#   - CALCULATES THE REST FRAME LUMINOSITIES AND CENTRAL WAVELENGTHS
-#   - BINS THE RESTFRAME LUMINOSITIES INTO 1 DAY BINS
+# THIS CODE IS USED TO GET THE INTERPOLATED DATAFRAMES FROM THE LIGHT CURVE FILES 
+#   - LOADS THE LIGHTCURVES
+#   - CALCULATES THE SPECTRAL LUMINOSITY DENSITY (IN REST-FRAME WAVELENGTHS) AND CONVERTS THE OBSERVED CENTRAL WAVELENGTHS INTO THE REST FRAME
+#   - BINS THE SPECTRAL LUMINOSITY DENSITY INTO 1 DAY BINS
 #   - FITS A POLYNOMIAL TO EACH BAND OF THE LIGHT CURVE
 #   - INTERPOLATES THE LIGHT CURVE (ACCORDING TO SOME SETTINGS YOU INPUT)
-#   - SAVES THE INTERPOLATED DATAFRAMES ALONG WITH A README FILE OF THE INTERPOLATION AND POLYFIT INPUTS
+#   - SAVES THE INTERPOLATED LIGHT CURVE DATAFRAMES ALONG WITH A README FILE OF THE INTERPOLATION AND POLYFIT INPUTS
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,36 +63,11 @@ save_README = True # this doesn't go into the class
 
 
 
-""" # DELETE AFTER USE, I AM JUST FINDING THE EXTRE STRAGGLER DATAPOINTS SO I CAN SPECIFY THEM IN THE CLASS
-aadesap = binned_df_list[10]
-aadesap_ATLAS_o = aadesap[aadesap['band'] == 'ATLAS_o']
-aadesap_ATLAS_o = aadesap_ATLAS_o[aadesap_ATLAS_o['wm_MJD'] < 59700.0]
-print()
-print()
-print(transient_names[10])
-print(aadesap_ATLAS_o) # MJD = 59674.309
-print()
-print()
-print()
-
-asassn17jz = binned_df_list[11]
-asassn17jz_V = asassn17jz[asassn17jz['band'] == 'V']
-asassn17jz_V = asassn17jz_V[asassn17jz_V['wm_MJD'] < 57910]
-print(transient_names[11])
-print(asassn17jz_V) # MJD = 57900.92
-print()
-print() """
-
 
 # polyfitting light curves
-#for idx in range(len(transient_names)):
-#for idx in [11]:
-for idx in [transient_names.index('ZTF22aadesap')]:
-    ANT_name = transient_names[idx] # THERE ARE SOME LIGHT CURVES THAT AREN'T WORTH POLYFITTING
-    if ANTs_for_fitting_dict[ANT_name] == False:
-        continue
-        
-    
+for idx in range(len(transient_names)): # this loops through all of the transients in the list
+#for idx in [transient_names.index('ZTF22aadesap')]: # this for loop runs the code for only one transient
+    ANT_name = transient_names[idx] 
     ANT_df = binned_df_list[idx]
     if ANT_name == 'ASASSN-18jd':
         ANT_df = ANT_df.dropna(subset = ['wm_L_rf_err']) # this light curve has NaN values in magerr when it's quoting an upper limit, so drop these rows for polyfitting
@@ -105,7 +80,7 @@ for idx in [transient_names.index('ZTF22aadesap')]:
     print(ANT_name)
     print()
 
-    if ANT_name == 'PS1-10adi': # because we have z=0 stored to calculate the L_rf since we are given abs mag not app mag
+    if ANT_name == 'PS1-10adi': # because we have z=0 stored for this object to calculate the L_rf correctly, since we are given abs mag from the author (Erkki Kankare) not app mag
         ant_z = 0.203
 
     else:
