@@ -2141,7 +2141,7 @@ def power_law_SED(lam, A, gamma):
 
 
 class fit_SED_across_lightcurve:
-    def __init__(self, interp_df, running_on_server, SED_type, curvefit, brute, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, 
+    def __init__(self, interp_df, running_on_server, SED_type, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, 
                 individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
                  plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 5e5,
@@ -2150,31 +2150,19 @@ class fit_SED_across_lightcurve:
         """
         INPUTS
         ---------------
-        interp_df: (dataframe) the ANT's dataframe containing a light curve which has been interpolated using a polynomial fit to each band. 
-            Each ANT had a chosen reference band. At the MJD values present in the reference band's real data, the polyfit for all other bands
-            were evaluated (provided that we aren't extrapolating). This means that if there was a band which had data at the min and max 
-            MJDs of the flare, there will be interpolated data for this band across the whole flare light curve, whereas if there is a band
-            which only has data on the plateau of the light curve, this band will only have interpolated data within this region, at
-            the MJD values of the reference band's data. This means that we don't need to bin the light curve in order to take the data
-            for the blackbody fit, we can take each MJD present within this dataframe and take whatever band is present at this MJD as
-            the data for the BB fit. So, we can fit a BB curve for each MJD within this dataframe, as long as it has >2 bands present. Prior
-            to being interpolated, the ANT data should (ideally) be binned into small bins like 1 day, meaning that we will only have 0 or 1 datapoint 
-            per per band per MJD value (this is only really relevant for the reference band, though, since the interpolation function ensures either 0 or 1
-            value per band per MJD value for the interpolated data, since the polynomials are single-valued for any given MJD value). 
-            columns: MJD, L_rf, L_rf_err, band, em_cent_wl
+        interp_df: (DataFrame) the ANT's dataframe containing a light curve which has been interpolated using a polynomial fit to each band. 
+        Each ANT had a chosen reference band. At the MJD values present in the reference band's real data (and straggler MJDs), the polyfit for all other bands
+        were evaluated (under some conditions). Prior to being interpolated, the ANT data should (ideally) be binned into small bins like 1 day, 
+        meaning that we will only have 0 or 1 datapoint per band per MJD value (this is only really relevant for the reference band, though, since the interpolation function ensures either 0 or 1
+        value per band per MJD value for the interpolated data, since the polynomials are single-valued for any given MJD value). 
+        columns: MJD, L_rf, L_rf_err, band, em_cent_wl
 
         running_on_server: (bool) if True, the paths where we access and store the files will for the server paths. 
 
-        SED_type: (str) options: 'single_BB', 'double_BB', 'power_law' or 'best_SED'. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
-        If 'power_law', the SED fit will be a power law fit like A*(wavelength)**gamma. If 'best_SED', the SED will be fit with what was chosen as the 'best' for this particular ANT. See the function 
-        get_best_SED_for_ANT() to see which SED this will be for the ANT you are trying to fit. 
+        SED_type: (str) options: 'single_BB', 'double_BB', 'power_law'. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
+        If 'power_law', the SED fit will be a power law fit like A*(wavelength)**gamma. 
 
-        curvefit: (bool) if True, the BB fit will be tried using scipy's curve_fit. If False, no curve_fit calculation will be tried
-
-        brute: (bool) if True, the BB fit will be tried using the brute force method (manually creating a grid of trial parameter values and minimising the chi squared). If 
-            False, no brute force calculation will be tried
-
-        brute_gridsize: (int) the number of trial values of R and T that will be tried in the brute force method. The number of trial values of R and T form a 2D grid of parameters and
+        brute_gridsize: (int) the number of trial parameter values that will be tried in the brute force method. The number of trial parameter values form a 2D grid of parameters and
         each combination of R and T will be tried in the BB fit.
 
         DBB_brute_gridsize: (int) the number of trial params to use for DBB brute force gridding. the gridsize would be DBB_brute_gridsize^4
@@ -2217,10 +2205,8 @@ class fit_SED_across_lightcurve:
             self.base_path = "C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/"
         
         self.SED_type = SED_type
-        if self.SED_type == 'best_SED': # if we want our 'best' SED as chosen by me
-            self.SED_type = self.get_best_SED_for_ANT(ant_name)
-        self.curvefit = curvefit
-        self.brute = brute
+        self.curvefit = True # leave as True
+        self.brute = True # leave as True
         self.brute_gridsize = brute_gridsize
         self.DBB_brute_gridsize = DBB_brute_gridsize
         self.error_sampling_size = error_sampling_size
@@ -2313,33 +2299,6 @@ class fit_SED_across_lightcurve:
         self.BB_fit_samples = pd.DataFrame(columns = self.sampled_columns, index = sample_index)
         self.BB_fit_samples.loc[:, :] = np.nan # set all cells to nan to be later overwritten. We do this because when curve_fits fail for the DBB, we won't reach the brute forcing and sampling so the rows associated to the MJD with the failed curve_fit would be empty, so we want these to be filled with NaN values. 
 
-
-
-        
-
-    
-
-
-
-    @staticmethod
-    def get_best_SED_for_ANT(ant_name):
-        """
-        From some analysis of the fits done by the code below, I have selected the 'best' SED for each ANT which is given by this dictionary
-        """
-        best_SED_dict = {'ZTF18aczpgwm': 'single_BB', 
-                        'ZTF19aailpwl': 'double_BB', # but could fail a lot so check that, but seems quite a bit better than the PL
-                        'ZTF19aamrjar': 'single_BB', 
-                        'ZTF19aatubsj': 'single_BB', # PL better?
-                        'ZTF20aanxcpf': 'single_BB', # no UVOT data but PL defo better????? 
-                        'ZTF20abgxlut': 'single_BB', # PL good here too but no UVOT
-                        'ZTF20abodaps': 'single_BB', # PL not bad here either 
-                        'ZTF20abrbeie': 'single_BB', # very few dps for this histogram since most MJD have 2 datapoints per SED 
-                        'ZTF20acvfraq': 'double_BB', # see the YoRiS slides for analysis of this one
-                        'ZTF21abxowzx': 'single_BB', # the DBB looks promising until you check the individual DBB SED subplot 
-                        'ZTF22aadesap': 'double_BB' } # power law also pretty good - MAYBE CHECK THIS ONE 
-        
-        SED_type = best_SED_dict[ant_name]
-        return SED_type
 
 
 
@@ -3204,7 +3163,7 @@ class fit_SED_across_lightcurve:
 
     def get_UVOT_MJDs_and_SED_fit_them(self, sigma_dist_for_good_fit):
         """
-        This function takes the MJDs from interp_df which have UVOT data (if any) and fits the 'best' SED to them, as defined by get_best_SED_for_ANT(). 
+        This function takes the MJDs from interp_df which have UVOT data (if any) and fits the SED model to them. 
         We don't return anything from this function since we're just updating BB_fit_results with the results of the UVOT MJD SED fits, but any MJDs without
         UVOT data are yet to be fit. Only necessary for the ANTs with UVOT data at the start so ZTF19aailpwl, ZTF20acvfraq, ZTF22aadesap
 
@@ -3501,7 +3460,7 @@ class fit_SED_across_lightcurve:
     def run_UVOT_guided_SED_fitting_process(self, err_scalefactor, sigma_dist_for_good_fit, band_colour_dict, band_marker_dict):
         """
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
-        A FUNCTION WHICH YOU MIGHT DIRECTLY CALL WHEN INITIALISING THE CLASS
+        A FUNCTION WHICH YOU WOULD DIRECTLY CALL WHEN INITIALISING THE CLASS
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
         This SED fitting process uses a guided fitting method. This means that if we have UVOT data on the rise/peak of the light curve, we SED fit these
