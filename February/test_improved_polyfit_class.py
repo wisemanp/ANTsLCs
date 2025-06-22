@@ -30,7 +30,7 @@ from tqdm import tqdm
 import sys
 
 sys.path.append("C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS") # this allows us to import plotting preferences and functions
-from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict, ANTs_for_fitting_dict, manual_stragglers_dict
+from plotting_preferences import band_colour_dict, band_marker_dict, band_ZP_dict, band_obs_centwl_dict, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, MJDs_for_fit, override_ref_band_dict, manual_stragglers_dict
 from functions import load_ANT_data, ANT_data_L_rf, bin_lc, chisq, polyfit_lightcurve
 
 
@@ -50,12 +50,11 @@ binned_df_list = bin_lc(add_lc_df_list, MJD_binsize)
 
 
 
-max_poly_order = 14
+max_poly_order = 14 
 min_band_dps = 4
 straggler_dist = 70
 max_interp_distance = 20
 gapsize = 70 # the size of a gap whete we allow NO interpolation at all over it to occur
-interp_at_ref_band = True
 max_interp_dist = 20
 plot_polyfit = True
 save_interp_df = True
@@ -92,8 +91,7 @@ for idx in range(len(transient_names)): # this loops through all of the transien
                                     ant_z = ant_z,
                                     df = ANT_df, 
                                     bands = bands_for_BB, 
-                                    override_ref_band_dict = override_ref_band_dict,   
-                                    interp_at_ref_band = interp_at_ref_band, 
+                                    override_ref_band_dict = override_ref_band_dict,    
                                     min_band_dps = min_band_dps, 
                                     manual_straggler_input_dict = manual_stragglers_dict,
                                     straggler_dist = straggler_dist,
@@ -110,7 +108,7 @@ for idx in range(len(transient_names)): # this loops through all of the transien
 
     if (save_README == True) & (idx == 0):
         save_interp_data_folder = f"C:/Users/laure/OneDrive/Desktop/YoRiS desktop/YoRiS/data/interpolated_lcs/"
-        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n gapsize = {gapsize} \n max_interp_distance = {max_interp_distance} \n interp_at_ref_band = {interp_at_ref_band} \n max_interp_dist = {max_interp_dist}"
+        readme_content = f"Interpolated light curves using the following paramaters: \n max_poly_order = {max_poly_order} \n min_band_dps = {min_band_dps} \n straggler_dist = {straggler_dist} \n gapsize = {gapsize} \n max_interp_distance = {max_interp_distance} \n max_interp_dist = {max_interp_dist}"
         with open(save_interp_data_folder+"README.txt", "w") as f:
             f.write(readme_content)
    
