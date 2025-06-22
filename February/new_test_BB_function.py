@@ -145,21 +145,6 @@ if fitting_process == 'usual':
         elif UVOT_guided_fitting == False:
             BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
 
-"""        
-         if (SED_type == 'double_BB') and (UVOT_guided_fitting == False):# I only require UVOT_guided_fitting == False because otherwise if it's True, then the if statement above will activate, 
-                                                                        # but then another one of the ones below will run straight after since both UVOT_guided_fitting == True and SED_type will be 
-                                                                        # one of 'best_SED', 'single_BB', 'double_BB', 'power_law'
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
-
-
-
-        if (SED_type == 'power_law') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict)
-
-        
-        
-        if (SED_type == 'single_BB') and (UVOT_guided_fitting == False):
-            BB_fit_results = BB_fitting.run_SED_fitting_process(band_colour_dict=band_colour_dict, band_marker_dict = band_marker_dict) """
 
             
  
@@ -221,7 +206,7 @@ if fitting_process == 'compare_SEDs':
         #comparison_df['SED_model'] = ['Single-BB', 'Single-BB', 'Single-BB', 'Single-BB', 'Power-law', 'Power-law', 'Power-law', 'Power-law', 'Double-BB', 'Double-BB', 'Double-BB', 'Double-BB']
 
 
-        if ANT_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd']: # FOR THE OBJECTS WITH UV DATA, FIT ALL SED TYPES + COMPARE. KEEP COMPARISON BETWEEN UV VS OPTICAL ONLY EPOCHS
+        if ANT_name in ['ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd']: # FOR THE UV-RICH ANTS, FIT ALL SED TYPES + COMPARE. KEEP COMPARISON BETWEEN UV VS OPTICAL ONLY EPOCHS
             fig, axs = plt.subplots(2, 2, figsize = (16.5, 7.5))
             ax1, ax2, ax3, ax4 = axs.ravel()
 
