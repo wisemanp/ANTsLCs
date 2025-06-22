@@ -154,23 +154,24 @@ def ANT_data_L_rf(ANT_df_list, ANT_names, dict_ANT_z, dict_ANT_D_lum, dict_band_
 
     INPUTS
     ---------------
-    ANT_df_list: a list of dataframes for each ANT, with the columns: MJD, mag, magerr, band
+    ANT_df_list: (list) a list of dataframes for each ANT, with the columns: MJD, mag, magerr, band
 
-    ANT_names: a list of names of each ANT, MUST be in the same order as the dataframes, so ANT_df_list[i] and ANT_names[i] MUST correspond to the same ANT
+    ANT_names: (list) a list of names of each ANT, MUST be in the same order as the dataframes, so ANT_df_list[i] and ANT_names[i] MUST correspond to the same ANT
 
-    dict_ANT_z: dictionary of ANT redshift values
+    dict_ANT_z: (dict) dictionary of ANT redshift values (found in plotting preferences as 'ANT_redshift_dict' - this has PS1-10adi's redshift = 0.0 since we are given abs 
+    mag rather than app mag)
 
-    dist_ANT_D_lum: dictioanry of ANT luminosity distances (calculated under a few assumptions, which can be checked in the plotting_preferences file)
+    dist_ANT_D_lum: (dict) dictioanry of ANT luminosity distances (calculated under a few assumptions, which can be checked in the plotting_preferences file)
 
-    dict_band_ZP: dictioanry of the zeropoints of each of the bands present for any ANT
+    dict_band_ZP: (dict) dictioanry of the zeropoints of each of the bands present for any ANT (found in plotting_preferences)
 
-    dict_band_obs_cent_wl: dictionary of the observed central wavelengths of the bends present for each of the ANTs
+    dict_band_obs_cent_wl: (dict) dictionary of the observed central wavelengths of the bands present for each of the ANTs (found in plotting_preferences)
     
 
 
     OUTPUTS
     ---------------
-    new_ANT_df_list: a list of dataframes of the ANTs, in the same order as ANT_df_list and ANT_names. Each dataframe will have the columns:
+    new_ANT_df_list: (list) a list of dataframes of the ANTs, in the same order as ANT_df_list and ANT_names. Each dataframe will have the columns:
                     MJD, mag, magerr, band, em_cent_wl (in Angstrom), L_rf (in ergs/(s * cm^2 * Angstrom)), L_rf_err (in ergs/(s * cm^2 * Angstrom)).
     
     """
@@ -278,14 +279,14 @@ def bin_lc(list_lc_df, MJD_binsize, drop_na_bins = True):
 
     INPUTS
     -----------
-    list_lc_df: a list of dataframes for the ANT's light curve data across all bands. Must contain the columns:  MJD, L_rf, L_rf_err, band, em_cent_wl
+    list_lc_df: (list) a list of dataframes for each ANT's light curve data across all bands. Each DataFrame must contain the columns:  MJD, L_rf, L_rf_err, band, em_cent_wl
 
-    MJD_binsize: the size of the MJD bins that you want
+    MJD_binsize: (int or float) the size of the MJD bins that you want
 
     
     OUTPUTS
     -----------
-    list_binned_lc_dfs: a list of dataframes of the whole ANT light curve binned into bin size = MJD_binsize. Each band within the light curve is binned separately.
+    list_binned_lc_dfs: (list) a list of dataframes of the whole ANT light curve binned into bin size = MJD_binsize. Each band within the light curve is binned separately.
                         Each df contains the columns:  MJD_bin, wm_L_rf (ergs/s/cm^2/Angstrom), wm_L_rf_err (args/s/cm^2/Angstrom), wm_MJD, band, em_cent_wl, MJD_lower_err, MJD_upper_err
 
     """
@@ -1341,15 +1342,58 @@ def restrict_dataframe(df, min_value, max_value, column = 'wm_MJD'):
 
 
 class polyfit_lightcurve:
-    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, interp_at_ref_band, min_band_dps, manual_straggler_input_dict, 
-                straggler_dist, gapsize, fit_MJD_range, max_interp_distance, max_poly_order, b_colour_dict, 
-                b_marker_dict, plot_polyfit = False, save_interp_df = False):
+    def __init__(self, ant_name, ant_z, df, bands, override_ref_band_dict, min_band_dps, manual_straggler_input_dict, 
+                straggler_dist, gapsize, fit_MJD_range, max_interp_distance, b_colour_dict, 
+                b_marker_dict, max_poly_order = 14, plot_polyfit = True, save_interp_df = True):
+        """
+        A class which can fit a polynomial to each band of a an ANT's light curve, then use this to interpolate the light curve according to user input interpolation restrictions
+        to prevent interpolating in regions where the polynomial is more unreliable. 
+
+        INPUTS
+        -------------
+        ant_name: (str) the ANT's name
+
+        ant_z: (float) the ANT's redshift
+
+        df: (DataFrame) the ANT's entire light curve dataframe, containing all bands. This light curve dataframe must have been passed through bin_lc() first (which is a function define)
+        above in this file). 
+
+        override_ref_band_dict: (dict) a distionary where the keys are the ANT names and the values are the band names which you want to choose as the refrence band, if the code picks
+        a reference band which you don't like. The reference band is chosen by the code as the band with the highest coverage quality score. This dictionary can be found in plotting_preferences
+
+        min_band_dps: (int) the minimum number of data points a band should have to be considered for polyfitting. 
+
+        manual straggler_input_dict: (dict) a dictionary where the keys are the ANT names and the values are DataFrames containing the manually identified stragglers, with the columns 'MJD' and 'band'
+
+        straggler_dist: (float) the minimum distance in MJD that a data point must be from the nearest one in the same band to be considered a straggler. 
+
+        gapsize: (float) the minimum MJD distance to be defined as a gap in the light curve. If the distance between 2 consecutive data points is larger than this, then
+        no polynomial interpolation will take place in this region. This i sbecause the polynomial is unconstrained across gaps in the light curve, so shouldn't be used
+        to interpolate. 
+
+        fit_MJD_range: (tuple). Containing the minimum and maximum MJDs over which you want this ANT to undergo polynomial fitting. This can be seen in plotting_preferences under 'MJDs_for_fit'
+
+        max_interp_distance: (float) the maximum distance in MJD that you want to interpolate away from the nearest real data point. 
+
+        b_colour_dict: (dict) a dictionary where the keys are the band names and the values are the colours you want to use when plotting them (can be found in plotting_preferences)
+
+        b_marker_dict: (dict) a dictionary where the keys are the band names and the values are the markers you want to use when plotting them (can be found in plotting_preferences)
+
+        max_poly_order: (int) I would recommend to leave as 14. The maximum polynomial order which can be used to fit the bands. The code will automatically restrict the polynomial 
+        order available to bands with little data, so you don't have to worry about this too much. Can only choose values >=13
+
+        plot_polyfit: (bool) whether to plot and save the polynomial fits to the bands. 
+
+        save_interp_df: (bool) whether to save the polynomial interpolated light curve in a dataframe. 
+
+        """
+        
         self.ant_name = ant_name
         self.ant_z = ant_z
         self.df = df
         self.bands = bands
         self.override_ref_band = override_ref_band_dict[ant_name]
-        self.interp_at_ref_band = interp_at_ref_band
+        self.interp_at_ref_band = True # leave as True, since we want to interpolate the reference band at the straggler MJDs
         self.min_band_dps = min_band_dps
         self.manual_straggler_input = manual_straggler_input_dict[self.ant_name] # if not None, is a dataframe containing manually identified stragglers
         self.straggler_dist = straggler_dist
@@ -2141,13 +2185,15 @@ def power_law_SED(lam, A, gamma):
 
 
 class fit_SED_across_lightcurve:
-    def __init__(self, interp_df, running_on_server, SED_type, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 1, 
-                individual_BB_plot = 'None', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = False, save_param_vs_time_plot = False,
-                 plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = False,
+    def __init__(self, interp_df, running_on_server, SED_type, brute_gridsize, DBB_brute_gridsize, error_sampling_size, ant_name, brute_delchi = 2.3, 
+                individual_BB_plot = 'whole_lc', no_indiv_SED_plots = 12, show_plots = True, save_indiv_BB_plot = True, save_param_vs_time_plot = True,
+                 plot_chi_contour = False, no_chi_contours = 3, save_SED_fit_file = True,
                 BB_R_min = 1e13, BB_R_max = 1e19, BB_T_min = 1e3, BB_T_max = 5e5,
                 DBB_T1_min = 1e2, DBB_T1_max = 1e4, DBB_T2_min = 1e4, DBB_T2_max = 5e5, DBB_R_min = 1e13, DBB_R_max = 1e19, 
                 PL_A_min = 1e42, PL_A_max = 1e51, PL_gamma_min = -5.0, PL_gamma_max = 0.0):
         """
+        Fits an SED model to each epoch in the provided ANT light curve. 
+
         INPUTS
         ---------------
         interp_df: (DataFrame) the ANT's dataframe containing a light curve which has been interpolated using a polynomial fit to each band. 
@@ -2162,10 +2208,12 @@ class fit_SED_across_lightcurve:
         SED_type: (str) options: 'single_BB', 'double_BB', 'power_law'. If 'single_BB', the blackbody fit will be a single blackbody fit. If 'double_BB', the blackbody fit will be a double blackbody fit. 
         If 'power_law', the SED fit will be a power law fit like A*(wavelength)**gamma. 
 
-        brute_gridsize: (int) the number of trial parameter values that will be tried in the brute force method. The number of trial parameter values form a 2D grid of parameters and
-        each combination of R and T will be tried in the BB fit.
+        brute_gridsize: (int) the number of trial parameter values that will be tried in the brute force method. The number of trial parameter values form a grid of parameters and
+        each parameter combination will be tried in the SED fit.
 
-        DBB_brute_gridsize: (int) the number of trial params to use for DBB brute force gridding. the gridsize would be DBB_brute_gridsize^4
+        DBB_brute_gridsize: (int) the number of trial params to use for DBB brute force gridding. the gridsize would be DBB_brute_gridsize^4. This is only used if you want to sample parameter values within 
+        the region of parameter space satisfying chi <= best_chi + brute_delchi, where best_chi is the min chi squared value found when using the curve_fit method. This is because the 
+        DBB method is very computationally expensive to run a brute force fit for. 
 
         error_sampling_size: (int) the number of parameter combinations you want to sample from the brute force region of param space for which chi <= min_chi + brute_delchi (where brute_delchi usually =2.3)
 
@@ -2175,20 +2223,23 @@ class fit_SED_across_lightcurve:
         by searching the 'ellipse' in parameter space which produces (min_red_chi +/- 1), so brute_delchi=1 here. For a 2 parameter model with 1 sigma errors taken 'jointly' as a joint confidence region, 
         then choose brute_delchi = 2.3. 
         
-        the number of sigma that the brute force method will use to calculate the error on the BB fit parameters. 
+        the number of sigma that the brute force method will use to calculate the error on the SED fit parameters. 
 
-        individual_BB_plot: (str) opitons: 'UVOT', 'whole_lc' or 'None'. If 'UVOT', the BB fits taken at MJDs which have UVOT data will be shown. If 'whole_lc', the BB fits taken
-        at MJDs across the light curve will be shown. If 'None', no individual BB fits will be shown. The plot will display a grid of 12 BB fits and their chi squared parameter space. 
+        individual_BB_plot: (str) a setting for plotting individual epoch SED fits in a grid. opitons: 'UVOT', 'whole_lc' or 'None'. If 'UVOT', the SED fits taken at MJDs 
+        which have UVOT data will be shown. If 'whole_lc', the SED fits taken at MJDs across the light curve will be shown. If 'None', no individual SED fits will be shown. 
+        The plot will display a grid of SED fits.
 
         no_indiv_SED_plots: (int) how many individual SEDs you want plotted, if individual_BB_plot != 'None' (if you want the individual SED plot). Options are: 24, 20, 12
         
         show_plots: (bool) if True, the code will plt.show() the plots. You can still save them separately if desired
 
-        save_indiv_BB_plot: (bool) if True, the plot of the individual BB fits will be saved.
+        save_indiv_BB_plot: (bool) if True, the plot of the individual SED fits will be saved.
 
-        plot_chi_contour: (bool). If True and brute == True, the code will plot some chi squared contour plots in the parameter space. This is helpful to sanity check errors. 
+        plot_chi_contour: (bool). If True and brute == True, the code will plot some chi squared contour plots in the parameter space. This is helpful to sanity check errors. But only works for PL fits. 
 
-        no_chi_contours: (int). Number of individual plots of chi squared contours for a particular fit to a randomly selected SEDs. This has only been implemented in the brute force power law fitting so far
+        no_chi_contours: (int). Number of individual plots of chi squared contours for a particular fit to a randomly selected epochs. This has only been implemented in the brute force power law fitting so far
+        
+        save_SED_fit_file: (bool). If True, saves a file containing the evolution of SED model parameters with phase. 
         
         BB_R_min, BB_R_max, BB_T_min, BB_T_max: (each are floats). The parameter space limits for the single BB SED fits
 
@@ -3122,6 +3173,18 @@ class fit_SED_across_lightcurve:
         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
         This SED fitting process fits the chosen SED to each MJD's data, independently of the SED fits nearby. 
+
+        INPUTS:
+        -------------
+        band_colour_dict: (dict)  a dictionary where the keys are the band names and the values are the colours to use when plotting them
+
+        band_marker_dict: (dict) a dictionary where the keys are the band names and the values are the markers to use when plotting them
+
+        OUTPUTS:
+        -------------
+
+        SED_fit_results: (pd.DataFrame) A dataframe containing the SED fit results at each epoch in the light curve provided. 
+        
         """
         self.guided_UVOT_SED_fits = False 
         SED_fit_results = self.run_BB_fit() # iterate through the MJDs and fit our chosen SED to them
@@ -3465,24 +3528,27 @@ class fit_SED_across_lightcurve:
 
         This SED fitting process uses a guided fitting method. This means that if we have UVOT data on the rise/peak of the light curve, we SED fit these
         first, then use these results to constrain the parameter space over which we test for nearby MJD SED fits which do not have UVOT data. This only applies for
-        lightcurves with UVOT data. If the ANT you're trying to SED fit does not have UVOT data on the rise/peak, it will use a non-guided SED fitting process, in which
+        lightcurves with UVOT data, which are:  'ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd'
+        If the ANT you're trying to SED fit does not have UVOT data on the rise/peak, it will use a non-guided SED fitting process, in which
         each MJD's SED fit is done independently of the ones around it. 
 
         INPUTS
         ---------------
-        err_scalefactor: (float) used like this: MJD_A_lower_lim = UVOT_A + err_scalefactor * |UVOT_MJD - MJD| * UVOT_A_err_lower and so on for all model parameters 
+        err_scalefactor: (float) used like this: MJD_A_lower_lim = UV_A + err_scalefactor * |UV_MJD - MJD| * UV_A_err_lower and so on for all model parameters 
         where A is a model parameter. Since we want to use the SED fits of the nearby UVOT MJDs to constrain the parameter space to explore by the non-UVOT MJD SED 
-        fits, we should allow the non-UVOT SEd to explore a larger area of parameter space around the UVOT SED parameters if the non-UVOT MJD is further away from the 
+        fits, we should allow the non-UVOT SED to explore a larger area of parameter space around the UVOT SED parameters if the non-UVOT MJD is further away from the 
         UVOT one.
 
         sigma_dist_for_good_fit: (float) the maximum reduced chi squared sigma distance for which we will consider the fit 'good', so all fits with chi_sig_dist <= sigma_dist_for_good_fit
-        is considered a good fit.  
+        is considered a good fit. I use 3 in my dissertation. 
 
-        band_colour_dict: (dictionary) of the bands and their corresponding marker colour for plotting
+        band_colour_dict: (dict) where the keys are the band names and the values are the colours to use when plotting them (can be found in plotting_preferences)
+
+        band_marker_dict: (dict) where the keys are the band names and the values are the markers to use when plotting them (can be found in plotting_preferences)
 
         OUTPUTS
         --------------
-        SED_fit_results: (dataframe) containing the SED fit results at each MJD. 
+        SED_fit_results: (DataFrame) containing the SED fit results at each MJD. 
 
         """
         self.UVOT_guided_err_scalefactor = err_scalefactor
