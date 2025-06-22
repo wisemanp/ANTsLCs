@@ -41,7 +41,7 @@ If you wanted to write your own files to run the the code, I would recommend run
 1. load_ANT_data() 
     - to load in the original light curve data files
 
-2. ANT_data_L_rf(lc_df_list, transient_names, ANT_redshift_dict, ANT_luminosity_dist_cm_dict, band_ZP_dict, band_obs_centwl_dict)
+2. ANT_data_L_rf()
     - to convert magnitudes into luminosity density in terms of the emitted-frame wavelengths, and convert the observed photometric band'sample
       central wavelength into the emitted-frame wavelength
 
