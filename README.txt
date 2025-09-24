@@ -1,88 +1,55 @@
-# Lauren's YoRiS code :D ================================================================================================================================
-Takes a light curve file and performs polynomial interpolation, and then fits the interpolated broad band photometry at each epoch with SED models.
-These SED models include:
-    - Single-blackbody (SBB)
-    - Double-blackbody (DBB) (aimed to fit one BB component to the UV, and one to the optical, so maybe not as useful if you don't have UV data)
-    - Power-law (PL)
+# Explanation of my use of Skysurvey to simulate ANT light curves
+    I used a modified version of the Python package Skysurvey to simulate ANT light curves based on their single-blackbody (SBB), power-law (PL)
+    and double-blackbody (DBB) spectral energy distribution (SED) evolution. Skysurvey has this built in for a SBB SED, so I copied the SBB code
+    and modified it to also enable simulation for PL and DBB SED evolutions. 
 
 
 
 
-# Structure: ============================================================================================================================================
-    - functions.py contains all of the functions used to analyse the data, from converting magnitudes to luminosity density to polynomial interpolation
-    to SED fitting
+# Relevant code
 
-    - plotting_preferences.py contains dictionaries of the individual ANT properties (such as redshift), along with the plotting preferences such as:
-        - allocating a given observed photometric band a particular colour and marker shape for plotting (e.g. 'ATLAS_c' is plotted as a red circle)
-        - giving each ANT's light curve plots an xlim in MJD
+    1. My version of Skysurvey - in particular, I made changes to allow for simulation of transients based on their PL or DBB SED evolution. I
+        also slightly changed the way that SNcosmo and Skysurvey interact to allow for user input of the type of spline interpolation that
+        you would like to use when interpolating the SED evolution over phase (by default SNcosmo uses 3rd order but this produced large artefacts
+        in the simulated light curves so I would recommend using this as 1), and also how it interpolates each SED over wavelength (which SNcosmo 
+        has set to 3rd order by default, and this is the order that I would recommend using). 
 
+    2. My version of SNcosmo's TimeSeriesTransient (in SNcosmo's models.py)
+        I changed this for the reason described in the point above (allowing the order of spline interpolation ot be a user input). The only 
+        difference between the default SNcosmo TimeSeriesTransient and my one is in the __innit__(). 
 
+    3. FINAL_DISS_WORKING_sim_ALL_LSST_subplot_zmax_lc.py
+        This is the code which I used to input the csv files containing the spectral evolution (assuming a given SED model) fro ecah ANT, and used
+        this spectral evolution (SE) to simulate more light curves with my modified version of Skysurvey. I would recommend looking to this file
+        to see how I convert my csv files into the necessary Skysurvey inputs
 
-
-
-# Code examples: ==========================================================================================================================================
-To see exactly how I run the code, you can look to:
-    - February\test_improved_polyfit_class.py
-        - Takes the raw light curve data files
-        - Converts apparent mag (absolute mag for PS1-10adi) to spectral luminosity density in terms of the emitted frame wavelengths
-        - Bins the spectral luminosity density into 1 day bins
-        - Fits a polynomial to the each band of the light curve
-        - Interpolates the light curve using these polynomials (given some settings that you input)
-        - Saves the interpolated DataFrames along with a README file containing the interpolation and polynomial fit inputs the user provides
-
-    - February\new_test_BB_function.py
-        - Loads in the interpolated light curve files (which you can produce using February\test_improved_polyfit_class.py)
-        - Fits SED models to each epoch of the interpolated light curves (see the top of this file for further description)
-        - Can be used to compare which SED models fit the data best (see the top of this file for further description)
-
-
-
-If you wanted to write your own files to run the the code, I would recommend running the functions in the following order:
-1. load_ANT_data() 
-    - to load in the original light curve data files
-
-2. ANT_data_L_rf()
-    - to convert magnitudes into luminosity density in terms of the emitted-frame wavelengths, and convert the observed photometric band'sample
-      central wavelength into the emitted-frame wavelength
-
-3. bin_lc()
-    - to bin the light curve (in terms of luminosity density)
-
-4. lightcurve = polyfit_lightcurve()
-    - Initialise polyfit_lightcurve() class with your inputs. 
-
-5. lightcurve.run_fitting_pipeline()
-    - runs the fitting pipeline from the polyfit_lightcurve() class
-
-6. BB_fitting = fit_SED_across_lightcurve()
-    - initialise the fit_SED_across_lightcurve() class. 
-
-7. 
-7.1. If you want UVOT guided fitting, run: BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process()
-    - this runs the UVOT guided SED fitting process on your chosen ANT
-    NOTE: UVOT guided fitting will only take place if ANT_name is one of: '[ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd']
-    since these were the only ANTs in our sample which had more than 10 epochs of interpolated data in at least 2 bands which were emitted below
-    3000 Angstroms (which I referred to as the 'UV-rich ANTs' in my dissertation). if the ANT_name is not in that list, the fitting process will
-    default to fitting each epoch's SED independently of one another
-
-7.2. If you don't want UVOT guided fitting, run: 
-    BB_fit_results = BB_fitting.run_SED_fitting_process()
+    4. try_compare_aadeap_to_sim_lc.py
+        This code just generates a plot for my diss, where I plotted a simulated light (generated using ZTF22aadesap's PL SE) curve next to 
+        ZTF22aadesap's light curve 
 
 
 
 
 
+# If you wanted to write your own code, here is the general order of functions that I would recommend:
+    1. Choose a csv file which contains the measured SE of a particular ANT, assuming a particular SED model
+
+    2. Convert your SED model parameters (from the csv file) into the requires Skysurvey inputs
+
+    3. Input these into Skysurvey using:
+        3.1. For a SBB SED model, use blackbody.get_blackbody_transient_source()
+        3.2  For a PL SED model, use power_law.get_power_law_transient_source()
+        3.3  For a DBB SED model, use double_blackbody.get_double_blackbody_transient_source()
+
+    4. To simulate transients from the source produced in the step above, use: skysurvey.TSTransient.from_draw() 
+
+    5. Combine these simulate transients with your survey (in our case, LSST) to generate a dataset (simulated observations of these transients using your survey): 
+        dset = skysurvey.DataSet.from_targets_and_survey()
+
+    6. dset.get_ndetection()
+
+    7. dset contains all observations of the simulated transients, you can then select a random transeient from dset to plot its light curve
 
 
-# NOTE ======================================================================================================================================================
-You may see a lot of red warnings printed in the terminal (especially when fitting the double-blackbody model) like:
-    'WARNING - No chi values within the delta_chi = 2.3 region for MJD = 59841.66138890013. Min delchi = 2.66925817087425 '
 
-Don't worry about these too much, this is a warning for the sampling part of the code which I never ended up using. Basically, what it's trying to do is:
-    When using the brute force fitting method, sample parameter values from the region of parameter space which satisfies chi <= min_chi + 2.3, 
-    where each parameter pair is sampled with a probability going like 1/chi (when I refer to chi I mean the chi squared of the SED fit to that epoch).
-    However, there are instances where there are no parameter pairs within this chi <= min_chi + 2.3 region (this would mean the brute parameter grid 
-    is too coarsely spaced). In my code, I used a large paremetr grid for the SBB and PL since they both have only 2 model parameters, but for the DBB, 
-    I had to use curve_fit for the fitting since it has 4 model parameters, making a large brute-force parameter grid too computationally expensive. As a 
-    result, I uses a much smaller DBB brute force grid to obtain an approximate chi <= min_chi + 2.3 region, however, this can often mean that
-    there are no parameer combinations satisfying chi <= min_chi + 2.3. 
+
