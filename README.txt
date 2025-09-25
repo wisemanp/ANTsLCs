@@ -1,54 +1,119 @@
-# Explanation of my use of Skysurvey to simulate ANT light curves
-    I used a modified version of the Python package Skysurvey to simulate ANT light curves based on their single-blackbody (SBB), power-law (PL)
-    and double-blackbody (DBB) spectral energy distribution (SED) evolution. Skysurvey has this built in for a SBB SED, so I copied the SBB code
-    and modified it to also enable simulation for PL and DBB SED evolutions. 
-
-
-
-
-# Relevant code
-
-    1. My version of Skysurvey - in particular, I made changes to allow for simulation of transients based on their PL or DBB SED evolution. I
-        also slightly changed the way that SNcosmo and Skysurvey interact to allow for user input of the type of spline interpolation that
-        you would like to use when interpolating the SED evolution over phase (by default SNcosmo uses 3rd order but this produced large artefacts
-        in the simulated light curves so I would recommend using this as 1), and also how it interpolates each SED over wavelength (which SNcosmo 
-        has set to 3rd order by default, and this is the order that I would recommend using). 
-
-    2. My version of SNcosmo's TimeSeriesTransient (in SNcosmo's models.py)
-        I changed this for the reason described in the point above (allowing the order of spline interpolation ot be a user input). The only 
-        difference between the default SNcosmo TimeSeriesTransient and my one is in the __innit__(). 
-
-    3. FINAL_DISS_WORKING_sim_ALL_LSST_subplot_zmax_lc.py
-        This is the code which I used to input the csv files containing the spectral evolution (assuming a given SED model) fro ecah ANT, and used
-        this spectral evolution (SE) to simulate more light curves with my modified version of Skysurvey. I would recommend looking to this file
-        to see how I convert my csv files into the necessary Skysurvey inputs
-
-    4. try_compare_aadeap_to_sim_lc.py
-        This code just generates a plot for my diss, where I plotted a simulated light (generated using ZTF22aadesap's PL SE) curve next to 
-        ZTF22aadesap's light curve 
-
-
-
-
-
-# If you wanted to write your own code, here is the general order of functions that I would recommend:
-    1. Choose a csv file which contains the measured SE of a particular ANT, assuming a particular SED model
-
-    2. Convert your SED model parameters (from the csv file) into the requires Skysurvey inputs
-
-    3. Input these into Skysurvey using:
-        3.1. For a SBB SED model, use blackbody.get_blackbody_transient_source()
-        3.2  For a PL SED model, use power_law.get_power_law_transient_source()
-        3.3  For a DBB SED model, use double_blackbody.get_double_blackbody_transient_source()
-
-    4. To simulate transients from the source produced in the step above, use: skysurvey.TSTransient.from_draw() 
-
-    5. Combine these simulate transients with your survey (in our case, LSST) to generate a dataset (simulated observations of these transients using your survey): 
-        dset = skysurvey.DataSet.from_targets_and_survey()
-
-    6. dset.get_ndetection()
-
-    7. dset contains all observations of the simulated transients, you can then select a random transeient from dset to plot its light curve
+# ANTsLCs — Simulate ANT light curves with LSST
+    Authors: Lauren Eastman, Phil Wiseman
+    This project simulates light curves for Active Nuclear Transients (ANTs) observed by LSST using measured spectral energy distribution (SED) evolution. It uses a single entry point (run_simulation.py) and modular utils for saving and plotting.
+    
+    Supported SED models
+    - SBB — single blackbody
+    - PL — power law
+    - DBB — double blackbody
+    
+    Requirements
+    - Python 3.9+
+    - Packages: numpy, pandas, scipy, astropy, matplotlib, sncosmo, pyyaml, h5py
+    - Local tools in skysurvey_LE/ (dataset, transient sources, filters)
+    
+    Project layout (key files)
+    - run_simulation.py — CLI entry point
+    - utils/
+      - simulation_utils.py — LSSTSimulator; main simulation flow and guards
+      - io_utils.py — HDF5 writer (single file, multiple keys)
+      - plot_utils.py — plotting helpers (inputs, results, outputs)
+    - filters/
+      - zeropoints.py — band zero-points and plotting settings
+      - central_wavelengths.py — filter central wavelengths
+    - metadata/
+      - redshift.yaml — ANT_proper_redshift_dict (moved from code)
+      - luminosity_distance_dict.yaml — ANT_luminosity_dist_cm_dict
+      - peak_mjd.yaml — peak_MJD_dict
+    - SED_fits_for_simulation/ — input SED CSVs
+    
+    Inputs
+    - SED CSV for the selected object and SED model (e.g., ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv).
+    - Metadata YAMLs for redshift and luminosity distance (see metadata/).
+    
+    Run from the command line (macOS)
+    - Basic usage
+      python run_simulation.py --object ZTF18aczpgwm --sed SBB --sedfile SED_fits_for_simulation/ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv --size 100 --outdir outputs --plotinputs --plotresults --log INFO
+    
+    - Other SEDs
+      python run_simulation.py --object ZTF22aadesap --sed PL --sedfile SED_fits_for_simulation/ZTF22aadesap_UVOT_guided_PL_SED_fit_across_lc_new.csv --size 200 --outdir outputs
+      python run_simulation.py --object ASASSN-18jd --sed DBB --sedfile SED_fits_for_simulation/ASASSN-18jd_UVOT_guided_DBB_Sed_fit_across_lc_new.csv --size 150 --outdir outputs
+    
+    Main CLI options
+    - --object: Target name, used to read metadata (e.g., ZTF18aczpgwm).
+    - --sed: SED model (SBB, PL, DBB).
+    - --sedfile: Path to SED CSV file.
+    - --size: Number of simulated targets to draw.
+    - --tstart / --tstop: MJD window (optional; defaults come from survey).
+    - --noplots: Max number of per-object output plots to save.
+    - --outdir: Base output directory for HDF5 and PNGs.
+    - --time-spline-degree / --wavelength-spline-degree: Interpolator orders (phase, wavelength).
+    - --plotinputs / --plotresults: Toggle input/SED sanity plots.
+    - --log: Logging level (DEBUG, INFO, WARNING, ERROR).
+    
+    Use in a notebook
+    - Minimal pattern
+      from utils.simulation_utils import LSSTSimulator
+      sim = LSSTSimulator()
+      sim.sim_ANY_LSST_lc(
+          object_name="ZTF18aczpgwm",
+          SED_filename="ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv",
+          SED_filepath="SED_fits_for_simulation",
+          size=100,
+          tstart=None,
+          tstop=None,
+          no_plots_to_save=10,
+          time_spline_degree=1,
+          wavelength_spline_degree=3,
+          plot_skysurvey_inputs=True,
+          plot_SED_results=True,
+          output_dir="outputs"
+      )
+    
+    Outputs
+    - HDF5 per run at:
+      outputs/<Object>/LSST_<SED>/<Object>_SED_<SED>_simulated_lightcurves.h5
+      Keys per simulated object i:
+      - obj_i/flux — DataFrame (rows=MJD, cols=band)
+      - obj_i/fluxerr
+      - obj_i/flux_density
+      - obj_i/flux_density_err
+      - obj_i/meta — one-row DataFrame of draw parameters (z, ra, dec, etc.)
+    
+    - Plots saved under the same folder:
+      - Input parameter plots (e.g., SBB: T, amplitude, R vs phase)
+      - SED sanity plots across wavelength and phase
+      - Panel plots of multiple simulated light curves
+      - Per-object two-panel plots (flux and flux density)
+    
+    Configuration and metadata
+    - Filters and zero-points: filters/zeropoints.py
+    - Central wavelengths: filters/central_wavelengths.py
+    - Redshifts: metadata/redshift.yaml
+    - Luminosity distances: metadata/luminosity_distance_dict.yaml
+    - Peak MJDs: metadata/peak_mjd.yaml
+    
+    Notes and guards
+    - Interpolation stability:
+      - Phase/wavelength grids are sanitized (sorted, deduplicated, finite-only).
+      - Spline degrees are clamped (1–5) and must be less than the number of unique samples in each axis.
+      - This avoids native FITPACK “malloc: Double free” errors.
+    - Logging:
+      - CLI configures logging (use --log INFO).
+      - In notebooks, a fallback stream handler is added if none is configured.
+    
+    Troubleshooting
+    - No logs in terminal: pass --log INFO (or DEBUG); CLI resets handlers.
+    - HDF5 write errors about string/Arrow dtypes: I/O layer coerces dtypes; ensure pandas and pytables are up to date.
+    - Pandas FutureWarning for get_group: handled internally (tuple key).
+    - Spline errors: lower --time-spline-degree or clean the SED CSV for NaNs/dup phases.
+    
+    Extending
+    - New SED types: add a branch in LSSTSimulator to build the source and re-use the I/O and plotting utilities.
+    - Custom interpolators: provide desired spline degrees via CLI or subclass your Source.
+    
+    License
+    - See repository license (if present).
 
 
 
