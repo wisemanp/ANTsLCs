@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy 
+astropy 
+matplotlib 
+sncosmo
+pyyaml
+h5py

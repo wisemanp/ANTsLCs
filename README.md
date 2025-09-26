@@ -14,6 +14,20 @@ This project simulates light curves for Ambiguous Nuclear Transients (ANTs) obse
 - Packages: `numpy`, `pandas`, `scipy`, `astropy`, `matplotlib`, `sncosmo`, `pyyaml`, `h5py`
 - Local tools: `skysurvey_PW` (dataset, transient sources, filters)  
   Fork: https://github.com/wisemanp/skysurvey_PW
+  Note: this will still be installed as `skysurvey`
+
+## Installation
+- ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    git clone git@github.com:wisemanp/ANTsLCs.git
+    cd ANTsLCs
+    pip install -r requirements.txt
+    cd ..
+    git clone git@github.com:wisemanp/skysurvey_PW.git
+    cd skysurvey_PW
+    pip install .
+  ```
 
 ## Project layout (key files)
 - `run_simulation.py` — CLI entry point

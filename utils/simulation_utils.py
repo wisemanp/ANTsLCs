@@ -1,7 +1,7 @@
 import numpy as np
 from astropy import constants as const
 import astropy.units as u
-from skysurvey_PW import TSTransient, DataSet
+from skysurvey import TSTransient, DataSet
 
 # --- Blackbody and related functions ---
 def blackbody_L_lam_rf(lam_cm, R_cm, T_K):

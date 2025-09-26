@@ -13,7 +13,7 @@ import yaml
 import argparse
 from utils.simulation_utils import LSSTSimulator
 from normal_code.plotting_preferences import ANT_sim_redshift_upper_lim_dict
-from skysurvey_PW.tools.utils import random_radec
+from skysurvey.tools.utils import random_radec
 
 def load_yaml_config(path):
     with open(path, 'r') as f:
