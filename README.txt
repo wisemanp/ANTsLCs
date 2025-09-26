@@ -1,88 +1,120 @@
-# Lauren's YoRiS code :D ================================================================================================================================
-Takes a light curve file and performs polynomial interpolation, and then fits the interpolated broad band photometry at each epoch with SED models.
-These SED models include:
-    - Single-blackbody (SBB)
-    - Double-blackbody (DBB) (aimed to fit one BB component to the UV, and one to the optical, so maybe not as useful if you don't have UV data)
-    - Power-law (PL)
+# ANTsLCs — Simulate ANT light curves with LSST
+    Authors: Lauren Eastman, Phil Wiseman
+    This project simulates light curves for Active Nuclear Transients (ANTs) observed by LSST using measured spectral energy distribution (SED) evolution. It uses a single entry point (run_simulation.py) and modular utils for saving and plotting.
+    
+    Supported SED models
+    - SBB — single blackbody
+    - PL — power law
+    - DBB — double blackbody
+    
+    Requirements
+    - Python 3.9+
+    - Packages: numpy, pandas, scipy, astropy, matplotlib, sncosmo, pyyaml, h5py
+    - Local tools in skysurvey_LE/ (dataset, transient sources, filters)
+    
+    Project layout (key files)
+    - run_simulation.py — CLI entry point
+    - utils/
+      - simulation_utils.py — LSSTSimulator; main simulation flow and guards
+      - io_utils.py — HDF5 writer (single file, multiple keys)
+      - plot_utils.py — plotting helpers (inputs, results, outputs)
+    - filters/
+      - zeropoints.py — band zero-points and plotting settings
+      - central_wavelengths.py — filter central wavelengths
+    - metadata/
+      - redshift.yaml — ANT_proper_redshift_dict (moved from code)
+      - luminosity_distance_dict.yaml — ANT_luminosity_dist_cm_dict
+      - peak_mjd.yaml — peak_MJD_dict
+    - SED_fits_for_simulation/ — input SED CSVs
+    
+    Inputs
+    - SED CSV for the selected object and SED model (e.g., ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv).
+    - Metadata YAMLs for redshift and luminosity distance (see metadata/).
+    
+    Run from the command line (macOS)
+    - Basic usage
+      python run_simulation.py --object ZTF18aczpgwm --sed SBB --sedfile SED_fits_for_simulation/ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv --size 100 --outdir outputs --plotinputs --plotresults --log INFO
+    
+    - Other SEDs
+      python run_simulation.py --object ZTF22aadesap --sed PL --sedfile SED_fits_for_simulation/ZTF22aadesap_UVOT_guided_PL_SED_fit_across_lc_new.csv --size 200 --outdir outputs
+      python run_simulation.py --object ASASSN-18jd --sed DBB --sedfile SED_fits_for_simulation/ASASSN-18jd_UVOT_guided_DBB_Sed_fit_across_lc_new.csv --size 150 --outdir outputs
+    
+    Main CLI options
+    - --object: Target name, used to read metadata (e.g., ZTF18aczpgwm).
+    - --sed: SED model (SBB, PL, DBB).
+    - --sedfile: Path to SED CSV file.
+    - --size: Number of simulated targets to draw.
+    - --tstart / --tstop: MJD window (optional; defaults come from survey).
+    - --noplots: Max number of per-object output plots to save.
+    - --outdir: Base output directory for HDF5 and PNGs.
+    - --time-spline-degree / --wavelength-spline-degree: Interpolator orders (phase, wavelength).
+    - --plotinputs / --plotresults: Toggle input/SED sanity plots.
+    - --log: Logging level (DEBUG, INFO, WARNING, ERROR).
+    
+    Use in a notebook
+    - Minimal pattern
+      from utils.simulation_utils import LSSTSimulator
+      sim = LSSTSimulator()
+      sim.sim_ANY_LSST_lc(
+          object_name="ZTF18aczpgwm",
+          SED_filename="ZTF18aczpgwm_SBB_SED_fit_across_lc_new.csv",
+          SED_filepath="SED_fits_for_simulation",
+          size=100,
+          tstart=None,
+          tstop=None,
+          no_plots_to_save=10,
+          time_spline_degree=1,
+          wavelength_spline_degree=3,
+          plot_skysurvey_inputs=True,
+          plot_SED_results=True,
+          output_dir="outputs"
+      )
+    
+    Outputs
+    - HDF5 per run at:
+      outputs/<Object>/LSST_<SED>/<Object>_SED_<SED>_simulated_lightcurves.h5
+      Keys per simulated object i:
+      - obj_i/flux — DataFrame (rows=MJD, cols=band)
+      - obj_i/fluxerr
+      - obj_i/flux_density
+      - obj_i/flux_density_err
+      - obj_i/meta — one-row DataFrame of draw parameters (z, ra, dec, etc.)
+    
+    - Plots saved under the same folder:
+      - Input parameter plots (e.g., SBB: T, amplitude, R vs phase)
+      - SED sanity plots across wavelength and phase
+      - Panel plots of multiple simulated light curves
+      - Per-object two-panel plots (flux and flux density)
+    
+    Configuration and metadata
+    - Filters and zero-points: filters/zeropoints.py
+    - Central wavelengths: filters/central_wavelengths.py
+    - Redshifts: metadata/redshift.yaml
+    - Luminosity distances: metadata/luminosity_distance_dict.yaml
+    - Peak MJDs: metadata/peak_mjd.yaml
+    
+    Notes and guards
+    - Interpolation stability:
+      - Phase/wavelength grids are sanitized (sorted, deduplicated, finite-only).
+      - Spline degrees are clamped (1–5) and must be less than the number of unique samples in each axis.
+      - This avoids native FITPACK “malloc: Double free” errors.
+    - Logging:
+      - CLI configures logging (use --log INFO).
+      - In notebooks, a fallback stream handler is added if none is configured.
+    
+    Troubleshooting
+    - No logs in terminal: pass --log INFO (or DEBUG); CLI resets handlers.
+    - HDF5 write errors about string/Arrow dtypes: I/O layer coerces dtypes; ensure pandas and pytables are up to date.
+    - Pandas FutureWarning for get_group: handled internally (tuple key).
+    - Spline errors: lower --time-spline-degree or clean the SED CSV for NaNs/dup phases.
+    
+    Extending
+    - New SED types: add a branch in LSSTSimulator to build the source and re-use the I/O and plotting utilities.
+    - Custom interpolators: provide desired spline degrees via CLI or subclass your Source.
+    
+    License
+    - See repository license (if present).
 
 
 
 
-# Structure: ============================================================================================================================================
-    - functions.py contains all of the functions used to analyse the data, from converting magnitudes to luminosity density to polynomial interpolation
-    to SED fitting
-
-    - plotting_preferences.py contains dictionaries of the individual ANT properties (such as redshift), along with the plotting preferences such as:
-        - allocating a given observed photometric band a particular colour and marker shape for plotting (e.g. 'ATLAS_c' is plotted as a red circle)
-        - giving each ANT's light curve plots an xlim in MJD
-
-
-
-
-
-# Code examples: ==========================================================================================================================================
-To see exactly how I run the code, you can look to:
-    - February\test_improved_polyfit_class.py
-        - Takes the raw light curve data files
-        - Converts apparent mag (absolute mag for PS1-10adi) to spectral luminosity density in terms of the emitted frame wavelengths
-        - Bins the spectral luminosity density into 1 day bins
-        - Fits a polynomial to the each band of the light curve
-        - Interpolates the light curve using these polynomials (given some settings that you input)
-        - Saves the interpolated DataFrames along with a README file containing the interpolation and polynomial fit inputs the user provides
-
-    - February\new_test_BB_function.py
-        - Loads in the interpolated light curve files (which you can produce using February\test_improved_polyfit_class.py)
-        - Fits SED models to each epoch of the interpolated light curves (see the top of this file for further description)
-        - Can be used to compare which SED models fit the data best (see the top of this file for further description)
-
-
-
-If you wanted to write your own files to run the the code, I would recommend running the functions in the following order:
-1. load_ANT_data() 
-    - to load in the original light curve data files
-
-2. ANT_data_L_rf()
-    - to convert magnitudes into luminosity density in terms of the emitted-frame wavelengths, and convert the observed photometric band'sample
-      central wavelength into the emitted-frame wavelength
-
-3. bin_lc()
-    - to bin the light curve (in terms of luminosity density)
-
-4. lightcurve = polyfit_lightcurve()
-    - Initialise polyfit_lightcurve() class with your inputs. 
-
-5. lightcurve.run_fitting_pipeline()
-    - runs the fitting pipeline from the polyfit_lightcurve() class
-
-6. BB_fitting = fit_SED_across_lightcurve()
-    - initialise the fit_SED_across_lightcurve() class. 
-
-7. 
-7.1. If you want UVOT guided fitting, run: BB_fit_results = BB_fitting.run_UVOT_guided_SED_fitting_process()
-    - this runs the UVOT guided SED fitting process on your chosen ANT
-    NOTE: UVOT guided fitting will only take place if ANT_name is one of: '[ZTF19aailpwl', 'ZTF20acvfraq', 'ZTF22aadesap', 'ASASSN-17jz', 'ASASSN-18jd']
-    since these were the only ANTs in our sample which had more than 10 epochs of interpolated data in at least 2 bands which were emitted below
-    3000 Angstroms (which I referred to as the 'UV-rich ANTs' in my dissertation). if the ANT_name is not in that list, the fitting process will
-    default to fitting each epoch's SED independently of one another
-
-7.2. If you don't want UVOT guided fitting, run: 
-    BB_fit_results = BB_fitting.run_SED_fitting_process()
-
-
-
-
-
-
-
-# NOTE ======================================================================================================================================================
-You may see a lot of red warnings printed in the terminal (especially when fitting the double-blackbody model) like:
-    'WARNING - No chi values within the delta_chi = 2.3 region for MJD = 59841.66138890013. Min delchi = 2.66925817087425 '
-
-Don't worry about these too much, this is a warning for the sampling part of the code which I never ended up using. Basically, what it's trying to do is:
-    When using the brute force fitting method, sample parameter values from the region of parameter space which satisfies chi <= min_chi + 2.3, 
-    where each parameter pair is sampled with a probability going like 1/chi (when I refer to chi I mean the chi squared of the SED fit to that epoch).
-    However, there are instances where there are no parameter pairs within this chi <= min_chi + 2.3 region (this would mean the brute parameter grid 
-    is too coarsely spaced). In my code, I used a large paremetr grid for the SBB and PL since they both have only 2 model parameters, but for the DBB, 
-    I had to use curve_fit for the fitting since it has 4 model parameters, making a large brute-force parameter grid too computationally expensive. As a 
-    result, I uses a much smaller DBB brute force grid to obtain an approximate chi <= min_chi + 2.3 region, however, this can often mean that
-    there are no parameer combinations satisfying chi <= min_chi + 2.3. 

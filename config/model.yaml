@@ -1,0 +1,8 @@
+# Example model config
+PS1-10adi:
+  param1: value1
+  param2: value2
+ASASSN-17jz:
+  param1: value3
+  param2: value4
+# Add more as needed
