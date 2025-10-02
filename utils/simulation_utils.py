@@ -39,7 +39,7 @@ def standard_form_tex(x, pos):
 # --- Main simulation class ---
 class LSSTSimulator:
     def __init__(self, survey, model, luminosity_dist_dict, max_sim_redshift_dict):
-        from skysurvey_LE import LSST
+        from skysurvey import LSST
         opsim_path = 'baseline_v4.3.1_10yrs.db'
         print("Loading LSST survey from opsim database...")
         LSST_survey = LSST.from_opsim(opsim_path,backend="pandas")
@@ -59,7 +59,7 @@ class LSSTSimulator:
         from matplotlib.ticker import FuncFormatter
         import matplotlib.ticker as ticker
         from astropy import constants as const
-        from skysurvey_LE.tools import blackbody, power_law, double_blackbody
+        from skysurvey.tools import blackbody, power_law, double_blackbody
         import os
         import logging
         logger = logging.getLogger(__name__)
